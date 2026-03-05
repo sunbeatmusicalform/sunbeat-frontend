@@ -28,6 +28,25 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Sunbeat",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Metadata-grade release intake platform for record labels with Airtable-native workflows, draft versioning and edit-mode via email.",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD"
+      }
+    })
+  }}
+/>
       </body>
     </html>
   );

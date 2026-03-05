@@ -1,20 +1,38 @@
-import type { ReactNode } from "react";
-import Navbar from "@/components/marketing/Navbar";
-import Footer from "@/components/marketing/Footer";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Sunbeat — Premium release intake for labels",
+export const metadata: Metadata = {
+  metadataBase: new URL("https://sunbeat.pro"),
+  title: {
+    default: "Sunbeat — Metadata-grade release intake for labels",
+    template: "%s | Sunbeat"
+  },
   description:
-    "Metadata-grade intake for labels. Collect clean release data with validations, versioned drafts, and Airtable delivery.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+    "Sunbeat is a metadata-grade release intake platform built for record labels. Collect clean release data, validate credits, manage drafts, enable edit-mode via email, and upload audio files up to 100MB with structured Airtable delivery.",
+  keywords: [
+    "music metadata platform",
+    "release intake for labels",
+    "airtable music workflow",
+    "music operations automation",
+    "DSP metadata submission",
+    "record label SaaS",
+    "music release management"
+  ],
+  openGraph: {
+    title: "Sunbeat — Metadata-grade release intake for labels",
+    description:
+      "Structured release intake built for modern music operations. Airtable-native workflows, versioned drafts, edit mode via email and large file uploads.",
+    url: "https://sunbeat.pro",
+    siteName: "Sunbeat",
+    type: "website"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sunbeat — Release intake for modern labels",
+    description:
+      "Airtable-native music metadata intake platform for record labels."
+  },
+  robots: {
+    index: true,
+    follow: true
+  }
 };
-
-export default function MarketingLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Navbar />
-      <main>{children}</main>
-      <Footer />
-    </div>
-  );
-}
