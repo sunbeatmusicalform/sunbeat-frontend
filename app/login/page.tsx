@@ -1,82 +1,214 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => createSupabaseBrowser(), []);
-  const sp = useSearchParams();
 
-  const next = sp.get("next") || "/app";
+  const next = searchParams.get("next") || "/app";
 
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState("");
+
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setSending(true);
     setErr(null);
+    setMsg(null);
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-      next
-    )}`;
+    try {
+      const cleanEmail = email.trim().toLowerCase();
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: redirectTo },
-    });
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: undefined,
+        },
+      });
 
-    setLoading(false);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
 
-    if (error) setErr(error.message);
-    else setSent(true);
+      setEmail(cleanEmail);
+      setStep("otp");
+      setMsg("Código enviado. Confira sua caixa de entrada e spam.");
+    } catch (error) {
+      setErr("Não foi possível enviar o código agora.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setVerifying(true);
+    setErr(null);
+    setMsg(null);
+
+    try {
+      const cleanToken = token.replace(/\D/g, "");
+
+      if (cleanToken.length !== 6) {
+        setErr("Digite o código de 6 dígitos.");
+        return;
+      }
+
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: cleanToken,
+        type: "email",
+      });
+
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+
+      router.replace(next);
+      router.refresh();
+    } catch (error) {
+      setErr("Não foi possível validar o código.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setSending(true);
+    setErr(null);
+    setMsg(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: undefined,
+        },
+      });
+
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+
+      setMsg("Novo código enviado.");
+    } catch (error) {
+      setErr("Não foi possível reenviar o código.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/30 p-6">
-        <h1 className="text-2xl font-semibold">Entrar</h1>
-        <p className="mt-2 text-white/70 text-sm">
-          Receba um magic link no seu e-mail para acessar o Sunbeat.
-        </p>
-
-        <form onSubmit={onSubmit} className="mt-6 space-y-3">
-          <label className="block text-sm text-white/70">E-mail</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="voce@empresa.com"
-            className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-          />
-
-          <button
-            type="submit"
-            disabled={loading || sent}
-            className="w-full rounded-xl bg-white text-black px-4 py-3 font-medium disabled:opacity-60"
-          >
-            {sent ? "Link enviado ✅" : loading ? "Enviando..." : "Enviar link"}
-          </button>
-
-          <p className="text-xs text-white/50">
-            Depois do login, você será direcionado para: <span className="font-mono">{next}</span>
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <div className="mx-auto flex min-h-screen max-w-md items-center px-6">
+        <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl">
+          <h1 className="text-2xl font-semibold">Entrar na Sunbeat</h1>
+          <p className="mt-2 text-sm text-white/60">
+            Acesse com código de 6 dígitos enviado para seu email.
           </p>
 
-          {err && (
-            <p className="text-sm text-red-300">
-              {err}
-            </p>
+          {step === "email" ? (
+            <form onSubmit={handleSendCode} className="mt-6 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm text-white/80">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="voce@empresa.com"
+                  autoComplete="email"
+                  required
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none placeholder:text-white/30"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={sending || !email.trim()}
+                className="w-full rounded-xl bg-white px-4 py-3 font-medium text-black disabled:opacity-60"
+              >
+                {sending ? "Enviando..." : "Enviar código"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="mt-6 space-y-4">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/70">
+                Código enviado para <span className="font-medium text-white">{email}</span>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-white/80">Código</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={token}
+                  onChange={(e) => setToken(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="123456"
+                  autoComplete="one-time-code"
+                  required
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-center text-2xl tracking-[0.35em] text-white outline-none placeholder:text-white/20"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifying || token.length !== 6}
+                className="w-full rounded-xl bg-white px-4 py-3 font-medium text-black disabled:opacity-60"
+              >
+                {verifying ? "Validando..." : "Entrar"}
+              </button>
+
+              <div className="flex items-center justify-between text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("email");
+                    setToken("");
+                    setMsg(null);
+                    setErr(null);
+                  }}
+                  className="text-white/70 hover:text-white"
+                >
+                  Trocar email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={sending}
+                  className="text-white/70 hover:text-white disabled:opacity-50"
+                >
+                  {sending ? "Reenviando..." : "Reenviar código"}
+                </button>
+              </div>
+            </form>
           )}
-          {sent && !err && (
-            <p className="text-sm text-green-200">
-              Confira sua caixa de entrada (e spam). Se o link expirar, é só pedir outro.
-            </p>
-          )}
-        </form>
+
+          {err && <p className="mt-4 text-sm text-red-300">{err}</p>}
+          {msg && <p className="mt-4 text-sm text-green-300">{msg}</p>}
+
+          <p className="mt-6 text-xs text-white/40">
+            Depois do login, você será direcionado para:{" "}
+            <span className="font-mono text-white/60">{next}</span>
+          </p>
+        </div>
       </div>
     </div>
   );
