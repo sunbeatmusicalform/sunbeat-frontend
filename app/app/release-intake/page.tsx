@@ -1,247 +1,351 @@
-"use client";
+import Link from "next/link";
 
-import { useMemo, useState } from "react";
+const formSections = [
+  {
+    step: "01",
+    title: "Release details",
+    description:
+      "Core metadata such as title, main artist, release type, release date and territory context.",
+    status: "Ready for premium form build",
+  },
+  {
+    step: "02",
+    title: "Assets and delivery",
+    description:
+      "Artwork, audio files, version data, content notes and operational assets required by the team.",
+    status: "Needs configurable field layer",
+  },
+  {
+    step: "03",
+    title: "Credits and metadata",
+    description:
+      "Writers, producers, publishers, ISRC/UPC handling and completion guidance.",
+    status: "AI contextual help recommended",
+  },
+  {
+    step: "04",
+    title: "Review and submission",
+    description:
+      "Validation, final review, success state and downstream routing to operations.",
+    status: "Ready for submit architecture",
+  },
+];
 
-type StepId = 1 | 2 | 3;
+const configurationModules = [
+  {
+    title: "Helped text per field",
+    description:
+      "Each field can have instructional copy, examples and validation guidance.",
+  },
+  {
+    title: "Field visibility and order",
+    description:
+      "Clients can control what appears, when it appears and how the flow is organized.",
+  },
+  {
+    title: "Contextual AI guide",
+    description:
+      "The assistant responds based on field, step and client rules instead of generic chat.",
+  },
+  {
+    title: "Branding and client experience",
+    description:
+      "The form can reflect each workspace with its own introduction, tone and messaging.",
+  },
+];
 
-function Progress({ step, total }: { step: number; total: number }) {
-  const pct = Math.round(((step - 1) / (total - 1)) * 100);
+const exampleFields = [
+  {
+    field: "Release Title",
+    helper:
+      "Use the exact commercial title that should appear in DSPs and internal operations.",
+    type: "Text",
+    required: "Yes",
+  },
+  {
+    field: "Main Artist",
+    helper:
+      "Enter the primary credited artist name exactly as it should be distributed.",
+    type: "Text",
+    required: "Yes",
+  },
+  {
+    field: "Release Date",
+    helper:
+      "Choose the intended go-live date. This can later connect to validation and delivery rules.",
+    type: "Date",
+    required: "Yes",
+  },
+  {
+    field: "Focus Track",
+    helper:
+      "Indicate the priority track for campaign and release strategy alignment.",
+    type: "Select",
+    required: "Optional",
+  },
+];
+
+export default function ReleaseIntakePage() {
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between text-xs text-white/60 mb-2">
-        <span>Etapa {step} de {total}</span>
-        <span>{pct}%</span>
-      </div>
-      <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-        <div className="h-full bg-white/80" style={{ width: `${pct}%` }} />
-      </div>
+    <div className="grid gap-6">
+      <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="glass-panel-strong premium-border rounded-[32px] p-7 md:p-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="sunbeat-badge">
+              <span className="sunbeat-dot" />
+              Release Intake
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/50">
+              Product architecture view
+            </span>
+          </div>
+
+          <h1 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-white md:text-5xl">
+            Public submission flow,
+            <span className="block text-white/68">built for premium label operations.</span>
+          </h1>
+
+          <p className="mt-5 max-w-2xl text-base leading-8 text-white/62">
+            This page should evolve into the client-facing Release Intake experience of
+            Sunbeat. It must feel polished, guided and trustworthy for artists, managers,
+            labels and distribution teams.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/app/settings/fields" className="sunbeat-button sunbeat-button-primary">
+              Configure fields
+            </Link>
+            <Link
+              href="/app/settings/ai-guide"
+              className="sunbeat-button sunbeat-button-secondary"
+            >
+              Configure AI guide
+            </Link>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <MetricCard value="Public" label="client-facing experience" />
+            <MetricCard value="Configurable" label="field logic direction" />
+            <MetricCard value="Guided" label="help + AI architecture" />
+          </div>
+        </div>
+
+        <div className="sunbeat-card rounded-[32px] p-7 md:p-8">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+            Vision
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold text-white">
+            Shine Brighter, Work Smarter.
+          </h2>
+
+          <p className="mt-4 text-sm leading-7 text-white/60">
+            The slogan fits the product direction perfectly:
+          </p>
+
+          <div className="mt-5 grid gap-3">
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+              <div className="text-sm font-semibold text-white">Shine Brighter</div>
+              <p className="mt-2 text-sm leading-7 text-white/55">
+                The user-facing experience should feel elevated, beautiful and confident.
+              </p>
+            </div>
+
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+              <div className="text-sm font-semibold text-white">Work Smarter</div>
+              <p className="mt-2 text-sm leading-7 text-white/55">
+                The internal system should reduce mistakes, back-and-forth and operational
+                friction through structure, guidance and configuration.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[24px] border border-yellow-300/20 bg-yellow-300/8 p-4 text-sm leading-7 text-yellow-100/85">
+            This intake should not behave like a generic form. It should behave like a
+            premium infrastructure layer for music metadata operations.
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="sunbeat-card rounded-[32px] p-7">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+            Intake structure
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold text-white">
+            Recommended multi-step architecture
+          </h2>
+
+          <div className="mt-6 grid gap-4">
+            {formSections.map((item) => (
+              <div
+                key={item.step}
+                className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/8 text-sm font-semibold text-white">
+                      {item.step}
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold text-white">{item.title}</div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/35">
+                        {item.status}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-sm leading-7 text-white/58">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="sunbeat-card rounded-[32px] p-7">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+            Configurable system
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold text-white">
+            What the workspace should control
+          </h2>
+
+          <div className="mt-6 grid gap-3">
+            {configurationModules.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-[22px] border border-white/10 bg-black/20 px-4 py-4"
+              >
+                <div className="text-sm font-semibold text-white">{item.title}</div>
+                <p className="mt-2 text-sm leading-7 text-white/55">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="sunbeat-card rounded-[32px] p-7">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+                Example form model
+              </div>
+              <h2 className="mt-3 text-2xl font-semibold text-white">
+                Field architecture preview
+              </h2>
+            </div>
+
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/50">
+              Help-ready
+            </span>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-[24px] border border-white/10">
+            <div className="grid grid-cols-[1.1fr_1.7fr_0.7fr_0.6fr] border-b border-white/10 bg-white/[0.04] px-5 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-white/42">
+              <div>Field</div>
+              <div>Helped text</div>
+              <div>Type</div>
+              <div>Required</div>
+            </div>
+
+            {exampleFields.map((item) => (
+              <div
+                key={item.field}
+                className="grid grid-cols-[1.1fr_1.7fr_0.7fr_0.6fr] border-b border-white/10 bg-black/10 px-5 py-5 text-sm last:border-b-0"
+              >
+                <div className="pr-4 font-medium text-white/92">{item.field}</div>
+                <div className="pr-4 leading-7 text-white/55">{item.helper}</div>
+                <div className="pr-4 text-white/72">{item.type}</div>
+                <div className="text-white/72">{item.required}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="glass-panel rounded-[32px] p-7">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+            AI assistance
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold text-white">
+            Contextual guidance by field and step
+          </h2>
+
+          <p className="mt-4 text-sm leading-7 text-white/60">
+            The AI guide should appear as operational support, not as a loose chatbot.
+            It should understand:
+          </p>
+
+          <div className="mt-5 grid gap-3">
+            {[
+              "Current field name and purpose",
+              "Allowed values and validation rules",
+              "Current step in the intake flow",
+              "Client-specific instructions and tone",
+              "Examples for labels, artists and managers",
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-white/78"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-[24px] border border-blue-400/20 bg-blue-400/10 p-4">
+            <div className="text-sm font-semibold text-blue-100">Recommended UX</div>
+            <p className="mt-2 text-sm leading-7 text-blue-100/78">
+              A right-side assistant panel or inline “Need help?” interaction per field,
+              with short, reliable and operational answers.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="glass-panel rounded-[32px] p-7 md:p-8">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+                Next product move
+              </div>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
+                Build the real form engine next.
+              </h2>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/60">
+                This page is now positioned as the premium architectural shell for the
+                Release Intake module. The next step is turning it into a real multi-step
+                form with configurable fields, helper text, draft persistence and
+                contextual AI assistance.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <Link
+                href="/app/settings/fields"
+                className="sunbeat-button sunbeat-button-primary"
+              >
+                Go to field config
+              </Link>
+              <Link
+                href="/app"
+                className="sunbeat-button sunbeat-button-secondary"
+              >
+                Back to dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
-export default function ReleaseIntakePage() {
-  const totalSteps = 3;
-  const [step, setStep] = useState<StepId>(1);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    version_title: "",
-    artist_name: "",
-    contact_email: "",
-    primary_genre: "",
-    release_date: "",
-    territory: "BR",
-    notes: "",
-  });
-
-  const stepTitle = useMemo(() => {
-    if (step === 1) return "Identificação";
-    if (step === 2) return "Detalhes do lançamento";
-    return "Revisão e envio";
-  }, [step]);
-
-  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm((p) => ({ ...p, [key]: value }));
-  }
-
-  function validateCurrentStep(): string | null {
-    if (step === 1) {
-      if (!form.version_title.trim()) return "Informe o título da versão.";
-      if (!form.artist_name.trim()) return "Informe o nome do artista.";
-      if (!form.contact_email.trim()) return "Informe o e-mail de contato.";
-    }
-    if (step === 2) {
-      if (!form.primary_genre.trim()) return "Informe o gênero principal.";
-      if (!form.release_date.trim()) return "Informe a data de lançamento.";
-    }
-    return null;
-  }
-
-  async function next() {
-    setError(null);
-    const msg = validateCurrentStep();
-    if (msg) return setError(msg);
-    setStep((s) => (Math.min(totalSteps, s + 1) as StepId));
-  }
-
-  function prev() {
-    setError(null);
-    setStep((s) => (Math.max(1, s - 1) as StepId));
-  }
-
-  async function submit() {
-    setError(null);
-    setDone(null);
-
-    // valida tudo
-    const oldStep = step;
-    setStep(1);
-    const e1 = validateCurrentStep();
-    if (e1) { setError(e1); setStep(oldStep); return; }
-    setStep(2);
-    const e2 = validateCurrentStep();
-    if (e2) { setError(e2); setStep(oldStep); return; }
-    setStep(oldStep);
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/submissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "release_intake",
-          payload: form,
-        }),
-      });
-
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      setDone(`Enviado! submission_id: ${data?.submission_id ?? "ok"}`);
-    } catch (err: any) {
-      setError(err?.message ?? "Falha ao enviar");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+function MetricCard({ value, label }: { value: string; label: string }) {
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <h1 className="text-xl font-semibold">Release Intake</h1>
-            <p className="mt-1 text-sm text-white/60">
-              Preencha os dados para liberar o lançamento com segurança.
-            </p>
-          </div>
-          <div className="w-56">
-            <Progress step={step} total={totalSteps} />
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-xl border border-white/10 bg-black/40 p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-medium">{stepTitle}</h2>
-            <span className="text-xs text-white/50">SUNBEAT • Atabaque (exemplo)</span>
-          </div>
-
-          {step === 1 && (
-            <div className="mt-4 grid gap-3">
-              <input
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                placeholder="Título da versão"
-                value={form.version_title}
-                onChange={(e) => update("version_title", e.target.value)}
-              />
-              <input
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                placeholder="Nome do artista"
-                value={form.artist_name}
-                onChange={(e) => update("artist_name", e.target.value)}
-              />
-              <input
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                placeholder="E-mail para contato"
-                value={form.contact_email}
-                onChange={(e) => update("contact_email", e.target.value)}
-              />
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="mt-4 grid gap-3">
-              <input
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                placeholder="Gênero principal"
-                value={form.primary_genre}
-                onChange={(e) => update("primary_genre", e.target.value)}
-              />
-              <input
-                type="date"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                value={form.release_date}
-                onChange={(e) => update("release_date", e.target.value)}
-              />
-              <select
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                value={form.territory}
-                onChange={(e) => update("territory", e.target.value)}
-              >
-                <option value="BR">Brasil</option>
-                <option value="GLOBAL">Global</option>
-                <option value="LATAM">LatAm</option>
-              </select>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="mt-4 grid gap-3">
-              <textarea
-                className="min-h-[120px] w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none"
-                placeholder="Notas / orientações"
-                value={form.notes}
-                onChange={(e) => update("notes", e.target.value)}
-              />
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                <div className="font-medium text-white mb-2">Revisão</div>
-                <ul className="space-y-1">
-                  <li><b>Título:</b> {form.version_title || "-"}</li>
-                  <li><b>Artista:</b> {form.artist_name || "-"}</li>
-                  <li><b>Contato:</b> {form.contact_email || "-"}</li>
-                  <li><b>Gênero:</b> {form.primary_genre || "-"}</li>
-                  <li><b>Data:</b> {form.release_date || "-"}</li>
-                  <li><b>Território:</b> {form.territory || "-"}</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-          {done && (
-            <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">
-              {done}
-            </div>
-          )}
-
-          <div className="mt-6 flex items-center justify-between">
-            <button
-              onClick={prev}
-              disabled={step === 1 || loading}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-40"
-            >
-              Voltar
-            </button>
-
-            {step < totalSteps ? (
-              <button
-                onClick={next}
-                disabled={loading}
-                className="rounded-xl bg-white px-5 py-2 text-sm font-medium text-black disabled:opacity-70"
-              >
-                Próximo
-              </button>
-            ) : (
-              <button
-                onClick={submit}
-                disabled={loading}
-                className="rounded-xl bg-white px-5 py-2 text-sm font-medium text-black disabled:opacity-70"
-              >
-                {loading ? "Enviando..." : "Enviar"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
+      <div className="text-2xl font-semibold text-white">{value}</div>
+      <div className="mt-2 text-sm text-white/55">{label}</div>
     </div>
   );
 }
