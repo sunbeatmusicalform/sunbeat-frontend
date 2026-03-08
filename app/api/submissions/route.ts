@@ -14,12 +14,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // 🔎 tenant
   const headersList = await headers();
   const host = headersList.get("host");
   const tenant = getTenantFromHost(host);
 
-  // 🔐 sessão (opcional)
   const supabase = await createSupabaseServer();
   const {
     data: { user },
@@ -30,23 +28,16 @@ export async function POST(req: Request) {
   } = await supabase.auth.getSession();
 
   const accessToken = session?.access_token;
-
   const base = apiUrl.replace(/\/+$/, "");
 
   const upstream = await fetch(`${base}/submissions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-
-      // tenant
       ...(tenant?.value ? { "X-Tenant-Value": tenant.value } : {}),
       ...(tenant?.type ? { "X-Tenant-Type": tenant.type } : {}),
-
-      // user headers (server-side safe)
       ...(user?.id ? { "X-User-Id": user.id } : {}),
       ...(user?.email ? { "X-User-Email": user.email } : {}),
-
-      // optional JWT forward
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(body),
