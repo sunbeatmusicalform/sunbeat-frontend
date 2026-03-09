@@ -49,7 +49,8 @@ export type IntroConfig = {
 export type FormStepKey =
   | "intro"
   | "identification"
-  | "project"
+  | "release"
+  | "tracks"
   | "marketing"
   | "review_submit";
 
@@ -108,17 +109,12 @@ export type ReleaseIntakeFormValues = {
   marketing: MarketingValues;
 };
 
-export type ReleaseIntakeStepState = {
-  currentStep: FormStepKey;
-  progressPercent: number;
-};
-
-export type ReleaseIntakeDraft = {
+export type ReleaseIntakeDraftPayload = {
   draft_token?: string | null;
   workspace_slug: string;
   current_step: FormStepKey;
   progress_percent: number;
-  values: Partial<ReleaseIntakeFormValues>;
+  values: ReleaseIntakeFormValues;
   meta: {
     form_version: number;
     source: "sunbeat_release_intake";

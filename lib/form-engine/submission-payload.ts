@@ -1,9 +1,9 @@
 import type {
-  ReleaseIntakeDraft,
+  ReleaseIntakeDraftPayload,
   ReleaseIntakeFormValues,
   ReleaseIntakeSubmitPayload,
-  ReleaseType,
 } from "./types";
+
 import { getMinimumTrackCount } from "./track-types";
 
 export function getProgressPercent(values: ReleaseIntakeFormValues): number {
@@ -70,7 +70,8 @@ export function validateProject(values: ReleaseIntakeFormValues) {
   }
 
   if (!values.project.has_video_asset) {
-    errors["project.has_video_asset"] = "Informe se há videoclipe, lyric ou visualizer.";
+    errors["project.has_video_asset"] =
+      "Informe se há videoclipe, lyric ou visualizer.";
   }
 
   if (!values.project.cover_file) {
@@ -114,7 +115,7 @@ export function validateTracks(values: ReleaseIntakeFormValues) {
 
     if (!track.artist_profiles_status) {
       errors[`${prefix}.artist_profiles_status`] =
-        "Informe se os artistas já têm perfil ou se precisam de criação.";
+        "Informe se os artistas já têm perfil ou precisam de criação.";
     }
 
     if (!track.has_isrc) {
@@ -158,12 +159,12 @@ export function validateMarketing(values: ReleaseIntakeFormValues) {
 
   if (!values.marketing.has_special_guests) {
     errors["marketing.has_special_guests"] =
-      "Informe se existem participações especiais.";
+      "Informe se haverá convidados especiais.";
   }
 
   if (!values.marketing.promotion_participants.trim()) {
     errors["marketing.promotion_participants"] =
-      "Preencha os participantes da promoção do lançamento.";
+      "Preencha os participantes da promoção.";
   }
 
   return errors;
@@ -178,89 +179,57 @@ export function validateAll(values: ReleaseIntakeFormValues) {
   };
 }
 
-export function buildDraftPayload(params: {
-  draftToken?: string | null;
+export function canAddMoreTracks(
+  releaseType: "single" | "ep" | "album" | "",
+  currentTracks: number
+) {
+  if (releaseType === "single") {
+    return currentTracks < 1;
+  }
+  return true;
+}
+
+export function buildDraftPayload(args: {
+  draftToken: string;
   workspaceSlug: string;
-  currentStep: ReleaseIntakeDraft["current_step"];
   formVersion: number;
-  values: Partial<ReleaseIntakeFormValues>;
-}): ReleaseIntakeDraft {
+  currentStep: ReleaseIntakeDraftPayload["current_step"];
+  values: ReleaseIntakeFormValues;
+}): ReleaseIntakeDraftPayload {
   return {
-    draft_token: params.draftToken ?? null,
-    workspace_slug: params.workspaceSlug,
-    current_step: params.currentStep,
-    progress_percent: getProgressPercent({
-      identification: {
-        submitter_name: "",
-        submitter_email: "",
-        project_title: "",
-        release_type: "",
-        ...(params.values.identification ?? {}),
-      },
-      project: {
-        release_date: "",
-        genre: "",
-        explicit_content: "",
-        tiktok_snippet: "",
-        presskit_link: "",
-        has_video_asset: "",
-        cover_file: null,
-        ...(params.values.project ?? {}),
-      },
-      tracks: params.values.tracks ?? [],
-      marketing: {
-        marketing_numbers: "",
-        marketing_focus: "",
-        marketing_objectives: "",
-        marketing_budget: "",
-        focus_track_name: "",
-        date_flexibility: "",
-        has_special_guests: "",
-        promotion_participants: "",
-        lyrics: "",
-        general_notes: "",
-        additional_files: [],
-        ...(params.values.marketing ?? {}),
-      },
-    }),
-    values: params.values,
+    draft_token: args.draftToken,
+    workspace_slug: args.workspaceSlug,
+    current_step: args.currentStep,
+    progress_percent: getProgressPercent(args.values),
+    values: args.values,
     meta: {
-      form_version: params.formVersion,
+      form_version: args.formVersion,
       source: "sunbeat_release_intake",
       updated_at: new Date().toISOString(),
     },
   };
 }
 
-export function buildSubmitPayload(params: {
-  draftToken?: string | null;
+export function buildSubmitPayload(args: {
+  draftToken: string;
   workspaceSlug: string;
   formVersion: number;
   values: ReleaseIntakeFormValues;
 }): ReleaseIntakeSubmitPayload {
   return {
-    draft_token: params.draftToken ?? null,
-    workspace_slug: params.workspaceSlug,
-    identification: params.values.identification,
-    project: params.values.project,
-    tracks: params.values.tracks,
-    marketing: params.values.marketing,
+    draft_token: args.draftToken,
+    workspace_slug: args.workspaceSlug,
+    identification: args.values.identification,
+    project: args.values.project,
+    tracks: args.values.tracks.map((track, index) => ({
+      ...track,
+      order_number: index + 1,
+    })),
+    marketing: args.values.marketing,
     meta: {
-      form_version: params.formVersion,
+      form_version: args.formVersion,
       source: "sunbeat_release_intake",
       submitted_at: new Date().toISOString(),
     },
   };
-}
-
-export function shouldRequireSingleTrack(releaseType: ReleaseType | "") {
-  return releaseType === "single";
-}
-
-export function canAddMoreTracks(
-  releaseType: ReleaseType | "",
-  currentCount: number
-): boolean {
-  if (releaseType === "single") return currentCount < 1;
-  return true;
 }
