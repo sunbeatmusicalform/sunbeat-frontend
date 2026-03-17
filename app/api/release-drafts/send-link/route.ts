@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const apiBaseUrl = getBackendApiBaseUrl();
 
-    const res = await fetch(`${apiBaseUrl}/release-drafts/save`, {
+    const res = await fetch(`${apiBaseUrl}/release-drafts/send-link`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: res.ok,
-        message: text || "Failed to save draft",
+        message: text || "Failed to send draft link email",
       },
       { status: res.status }
     );
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: getErrorMessage(error, "Failed to save draft"),
+        message: getErrorMessage(error, "Failed to send draft link email"),
       },
       { status: 500 }
     );

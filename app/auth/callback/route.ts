@@ -21,17 +21,14 @@ export async function GET(req: NextRequest) {
   }
 
   // Response final (precisa existir ANTES do setAll)
-  let res = NextResponse.redirect(new URL(next, url.origin));
+  const res = NextResponse.redirect(new URL(next, url.origin));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () =>
-          typeof (req.cookies as any).getAll === "function"
-            ? (req.cookies as any).getAll()
-            : [],
+        getAll: () => req.cookies.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value, options }) => {
             res.cookies.set(name, value, options);

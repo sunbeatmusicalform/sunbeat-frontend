@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   metadataBase: new URL("https://sunbeat.pro"),
   title: {
-    default: "Sunbeat — Metadata-grade release intake for labels",
+    default: "Sunbeat - intake e operacao para lancamentos musicais",
     template: "%s | Sunbeat",
   },
   description:
-    "Sunbeat is a metadata-grade release intake platform built for record labels. Collect clean release data, validate credits, manage drafts, enable edit-mode via email, and upload audio files up to 100MB with structured Airtable delivery.",
+    "Sunbeat e a infraestrutura para intake publico, metadata, assets, faixas e operacao de lancamentos para labels e distribuidoras.",
   keywords: [
     "music metadata platform",
     "release intake for labels",
@@ -18,18 +18,18 @@ export const metadata: Metadata = {
     "music release management",
   ],
   openGraph: {
-    title: "Sunbeat — Metadata-grade release intake for labels",
+    title: "Sunbeat - infraestrutura para lancamentos musicais",
     description:
-      "Structured release intake built for modern music operations. Airtable-native workflows, versioned drafts, edit mode via email and large file uploads.",
+      "Intake publico, drafts, uploads, Supabase e Airtable para a operacao moderna de lancamentos.",
     url: "https://sunbeat.pro",
     siteName: "Sunbeat",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sunbeat — Release intake for modern labels",
+    title: "Sunbeat - intake para labels e distribuidoras",
     description:
-      "Airtable-native music metadata intake platform for record labels.",
+      "Infraestrutura de intake, metadata e operacao para lancamentos musicais.",
   },
   robots: {
     index: true,

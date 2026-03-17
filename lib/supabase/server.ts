@@ -11,6 +11,10 @@ import { createServerClient } from "@supabase/ssr";
  */
 export async function createSupabaseServer() {
   const cookieStore = await cookies();
+  const cookieAdapter = cookieStore as unknown as {
+    getAll: typeof cookieStore.getAll;
+    set?: (name: string, value: string, options?: Record<string, unknown>) => void;
+  };
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,16 +22,13 @@ export async function createSupabaseServer() {
     {
       cookies: {
         getAll() {
-          // Some runtimes/adapters may not implement getAll()
-          return typeof (cookieStore as any).getAll === "function"
-            ? (cookieStore as any).getAll()
-            : [];
+          return cookieAdapter.getAll();
         },
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               // Some contexts (RSC) may throw on set()
-              (cookieStore as any).set?.(name, value, options);
+              cookieAdapter.set?.(name, value, options as Record<string, unknown>);
             });
           } catch {
             // no-op

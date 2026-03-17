@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sunbeat — Premium music operations infrastructure",
+  title: "Sunbeat - infraestrutura para lancamentos musicais",
   description:
-    "Sunbeat is premium release metadata infrastructure for labels, distributors, managers and music operations teams.",
+    "Sunbeat organiza intake, metadata, faixas, assets e operacao para labels, distribuidoras e times de release.",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

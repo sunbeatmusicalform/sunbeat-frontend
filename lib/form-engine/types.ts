@@ -9,6 +9,7 @@ export type FieldType =
   | "text"
   | "email"
   | "date"
+  | "datetime-local"
   | "select"
   | "textarea"
   | "url"
@@ -22,8 +23,10 @@ export type FieldOption = {
 export type UploadedFileRef = {
   file_id: string;
   file_name: string;
+  storage_bucket?: string;
   storage_path: string;
   public_url?: string;
+  download_url?: string;
   mime_type?: string;
   size_bytes?: number;
 };
@@ -44,6 +47,11 @@ export type IntroConfig = {
   introText: string;
   logoUrl?: string;
   bannerUrl?: string;
+  brandWordmark?: string;
+  supportLogoUrl?: string;
+  supportLogoAlt?: string;
+  supportLabel?: string;
+  highlights?: string[];
 };
 
 export type FormStepKey =
@@ -83,8 +91,12 @@ export type ProjectValues = {
   genre: string;
   explicit_content: YesNo | "";
   tiktok_snippet: string;
+  cover_link: string;
+  promo_assets_link: string;
   presskit_link: string;
-  has_video_asset: YesNoUnknown | "";
+  has_video_asset: YesNo | "";
+  video_link: string;
+  video_release_date: string;
   cover_file: UploadedFileRef | null;
 };
 
@@ -92,12 +104,15 @@ export type MarketingValues = {
   marketing_numbers: string;
   marketing_focus: string;
   marketing_objectives: string;
+  has_marketing_budget: YesNo | "";
   marketing_budget: string;
   focus_track_name: string;
   date_flexibility: string;
   has_special_guests: YesNo | "";
+  special_guests_bio: string;
+  feat_will_promote: YesNo | "";
   promotion_participants: string;
-  lyrics: string;
+  influencers_brands_partners: string;
   general_notes: string;
   additional_files: UploadedFileRef[];
 };
@@ -128,7 +143,7 @@ export type ReleaseIntakeSubmitPayload = {
   identification: IdentificationValues;
   project: ProjectValues;
   tracks: TrackInput[];
-  marketing: MarketingValues;
+  marketing?: MarketingValues;
   meta: {
     form_version: number;
     source: "sunbeat_release_intake";

@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getTenantFromHost } from "@/lib/tenant";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getBackendApiBaseUrl, getErrorMessage } from "@/lib/server/backend-api";
 
 export async function POST(req: Request) {
   const body = await req.json();
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) {
+  let base: string;
+
+  try {
+    base = getBackendApiBaseUrl();
+  } catch (error: unknown) {
     return NextResponse.json(
-      { ok: false, error: "NEXT_PUBLIC_API_URL is not set" },
+      { ok: false, error: getErrorMessage(error, "Backend API URL is not set") },
       { status: 500 }
     );
   }
@@ -28,7 +32,6 @@ export async function POST(req: Request) {
   } = await supabase.auth.getSession();
 
   const accessToken = session?.access_token;
-  const base = apiUrl.replace(/\/+$/, "");
 
   const upstream = await fetch(`${base}/submissions`, {
     method: "POST",
