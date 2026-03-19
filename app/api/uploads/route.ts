@@ -3,6 +3,8 @@ import { getErrorMessage } from "@/lib/server/backend-api";
 import { buildFileAccessUrls } from "@/lib/server/storage-files";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+
 type UploadKind = "cover" | "audio" | "asset";
 
 const UPLOAD_RULES: Record<
@@ -22,7 +24,7 @@ const UPLOAD_RULES: Record<
   },
   audio: {
     folder: "audio",
-    maxSizeBytes: 150 * 1024 * 1024,
+    maxSizeBytes: 100 * 1024 * 1024,
     allowedExtensions: [".wav", ".mp3"],
     allowedMimeTypes: ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3"],
   },
@@ -213,10 +215,14 @@ export async function POST(req: Request) {
       size_bytes: file.size,
     });
   } catch (error: unknown) {
+    const message = getErrorMessage(error, "Falha no upload.");
+
     return NextResponse.json(
       {
         ok: false,
-        message: getErrorMessage(error, "Falha no upload."),
+        message: /formdata|parse body/i.test(message)
+          ? "Não foi possível processar o upload. Para áudio, envie arquivos de até 100 MB."
+          : message,
       },
       { status: 500 }
     );

@@ -1,4 +1,5 @@
 import type {
+  FormField,
   ReleaseIntakeDraftPayload,
   ReleaseIntakeFormValues,
   ReleaseIntakeSubmitPayload,
@@ -13,31 +14,49 @@ type TrackRequiredError = {
   message: string;
 };
 
-export function getTrackRequiredErrors(track: TrackInput): TrackRequiredError[] {
+function getTrackField(trackFields: FormField[], key: keyof TrackInput) {
+  return trackFields.find((field) => field.key === key);
+}
+
+function isTrackFieldVisible(trackFields: FormField[], key: keyof TrackInput) {
+  return getTrackField(trackFields, key) !== undefined;
+}
+
+function isTrackFieldRequired(trackFields: FormField[], key: keyof TrackInput) {
+  return Boolean(getTrackField(trackFields, key)?.required);
+}
+
+export function getTrackRequiredErrors(
+  track: TrackInput,
+  trackFields: FormField[] = []
+): TrackRequiredError[] {
   const errors: TrackRequiredError[] = [];
 
-  if (!track.title.trim()) {
+  if (isTrackFieldRequired(trackFields, "title") && !track.title.trim()) {
     errors.push({
       field: "title",
       message: "Preencha o título da faixa.",
     });
   }
 
-  if (!track.primary_artists.trim()) {
+  if (
+    isTrackFieldRequired(trackFields, "primary_artists") &&
+    !track.primary_artists.trim()
+  ) {
     errors.push({
       field: "primary_artists",
       message: "Preencha os artistas principais.",
     });
   }
 
-  if (!track.authors.trim()) {
+  if (isTrackFieldRequired(trackFields, "authors") && !track.authors.trim()) {
     errors.push({
       field: "authors",
       message: "Preencha os autores.",
     });
   }
 
-  if (!track.has_isrc) {
+  if (isTrackFieldRequired(trackFields, "has_isrc") && !track.has_isrc) {
     errors.push({
       field: "has_isrc",
       message: "Selecione se a faixa já possui ISRC.",
@@ -45,14 +64,24 @@ export function getTrackRequiredErrors(track: TrackInput): TrackRequiredError[] 
     return errors;
   }
 
-  if (!track.phonographic_producer.trim()) {
+  if (
+    track.has_isrc &&
+    isTrackFieldVisible(trackFields, "phonographic_producer") &&
+    isTrackFieldRequired(trackFields, "phonographic_producer") &&
+    !track.phonographic_producer.trim()
+  ) {
     errors.push({
       field: "phonographic_producer",
       message: "Preencha o produtor fonográfico.",
     });
   }
 
-  if (track.has_isrc === "yes" && !track.isrc_code.trim()) {
+  if (
+    track.has_isrc === "yes" &&
+    isTrackFieldVisible(trackFields, "isrc_code") &&
+    isTrackFieldRequired(trackFields, "isrc_code") &&
+    !track.isrc_code.trim()
+  ) {
     errors.push({
       field: "isrc_code",
       message: "Informe o código ISRC da faixa.",
@@ -62,8 +91,11 @@ export function getTrackRequiredErrors(track: TrackInput): TrackRequiredError[] 
   return errors;
 }
 
-export function getTrackPendingRequiredCount(track: TrackInput) {
-  return getTrackRequiredErrors(track).length;
+export function getTrackPendingRequiredCount(
+  track: TrackInput,
+  trackFields: FormField[] = []
+) {
+  return getTrackRequiredErrors(track, trackFields).length;
 }
 
 export function getProgressPercent(values: ReleaseIntakeFormValues): number {
@@ -120,7 +152,10 @@ export function validateProject(values: ReleaseIntakeFormValues) {
   return errors;
 }
 
-export function validateTracks(values: ReleaseIntakeFormValues) {
+export function validateTracks(
+  values: ReleaseIntakeFormValues,
+  trackFields: FormField[] = []
+) {
   const errors: Record<string, string> = {};
   const releaseType = values.identification.release_type;
   const minimum = getMinimumTrackCount(releaseType);
@@ -135,7 +170,7 @@ export function validateTracks(values: ReleaseIntakeFormValues) {
 
   values.tracks.forEach((track, index) => {
     const prefix = `tracks.${index}`;
-    const trackErrors = getTrackRequiredErrors(track);
+    const trackErrors = getTrackRequiredErrors(track, trackFields);
 
     trackErrors.forEach((error) => {
       errors[`${prefix}.${error.field}`] = error.message;
@@ -150,11 +185,14 @@ export function validateMarketing(values: ReleaseIntakeFormValues) {
   return {};
 }
 
-export function validateAll(values: ReleaseIntakeFormValues) {
+export function validateAll(
+  values: ReleaseIntakeFormValues,
+  trackFields: FormField[] = []
+) {
   return {
     ...validateIdentification(values),
     ...validateProject(values),
-    ...validateTracks(values),
+    ...validateTracks(values, trackFields),
     ...validateMarketing(values),
   };
 }

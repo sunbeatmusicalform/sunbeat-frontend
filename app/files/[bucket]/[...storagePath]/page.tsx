@@ -70,18 +70,17 @@ export default async function FilePreviewPage({
                   {fileName}
                 </h1>
                 <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
-                  Use esta página para pré-visualizar o arquivo e baixar a versão
-                  original.
+                  Use esta pagina para pre-visualizar o arquivo e baixar a
+                  versao original.
                 </p>
               </div>
 
               <div className="flex shrink-0 flex-wrap gap-3">
                 <Link
                   href={downloadPath}
-                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-950 bg-slate-950 px-5 text-sm font-semibold shadow-[0_12px_24px_rgba(15,23,42,0.18)] transition hover:border-slate-800 hover:bg-slate-800"
-                  style={{ color: "#ffffff" }}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-950 bg-slate-950 px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)] transition hover:border-slate-800 hover:bg-slate-800"
                 >
-                  <span style={{ color: "#ffffff" }}>Baixar arquivo</span>
+                  Baixar arquivo
                 </Link>
                 <a
                   href={signedPreviewUrl ?? "#"}
@@ -108,13 +107,13 @@ export default async function FilePreviewPage({
               {previewKind === "audio" ? (
                 <div className="mx-auto flex min-h-[240px] max-w-2xl flex-col items-center justify-center rounded-[24px] bg-slate-950 px-6 py-10 text-center text-white">
                   <div className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                    Prévia de áudio
+                    Previa de audio
                   </div>
                   <div className="mt-3 break-all text-2xl font-semibold tracking-[-0.03em]">
                     {fileName}
                   </div>
                   <audio className="mt-6 w-full" controls src={signedPreviewUrl ?? ""}>
-                    Seu navegador não suporta reprodução de áudio.
+                    Seu navegador nao suporta reproducao de audio.
                   </audio>
                 </div>
               ) : null}
@@ -136,8 +135,8 @@ export default async function FilePreviewPage({
                     {fileName}
                   </div>
                   <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
-                    Este formato não possui preview embutido nesta página. Use o
-                    botão de download para baixar o arquivo original.
+                    Este formato nao possui preview embutido nesta pagina. Use
+                    o botao de download para baixar o arquivo original.
                   </p>
                 </div>
               ) : null}

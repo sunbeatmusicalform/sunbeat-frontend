@@ -1,37 +1,28 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LogoutButton } from "@/app/app/logout-button";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 const navigation = [
   {
-    label: "Overview",
+    label: "Dashboard",
     href: "/app",
-    description: "Workspace and product direction",
+    description: "Visao geral do workspace",
   },
   {
-    label: "Release Intake",
+    label: "Intake publico",
     href: "/app/release-intake",
-    description: "Public-facing metadata intake flow",
+    description: "Abrir e revisar o formulario atual",
   },
   {
-    label: "Submissions",
+    label: "Submissoes",
     href: "/app/submissions",
-    description: "Incoming releases and drafts",
+    description: "Entradas e rascunhos recentes",
   },
   {
-    label: "Field Config",
+    label: "Modo edit",
     href: "/app/settings/fields",
-    description: "Configure fields and helped text",
-  },
-  {
-    label: "AI Guide",
-    href: "/app/settings/ai-guide",
-    description: "Contextual assistant behavior",
-  },
-  {
-    label: "Branding",
-    href: "/app/settings/branding",
-    description: "Client-facing style and messaging",
+    description: "Campos, regras e notificacoes",
   },
 ];
 
@@ -49,38 +40,52 @@ export default async function AppLayout({
     redirect("/login?next=/app");
   }
 
-  const userEmail = user.email ?? "unknown@workspace";
+  const userEmail = user.email ?? "workspace@sunbeat.pro";
 
   return (
-    <div className="sunbeat-shell min-h-screen">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="border-r border-white/8 bg-black/20 backdrop-blur-2xl">
+    <div className="min-h-screen bg-[#F4F1EA] text-[#111111]">
+      <div className="mx-auto grid min-h-screen max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="border-r border-black/8 bg-[#F8F5EF]">
           <div className="sticky top-0 flex min-h-screen flex-col px-5 py-5">
-            <div className="mb-6 flex items-center gap-3 rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4">
-              <SunbeatLogo />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold tracking-[0.16em] text-white">
-                  SUNBEAT
+            <Link
+              href="/"
+              className="rounded-[28px] border border-black/8 bg-white px-4 py-4 shadow-[0_18px_42px_rgba(0,0,0,0.04)]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-[#F6F2EA]">
+                  <img
+                    src="/sunbeat-logan-transparent-black.ico"
+                    alt="Sunbeat"
+                    className="h-8 w-8 object-contain"
+                  />
                 </div>
-                <div className="truncate text-[11px] uppercase tracking-[0.18em] text-white/40">
-                  Shine Brighter, Work Smarter.
-                </div>
-              </div>
-            </div>
 
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
-                Workspace
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold uppercase tracking-[0.24em] text-[#111111]">
+                    Sunbeat
+                  </div>
+                  <div className="truncate text-[11px] uppercase tracking-[0.2em] text-[#7A746A]">
+                    Workspace
+                  </div>
+                </div>
               </div>
-              <div className="mt-2 text-sm font-medium text-white/90">Sunbeat Platform</div>
-              <div className="mt-2 break-all text-xs leading-6 text-white/45">
+            </Link>
+
+            <div className="mt-5 rounded-[28px] border border-black/8 bg-white px-4 py-4 shadow-[0_18px_42px_rgba(0,0,0,0.04)]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8D867B]">
+                Conta conectada
+              </div>
+              <div className="mt-3 text-sm font-medium text-[#111111]">
+                Workspace Sunbeat
+              </div>
+              <div className="mt-2 break-all text-xs leading-6 text-[#6B655C]">
                 {userEmail}
               </div>
             </div>
 
             <div className="mt-6">
-              <div className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
-                Navigation
+              <div className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8D867B]">
+                Navegacao
               </div>
 
               <nav className="grid gap-2">
@@ -88,10 +93,12 @@ export default async function AppLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="group rounded-[22px] border border-transparent bg-transparent px-4 py-4 transition hover:border-white/10 hover:bg-white/[0.05]"
+                    className="rounded-[22px] border border-transparent bg-transparent px-4 py-4 transition hover:border-black/8 hover:bg-white"
                   >
-                    <div className="text-sm font-semibold text-white/92">{item.label}</div>
-                    <div className="mt-1 text-xs leading-6 text-white/45 transition group-hover:text-white/58">
+                    <div className="text-sm font-semibold text-[#111111]">
+                      {item.label}
+                    </div>
+                    <div className="mt-1 text-xs leading-6 text-[#6F695F]">
                       {item.description}
                     </div>
                   </Link>
@@ -99,59 +106,47 @@ export default async function AppLayout({
               </nav>
             </div>
 
-            <div className="mt-6 rounded-[24px] border border-white/10 bg-gradient-to-b from-yellow-300/10 via-white/[0.04] to-transparent p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
-                Product direction
-              </div>
-              <div className="mt-3 text-sm font-semibold text-white">
-                Premium metadata infrastructure
-              </div>
-              <p className="mt-2 text-xs leading-6 text-white/50">
-                Intake, configuration, guided help and operational delivery for labels.
-              </p>
-            </div>
-
-            <div className="mt-auto space-y-3 pt-6">
+            <div className="mt-auto flex flex-col gap-3 pt-6">
               <Link
-                href="/"
-                className="sunbeat-button sunbeat-button-secondary w-full justify-center"
+                href="/app/release-intake"
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#111111] px-4 text-sm font-semibold text-white"
               >
-                Public site
+                Abrir intake
               </Link>
-              <Link
-                href="/login"
-                className="sunbeat-button w-full justify-center rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/8"
-              >
-                Back to login
-              </Link>
+              <div className="flex gap-3">
+                <Link
+                  href="/"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-[#111111]"
+                >
+                  Site publico
+                </Link>
+                <LogoutButton />
+              </div>
             </div>
           </div>
         </aside>
 
         <div className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-white/8 bg-[#07111f]/80 backdrop-blur-2xl">
-            <div className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <header className="sticky top-0 z-20 border-b border-black/8 bg-[#F4F1EA]/95 backdrop-blur-xl">
+            <div className="flex flex-col gap-3 px-6 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                  Authenticated workspace
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8D867B]">
+                  Workspace autenticado
                 </div>
-                <h1 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
-                  Sunbeat Operations
+                <h1 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
+                  Sunbeat client operations
                 </h1>
-                <p className="mt-1 text-sm text-white/52">
-                  Shine Brighter, Work Smarter.
-                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-200">
-                  Auth active
+                <div className="rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#6F695F]">
+                  Ativo
                 </div>
                 <Link
-                  href="/app/release-intake"
-                  className="sunbeat-button sunbeat-button-primary"
+                  href="/app/settings/fields"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-[#111111]"
                 >
-                  Open Intake
+                  Modo edit
                 </Link>
               </div>
             </div>
@@ -160,16 +155,6 @@ export default async function AppLayout({
           <main className="min-w-0 px-6 py-6 lg:px-8">{children}</main>
         </div>
       </div>
-    </div>
-  );
-}
-
-function SunbeatLogo() {
-  return (
-    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-      <div className="absolute h-6 w-6 rounded-full bg-yellow-300/90 blur-[1px]" />
-      <div className="absolute h-3 w-3 rounded-full bg-[#0b1220]" />
-      <div className="absolute h-8 w-8 rounded-full border border-yellow-300/35" />
     </div>
   );
 }

@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
+import { createHash, timingSafeEqual } from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { createSupabaseServer } from "@/lib/supabase/server";
+
+const EMAIL_SETTINGS_STEP_KEY = "__workspace_settings__";
+const EMAIL_SETTINGS_FIELD_KEY = "submission_notification_emails";
+const SECURITY_SETTINGS_STEP_KEY = "__workspace_security__";
+const EDIT_PASSWORD_FIELD_KEY = "edit_mode_password_hash";
+const PUBLIC_EDIT_WORKSPACES = new Set(["atabaque"]);
+
+function getDefaultNotificationEmails(workspaceSlug: string) {
+  if (workspaceSlug === "atabaque") {
+    return ["labels@atabaque.biz"];
+  }
+
+  return [];
+}
 
 type FieldOverrideInput = {
   step_key: string;
@@ -12,6 +26,16 @@ type FieldOverrideInput = {
   sort_order?: number | null;
 };
 
+type EmailSettingsInput = {
+  submission_email_enabled?: boolean;
+  submission_notification_emails?: string[];
+};
+
+type SecuritySettingsInput = {
+  edit_password_enabled?: boolean;
+  edit_password?: string;
+};
+
 function normalizeOptionalText(value: unknown) {
   if (typeof value !== "string") {
     return null;
@@ -20,32 +44,97 @@ function normalizeOptionalText(value: unknown) {
   return value;
 }
 
-async function ensureAuthenticatedUser() {
-  const supabase = await createSupabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+function normalizeEmailList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
-  return user;
+  const unique = new Set<string>();
+
+  value.forEach((item) => {
+    if (typeof item !== "string") {
+      return;
+    }
+
+    const normalized = item.trim().toLowerCase();
+    if (!normalized) {
+      return;
+    }
+
+    unique.add(normalized);
+  });
+
+  return Array.from(unique).slice(0, 5);
+}
+
+function parseStoredEmailList(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+
+  try {
+    return normalizeEmailList(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
+
+function normalizePassword(value: unknown) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
+}
+
+function hashPassword(password: string) {
+  return createHash("sha256").update(password).digest("hex");
+}
+
+function isPasswordValid(storedHash: string, rawPassword: string) {
+  if (!storedHash || !rawPassword) {
+    return false;
+  }
+
+  const candidateBuffer = Buffer.from(hashPassword(rawPassword));
+  const storedBuffer = Buffer.from(storedHash);
+
+  if (candidateBuffer.length !== storedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(candidateBuffer, storedBuffer);
+}
+
+function getPasswordHeader(request: Request) {
+  return normalizePassword(request.headers.get("x-workspace-edit-password"));
+}
+
+function isWorkspaceAllowed(workspaceSlug: string) {
+  return PUBLIC_EDIT_WORKSPACES.has(workspaceSlug);
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ workspaceSlug: string }> }
 ) {
-  const user = await ensureAuthenticatedUser();
+  const { workspaceSlug } = await context.params;
 
-  if (!user) {
+  if (!isWorkspaceAllowed(workspaceSlug)) {
     return NextResponse.json(
-      { ok: false, error: "Unauthorized" },
-      { status: 401 }
+      { ok: false, error: "Workspace nao disponivel para edicao publica." },
+      { status: 404 }
     );
   }
 
-  const { workspaceSlug } = await context.params;
   const supabase = createSupabaseAdmin();
 
-  const [{ data: overrides, error: overridesError }, { count: submissionsCount }, { count: draftsCount }] =
+  const [
+    { data: overrides, error: overridesError },
+    { data: branding, error: brandingError },
+    { count: submissionsCount },
+      { count: draftsCount },
+    ] =
     await Promise.all([
       supabase
         .from("workspace_field_overrides")
@@ -55,6 +144,13 @@ export async function GET(
         .eq("workspace_slug", workspaceSlug)
         .order("step_key", { ascending: true })
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("workspace_branding")
+        .select(
+          "workspace_slug, workspace_name, submission_email_enabled"
+        )
+        .eq("workspace_slug", workspaceSlug)
+        .maybeSingle(),
       supabase
         .from("submissions")
         .select("id", { count: "exact", head: true })
@@ -75,9 +171,68 @@ export async function GET(
     );
   }
 
+  if (brandingError) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: brandingError.message,
+      },
+      { status: 500 }
+    );
+  }
+
+  const storedPasswordHash =
+    overrides?.find(
+      (override) =>
+        override.step_key === SECURITY_SETTINGS_STEP_KEY &&
+        override.field_key === EDIT_PASSWORD_FIELD_KEY
+    )?.helper_text_override ?? "";
+
+  if (
+    typeof storedPasswordHash === "string" &&
+    storedPasswordHash &&
+    !isPasswordValid(storedPasswordHash, getPasswordHeader(request))
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "PASSWORD_REQUIRED",
+        password_enabled: true,
+        error: "Senha do workspace obrigatoria.",
+      },
+      { status: 403 }
+    );
+  }
+
+  const storedNotificationEmails = parseStoredEmailList(
+    overrides?.find(
+      (override) =>
+        override.step_key === EMAIL_SETTINGS_STEP_KEY &&
+        override.field_key === EMAIL_SETTINGS_FIELD_KEY
+    )?.helper_text_override
+  );
+
   return NextResponse.json({
     ok: true,
-    overrides: overrides ?? [],
+    overrides:
+      overrides?.filter(
+        (override) =>
+          override.step_key !== EMAIL_SETTINGS_STEP_KEY &&
+          override.step_key !== SECURITY_SETTINGS_STEP_KEY
+      ) ?? [],
+    email_settings: {
+      submission_email_enabled:
+        typeof branding?.submission_email_enabled === "boolean"
+          ? branding.submission_email_enabled
+          : true,
+      submission_notification_emails:
+        storedNotificationEmails.length > 0
+          ? storedNotificationEmails
+          : getDefaultNotificationEmails(workspaceSlug),
+    },
+    security: {
+      edit_password_enabled: Boolean(storedPasswordHash),
+    },
     stats: {
       submissions: submissionsCount ?? 0,
       drafts: draftsCount ?? 0,
@@ -89,18 +244,19 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ workspaceSlug: string }> }
 ) {
-  const user = await ensureAuthenticatedUser();
+  const { workspaceSlug } = await context.params;
 
-  if (!user) {
+  if (!isWorkspaceAllowed(workspaceSlug)) {
     return NextResponse.json(
-      { ok: false, error: "Unauthorized" },
-      { status: 401 }
+      { ok: false, error: "Workspace nao disponivel para edicao publica." },
+      { status: 404 }
     );
   }
 
-  const { workspaceSlug } = await context.params;
   const body = (await request.json()) as {
     overrides?: FieldOverrideInput[];
+    email_settings?: EmailSettingsInput;
+    security?: SecuritySettingsInput;
   };
 
   if (!Array.isArray(body.overrides)) {
@@ -133,6 +289,82 @@ export async function PUT(
 
   const supabase = createSupabaseAdmin();
 
+  const { data: existingBranding, error: brandingLoadError } = await supabase
+    .from("workspace_branding")
+    .select("workspace_slug, workspace_name")
+    .eq("workspace_slug", workspaceSlug)
+    .maybeSingle();
+
+  if (brandingLoadError) {
+    return NextResponse.json(
+      { ok: false, error: brandingLoadError.message },
+      { status: 500 }
+    );
+  }
+
+  const { data: existingSettingsRows, error: settingsLoadError } = await supabase
+    .from("workspace_field_overrides")
+    .select("step_key, field_key, helper_text_override")
+    .eq("workspace_slug", workspaceSlug)
+    .in("step_key", [EMAIL_SETTINGS_STEP_KEY, SECURITY_SETTINGS_STEP_KEY]);
+
+  if (settingsLoadError) {
+    return NextResponse.json(
+      { ok: false, error: settingsLoadError.message },
+      { status: 500 }
+    );
+  }
+
+  const existingPasswordHash =
+    existingSettingsRows?.find(
+      (row) =>
+        row.step_key === SECURITY_SETTINGS_STEP_KEY &&
+        row.field_key === EDIT_PASSWORD_FIELD_KEY
+    )?.helper_text_override ?? "";
+
+  if (
+    typeof existingPasswordHash === "string" &&
+    existingPasswordHash &&
+    !isPasswordValid(existingPasswordHash, getPasswordHeader(request))
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "PASSWORD_REQUIRED",
+        password_enabled: true,
+        error: "Senha do workspace obrigatoria.",
+      },
+      { status: 403 }
+    );
+  }
+
+  const security = body.security ?? {};
+  const editPasswordEnabled =
+    typeof security.edit_password_enabled === "boolean"
+      ? security.edit_password_enabled
+      : Boolean(existingPasswordHash);
+  const nextPassword = normalizePassword(security.edit_password);
+  let nextPasswordHash =
+    typeof existingPasswordHash === "string" ? existingPasswordHash : "";
+
+  if (editPasswordEnabled) {
+    if (nextPassword) {
+      nextPasswordHash = hashPassword(nextPassword);
+    }
+
+    if (!nextPasswordHash) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Defina uma senha para proteger o modo edit.",
+        },
+        { status: 400 }
+      );
+    }
+  } else {
+    nextPasswordHash = "";
+  }
+
   const { error: deleteError } = await supabase
     .from("workspace_field_overrides")
     .delete()
@@ -158,8 +390,86 @@ export async function PUT(
     }
   }
 
+  const emailSettings = body.email_settings ?? {};
+  const notificationEmails = normalizeEmailList(
+    emailSettings.submission_notification_emails
+  );
+  const submissionEmailEnabled =
+    typeof emailSettings.submission_email_enabled === "boolean"
+      ? emailSettings.submission_email_enabled
+      : true;
+
+  const { error: brandingSaveError } = await supabase
+    .from("workspace_branding")
+    .upsert(
+      {
+        workspace_slug: workspaceSlug,
+        workspace_name: existingBranding?.workspace_name ?? workspaceSlug,
+        submission_email_enabled: submissionEmailEnabled,
+      },
+      {
+        onConflict: "workspace_slug",
+      }
+    );
+
+  if (brandingSaveError) {
+    return NextResponse.json(
+      { ok: false, error: brandingSaveError.message },
+      { status: 500 }
+    );
+  }
+
+  if (notificationEmails.length > 0) {
+    const { error: settingsInsertError } = await supabase
+      .from("workspace_field_overrides")
+      .insert({
+        workspace_slug: workspaceSlug,
+        step_key: EMAIL_SETTINGS_STEP_KEY,
+        field_key: EMAIL_SETTINGS_FIELD_KEY,
+        helper_text_override: JSON.stringify(notificationEmails),
+        is_required: false,
+        is_visible: false,
+        sort_order: 999999,
+      });
+
+    if (settingsInsertError) {
+      return NextResponse.json(
+        { ok: false, error: settingsInsertError.message },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (nextPasswordHash) {
+    const { error: passwordInsertError } = await supabase
+      .from("workspace_field_overrides")
+      .insert({
+        workspace_slug: workspaceSlug,
+        step_key: SECURITY_SETTINGS_STEP_KEY,
+        field_key: EDIT_PASSWORD_FIELD_KEY,
+        helper_text_override: nextPasswordHash,
+        is_required: false,
+        is_visible: false,
+        sort_order: 1000000,
+      });
+
+    if (passwordInsertError) {
+      return NextResponse.json(
+        { ok: false, error: passwordInsertError.message },
+        { status: 500 }
+      );
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     saved: sanitizedOverrides.length,
+    email_settings: {
+      submission_email_enabled: submissionEmailEnabled,
+      submission_notification_emails: notificationEmails,
+    },
+    security: {
+      edit_password_enabled: Boolean(nextPasswordHash),
+    },
   });
 }

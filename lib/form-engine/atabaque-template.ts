@@ -10,7 +10,7 @@ const yesNoOptions = [
 export const atabaqueTemplate: ReleaseIntakeTemplate = {
   id: "atabaque-release-intake",
   workspaceSlug: "atabaque",
-  version: 6,
+  version: 11,
   slogan: "",
   successMessage:
     "Recebemos seu envio com sucesso. O time da Atabaque dar\u00e1 continuidade ao fluxo operacional.",
@@ -18,18 +18,14 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
     clientName: "Atabaque",
     formTitle: "Formul\u00e1rio de lan\u00e7amento",
     introText:
-      "Preencha os dados do lan\u00e7amento e envie as informa\u00e7\u00f5es para a equipe da Atabaque.\n\nSe precisar interromper, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
-    logoUrl: "/atabaque.png",
+      "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
+    logoUrl: "/atabaque-mark.svg",
     bannerUrl: "",
     brandWordmark: "",
     supportLogoUrl: "/favicon.ico",
     supportLogoAlt: "Sunbeat",
     supportLabel: "Powered by Sunbeat",
-    highlights: [
-      "Confiabilidade",
-      "Tecnologia",
-      "Confianca",
-    ],
+    highlights: [],
   },
   steps: [
     {
@@ -87,7 +83,7 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
     {
       key: "release",
       title: "Projeto",
-      description: "Dados principais do lan\u00e7amento.",
+      description: "Informa\u00e7\u00f5es principais do lan\u00e7amento.",
       fields: [
         {
           key: "release_date",
@@ -96,22 +92,6 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
           helperText:
             "Selecione a data prevista para o lan\u00e7amento. Apenas datas a partir de hoje ficam dispon\u00edveis.",
           required: true,
-        },
-        {
-          key: "cover_file",
-          label: "Anexe aqui a capa do projeto (3000x3000)",
-          type: "file",
-          helperText:
-            "Envie a capa final em alta qualidade. Se preferir, voc\u00ea tamb\u00e9m pode usar o campo de link da capa.",
-          required: false,
-        },
-        {
-          key: "cover_link",
-          label: "Ou coloque aqui o link do arquivo da capa (3000x3000)",
-          type: "url",
-          placeholder: "https://...",
-          helperText: "",
-          required: false,
         },
         {
           key: "genre",
@@ -124,6 +104,14 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
         {
           key: "has_video_asset",
           label: "Tem Videoclipe, Lyric ou Visualizer?",
+          type: "select",
+          helperText: "",
+          required: false,
+          options: yesNoOptions,
+        },
+        {
+          key: "explicit_content",
+          label: "Conte\u00fado Expl\u00edcito? (+18)",
           type: "select",
           helperText: "",
           required: false,
@@ -147,6 +135,31 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
           required: false,
         },
         {
+          key: "tiktok_snippet",
+          label: "Trecho do TikTok - Minutagem",
+          type: "text",
+          placeholder: "Ex.: 00:45 at\u00e9 01:15",
+          helperText:
+            "Especifique em qual trecho inicial os 30 segundos do TikTok devem come\u00e7ar.",
+          required: false,
+        },
+        {
+          key: "cover_file",
+          label: "Anexe aqui a capa do projeto (3000x3000)",
+          type: "file",
+          helperText:
+            "Envie a capa final em alta qualidade. Se preferir, voc\u00ea tamb\u00e9m pode usar o campo de link da capa.",
+          required: false,
+        },
+        {
+          key: "cover_link",
+          label: "Ou coloque aqui o link do arquivo da capa (3000x3000)",
+          type: "url",
+          placeholder: "https://...",
+          helperText: "",
+          required: false,
+        },
+        {
           key: "promo_assets_link",
           label: "Link com Fotos e Arquivos de Divulga\u00e7\u00e3o",
           type: "url",
@@ -163,6 +176,147 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
           helperText: "",
           required: false,
         },
+      ],
+    },
+    {
+      key: "tracks",
+      title: "Faixas",
+      description: "Cadastre as faixas do projeto.",
+      fields: [
+        {
+          key: "title",
+          label: "Nome da Faixa (T\u00edtulo da M\u00fasica)",
+          type: "text",
+          placeholder: "Digite o nome da faixa",
+          helperText: "",
+          required: true,
+        },
+        {
+          key: "order_number",
+          label: "Ordem da Faixa",
+          type: "text",
+          placeholder: "",
+          helperText:
+            "A ordem tamb\u00e9m pode ser ajustada pelos bot\u00f5es de subir e descer.",
+          required: false,
+        },
+        {
+          key: "primary_artists",
+          label: "Artistas Principais (Plataformas Digitais)",
+          type: "text",
+          placeholder: "Separe por v\u00edrgula",
+          helperText: "Separe por v\u00edrgula se houver m\u00faltiplos artistas.",
+          required: true,
+        },
+        {
+          key: "featured_artists",
+          label: "Artistas Feats (Plataformas Digitais)",
+          type: "text",
+          placeholder: "Separe por v\u00edrgula",
+          helperText: "Separe por v\u00edrgula se houver m\u00faltiplos artistas.",
+          required: false,
+        },
+        {
+          key: "artist_profiles_status",
+          label:
+            "Os artistas j\u00e1 t\u00eam perfil nas plataformas ou o perfil precisa ser criado?",
+          type: "select",
+          helperText: "",
+          required: true,
+          options: [
+            { label: "Selecione", value: "" },
+            { label: "J\u00e1 tem perfil", value: "already_exists" },
+            {
+              label:
+                "Alguns artistas j\u00e1 possuem perfil, enquanto outros precisam ser criados.",
+              value: "mixed",
+            },
+            { label: "O perfil precisa ser criado", value: "needs_creation" },
+          ],
+        },
+        {
+          key: "artist_profile_names_to_create",
+          label:
+            "Escreva exatamente como deve ser o nome do perfil de cada artista que precisa ser criado",
+          type: "textarea",
+          placeholder: "",
+          helperText: "",
+          required: false,
+        },
+        {
+          key: "existing_profile_links",
+          label: "Links do perfil j\u00e1 existente de cada artista",
+          type: "textarea",
+          placeholder: "",
+          helperText: "",
+          required: false,
+        },
+        {
+          key: "interpreters",
+          label: "Int\u00e9rpretes (Cr\u00e9ditos e cadastro do ISRC)",
+          type: "text",
+          placeholder: "Separe por v\u00edrgula",
+          helperText:
+            "Separe por v\u00edrgula se houver m\u00faltiplos int\u00e9rpretes.",
+          required: false,
+        },
+        {
+          key: "authors",
+          label: "Autor(es)",
+          type: "text",
+          placeholder: "Separe por v\u00edrgula",
+          helperText: "Autores s\u00e3o os compositores e escritores da faixa.",
+          required: true,
+        },
+        {
+          key: "publishers",
+          label: "Editoras",
+          type: "text",
+          placeholder: "Separe por v\u00edrgula",
+          helperText: "Informe a editora de cada autor, se houver.",
+          required: false,
+        },
+        {
+          key: "producers_musicians",
+          label: "Produtores / M\u00fasicos",
+          type: "text",
+          placeholder: "Separe por v\u00edrgula",
+          helperText:
+            "Liste produtores musicais e m\u00fasicos envolvidos na faixa.",
+          required: false,
+        },
+        {
+          key: "has_isrc",
+          label: "A m\u00fasica j\u00e1 tem o ISRC?",
+          type: "select",
+          helperText: "",
+          required: true,
+          options: yesNoOptions,
+        },
+        {
+          key: "explicit_content",
+          label: "Conte\u00fado Expl\u00edcito? (+18)",
+          type: "select",
+          helperText: "",
+          required: false,
+          options: yesNoOptions,
+        },
+        {
+          key: "phonographic_producer",
+          label: "Produtor Fonogr\u00e1fico",
+          type: "text",
+          placeholder: "Nome do produtor fonogr\u00e1fico",
+          helperText: "",
+          required: true,
+        },
+        {
+          key: "isrc_code",
+          label: "C\u00f3digo do ISRC",
+          type: "text",
+          placeholder: "Ex.: BR-ABC-26-00001",
+          helperText: "",
+          required: false,
+        },
         {
           key: "tiktok_snippet",
           label: "Trecho do TikTok - Minutagem",
@@ -173,25 +327,27 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
           required: false,
         },
         {
-          key: "explicit_content",
-          label: "Conte\u00fado Expl\u00edcito? (+18)",
-          type: "select",
+          key: "audio_file",
+          label: "Anexe aqui o \u00e1udio da m\u00fasica (WAV)",
+          type: "file",
+          placeholder: "",
+          helperText: "Envie o arquivo em WAV ou MP3. Limite m\u00e1ximo de upload: 100 MB.",
+          required: false,
+        },
+        {
+          key: "lyrics",
+          label: "Letra da M\u00fasica",
+          type: "textarea",
+          placeholder: "",
           helperText: "",
           required: false,
-          options: yesNoOptions,
         },
       ],
     },
     {
-      key: "tracks",
-      title: "Faixas",
-      description: "Metadados das faixas.",
-      fields: [],
-    },
-    {
       key: "marketing",
       title: "Marketing",
-      description: "Informa\u00e7\u00f5es complementares.",
+      description: "Detalhes complementares do lan\u00e7amento.",
       fields: [
         {
           key: "marketing_numbers",

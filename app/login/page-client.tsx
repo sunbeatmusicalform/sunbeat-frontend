@@ -23,7 +23,6 @@ export default function LoginPageClient() {
   const [err, setErr] = useState<string | null>(null);
 
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-
   const otp = otpDigits.join("");
 
   useEffect(() => {
@@ -61,7 +60,7 @@ export default function LoginPageClient() {
     setEmail(normalizedEmail);
     setOtpDigits(Array(OTP_LENGTH).fill(""));
     setStep("otp");
-    setMsg("Code sent successfully. Check your email inbox.");
+    setMsg("Codigo enviado com sucesso. Confira a sua caixa de entrada.");
   }
 
   async function handleVerifyCode(e: React.FormEvent) {
@@ -74,7 +73,7 @@ export default function LoginPageClient() {
 
     if (token.length < 6) {
       setVerifying(false);
-      setErr("Enter the complete code before continuing.");
+      setErr("Digite o codigo completo antes de continuar.");
       return;
     }
 
@@ -87,7 +86,7 @@ export default function LoginPageClient() {
     setVerifying(false);
 
     if (error) {
-      setErr("Invalid or expired code. Please request a new code.");
+      setErr("Codigo invalido ou expirado. Solicite um novo codigo.");
       return;
     }
 
@@ -117,7 +116,7 @@ export default function LoginPageClient() {
     }
 
     setOtpDigits(Array(OTP_LENGTH).fill(""));
-    setMsg("A new code has been sent.");
+    setMsg("Novo codigo enviado.");
   }
 
   function updateDigit(index: number, value: string) {
@@ -135,7 +134,9 @@ export default function LoginPageClient() {
 
     for (let i = 0; i < chars.length; i += 1) {
       const target = index + i;
-      if (target < OTP_LENGTH) next[target] = chars[i];
+      if (target < OTP_LENGTH) {
+        next[target] = chars[i];
+      }
     }
 
     setOtpDigits(next);
@@ -177,7 +178,9 @@ export default function LoginPageClient() {
       .replace(/\D/g, "")
       .slice(0, OTP_LENGTH);
 
-    if (!pasted) return;
+    if (!pasted) {
+      return;
+    }
 
     const next = Array(OTP_LENGTH).fill("");
     pasted.split("").forEach((char, index) => {
@@ -191,212 +194,200 @@ export default function LoginPageClient() {
   }
 
   return (
-    <div className="sunbeat-shell relative min-h-screen overflow-hidden">
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,196,0,0.14),transparent_22%),radial-gradient(circle_at_20%_20%,rgba(255,160,0,0.1),transparent_18%),radial-gradient(circle_at_80%_15%,rgba(79,70,229,0.16),transparent_22%),linear-gradient(180deg,#050816_0%,#071226_55%,#040814_100%)]" />
-        <div className="absolute left-1/2 top-20 h-72 w-72 -translate-x-1/2 rounded-full bg-yellow-400/10 blur-3xl" />
-        <div className="absolute right-16 top-20 h-56 w-56 rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="absolute left-10 bottom-10 h-52 w-52 rounded-full bg-amber-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center justify-center px-6 py-12 lg:px-8">
-        <div className="grid w-full max-w-6xl gap-10 lg:grid-cols-[1.06fr_0.94fr] lg:items-center">
-          <div className="hidden lg:block">
-            <Link href="/" className="inline-flex items-center gap-3">
-              <div className="sunbeat-badge">
-                <SunbeatLogo />
-                <span>Sunbeat platform access</span>
+    <main className="min-h-screen bg-[#F4F1EA] text-[#111111]">
+      <div className="mx-auto grid min-h-screen max-w-7xl gap-10 px-6 py-10 lg:grid-cols-[0.98fr_1.02fr] lg:items-center lg:px-8">
+        <section className="max-w-2xl">
+          <Link href="/" className="inline-flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-white shadow-[0_14px_34px_rgba(0,0,0,0.04)]">
+              <img
+                src="/sunbeat-logan-transparent-black.ico"
+                alt="Sunbeat"
+                className="h-7 w-7 object-contain"
+              />
+            </div>
+            <div>
+              <div className="text-sm font-semibold uppercase tracking-[0.26em] text-[#111111]">
+                Sunbeat
               </div>
-            </Link>
+              <div className="text-[11px] uppercase tracking-[0.22em] text-[#7A746A]">
+                Client access
+              </div>
+            </div>
+          </Link>
 
-            <h1 className="mt-7 max-w-2xl text-5xl font-semibold leading-[0.98] tracking-[-0.05em] text-white xl:text-6xl">
-              Premium access for
-              <span className="block text-white/70">music operations teams.</span>
-            </h1>
+          <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7A746A]">
+            <span className="h-2 w-2 rounded-full bg-[#111111]" />
+            Acesso por codigo via e-mail
+          </div>
 
-            <p className="mt-6 max-w-xl text-base leading-8 text-white/62">
-              Sign in with a one-time code and continue into your Sunbeat workspace.
-              The experience is designed for labels, managers and release operations
-              that need speed, clarity and a premium client-facing stack.
-            </p>
+          <h1 className="mt-8 text-[3.2rem] font-semibold leading-[0.92] tracking-[-0.07em] text-[#111111] sm:text-[4.2rem]">
+            Entre no workspace
+            <span className="block text-[#6E685E]">sem atrito.</span>
+          </h1>
 
-            <div className="mt-10 grid max-w-2xl grid-cols-2 gap-4">
-              <FeatureCard
-                title="Fast access"
-                text="OTP delivered by email with a simple, low-friction entry flow."
-              />
-              <FeatureCard
-                title="Protected area"
-                text="Structured for authenticated operations and premium internal tooling."
-              />
-              <FeatureCard
-                title="Client-ready UX"
-                text="A visual standard aligned with global SaaS products."
-              />
-              <FeatureCard
-                title="Ops foundation"
-                text="Built to support intake, metadata workflows and configurable forms."
-              />
+          <p className="mt-6 max-w-xl text-base leading-8 text-[#5F5A53]">
+            O acesso interno da Sunbeat usa codigo de uso unico enviado por
+            e-mail. Simples para entrar, seguro para operar e ideal para os
+            clientes que controlam intake, drafts e revisoes.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <InfoCard
+              title="Sem senha fixa"
+              text="O codigo chega por e-mail e evita atrito para a equipe."
+            />
+            <InfoCard
+              title="Entrada segura"
+              text="Acesso pensado para operacao, revisao e configuracao do intake."
+            />
+          </div>
+        </section>
+
+        <section className="rounded-[32px] border border-black/8 bg-white p-7 shadow-[0_22px_54px_rgba(0,0,0,0.05)] sm:p-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-[#F8F5EF]">
+                <img
+                  src="/sunbeat-logan-transparent-black.ico"
+                  alt="Sunbeat"
+                  className="h-7 w-7 object-contain"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-[#111111]">Sunbeat</div>
+                <h2 className="text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
+                  Login do workspace
+                </h2>
+              </div>
+            </div>
+
+            <div className="rounded-full border border-black/8 bg-[#F8F5EF] px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-[#8D867B]">
+              OTP Supabase
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 rounded-[32px] bg-gradient-to-b from-yellow-300/20 via-white/5 to-transparent blur-3xl" />
+          {step === "email" ? (
+            <form onSubmit={handleSendCode} className="mt-8">
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
+                E-mail de trabalho
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="voce@empresa.com"
+                className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+              />
 
-            <div className="glass-panel-strong premium-border relative overflow-hidden rounded-[32px] p-6 shadow-2xl sm:p-8">
-              <div className="mb-8 flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
-                    <SunbeatLogo />
-                  </div>
+              <button
+                type="submit"
+                disabled={sending}
+                className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#111111] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sending ? "Enviando codigo..." : "Enviar codigo de acesso"}
+              </button>
 
-                  <div>
-                    <p className="text-sm font-medium text-white/50">Sunbeat</p>
-                    <h2 className="text-2xl font-semibold tracking-tight text-white">
-                      Sign in to the platform
-                    </h2>
+              <p className="mt-4 text-sm leading-7 text-[#6F695F]">
+                Voce vai receber um codigo de acesso unico por e-mail.
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="mt-8">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
+                    Codigo enviado para
                   </div>
+                  <div className="mt-2 text-sm font-medium text-[#111111]">{email}</div>
                 </div>
 
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/55">
-                  Supabase OTP
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("email");
+                    setOtpDigits(Array(OTP_LENGTH).fill(""));
+                    setErr(null);
+                    setMsg(null);
+                  }}
+                  className="rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 py-2 text-sm font-medium text-[#111111]"
+                >
+                  Alterar
+                </button>
               </div>
 
-              {step === "email" ? (
-                <form onSubmit={handleSendCode} className="animate-[fadeIn_.35s_ease]">
-                  <label className="mb-2 block text-sm font-medium text-white/72">
-                    Work email
-                  </label>
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
+                Digite o codigo
+              </label>
 
+              <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-8">
+                {otpDigits.map((digit, index) => (
                   <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    className="sunbeat-input"
+                    key={index}
+                    ref={(element) => {
+                      inputRefs.current[index] = element;
+                    }}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => updateDigit(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={handlePaste}
+                    className="h-14 rounded-2xl border border-black/10 bg-[#F8F5EF] text-center text-xl font-semibold tracking-[0.08em] text-[#111111] outline-none focus:border-black/20"
                   />
-
-                  <button
-                    type="submit"
-                    disabled={sending}
-                    className="sunbeat-button sunbeat-button-primary mt-4 h-12 w-full disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {sending ? "Sending code..." : "Send access code"}
-                  </button>
-
-                  <p className="mt-4 text-sm leading-7 text-white/42">
-                    You will receive a one-time access code by email.
-                  </p>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyCode} className="animate-[fadeIn_.35s_ease]">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-white/50">Code sent to</p>
-                      <p className="text-sm font-medium text-white/92">{email}</p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStep("email");
-                        setOtpDigits(Array(OTP_LENGTH).fill(""));
-                        setErr(null);
-                        setMsg(null);
-                      }}
-                      className="text-sm text-white/60 transition hover:text-white"
-                    >
-                      Change
-                    </button>
-                  </div>
-
-                  <label className="mb-3 block text-sm font-medium text-white/72">
-                    Enter verification code
-                  </label>
-
-                  <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-                    {otpDigits.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(element) => {
-                          inputRefs.current[index] = element;
-                        }}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => updateDigit(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                        onPaste={handlePaste}
-                        className="h-14 rounded-2xl border border-white/10 bg-[#0a1020] text-center text-xl font-semibold tracking-[0.08em] text-white outline-none transition focus:border-yellow-400/40 focus:ring-4 focus:ring-yellow-400/12"
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={verifying}
-                    className="sunbeat-button mt-5 h-12 w-full rounded-2xl bg-white text-sm font-semibold text-[#0b1220] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {verifying ? "Signing in..." : "Enter workspace"}
-                  </button>
-
-                  <div className="mt-4 flex items-center justify-between gap-4 text-sm">
-                    <button
-                      type="button"
-                      onClick={handleResendCode}
-                      disabled={sending}
-                      className="text-white/65 transition hover:text-white disabled:opacity-50"
-                    >
-                      {sending ? "Resending..." : "Resend code"}
-                    </button>
-
-                    <span className="text-white/35">Supports 6 to 8 digits</span>
-                  </div>
-                </form>
-              )}
-
-              {err ? (
-                <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {err}
-                </div>
-              ) : null}
-
-              {msg ? (
-                <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                  {msg}
-                </div>
-              ) : null}
-
-              <div className="mt-8 border-t border-white/10 pt-5 text-xs text-white/35">
-                Secure access powered by Supabase Auth · Sunbeat
+                ))}
               </div>
+
+              <button
+                type="submit"
+                disabled={verifying}
+                className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#111111] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {verifying ? "Entrando..." : "Entrar no workspace"}
+              </button>
+
+              <div className="mt-4 flex flex-col gap-3 text-sm text-[#6F695F] sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={sending}
+                  className="text-left font-medium text-[#111111] disabled:opacity-50"
+                >
+                  {sending ? "Reenviando..." : "Reenviar codigo"}
+                </button>
+                <span>Suporta codigos de 6 a 8 digitos.</span>
+              </div>
+            </form>
+          )}
+
+          {err ? (
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {err}
             </div>
+          ) : null}
+
+          {msg ? (
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {msg}
+            </div>
+          ) : null}
+
+          <div className="mt-8 border-t border-black/8 pt-5 text-xs text-[#8D867B]">
+            Acesso seguro com Supabase Auth · Sunbeat
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
-function FeatureCard({ title, text }: { title: string; text: string }) {
+function InfoCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-      <div className="mb-3 h-2 w-16 rounded-full bg-gradient-to-r from-yellow-300 to-amber-500" />
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-7 text-white/55">{text}</p>
-    </div>
-  );
-}
-
-function SunbeatLogo() {
-  return (
-    <div className="relative flex h-6 w-6 items-center justify-center">
-      <div className="absolute h-6 w-6 rounded-full bg-yellow-300/90 blur-[1px]" />
-      <div className="absolute h-3 w-3 rounded-full bg-[#0b1220]" />
-      <div className="absolute h-8 w-8 rounded-full border border-yellow-300/35" />
+    <div className="rounded-[24px] border border-black/8 bg-white p-5 shadow-[0_14px_34px_rgba(0,0,0,0.04)]">
+      <div className="h-2 w-14 rounded-full bg-[#111111]" />
+      <h3 className="mt-4 text-sm font-semibold text-[#111111]">{title}</h3>
+      <p className="mt-2 text-sm leading-7 text-[#605A52]">{text}</p>
     </div>
   );
 }

@@ -71,6 +71,31 @@ function splitMultilineText(value: string) {
     .filter(Boolean);
 }
 
+function formatReviewValue(value?: string) {
+  if (!value) return "-";
+
+  switch (value) {
+    case "yes":
+      return "Sim";
+    case "no":
+      return "Não";
+    case "single":
+      return "Single";
+    case "ep":
+      return "EP";
+    case "album":
+      return "Álbum";
+    case "already_exists":
+      return "Já tem perfil";
+    case "needs_creation":
+      return "O perfil precisa ser criado";
+    case "mixed":
+      return "Alguns artistas já possuem perfil, enquanto outros precisam ser criados.";
+    default:
+      return value;
+  }
+}
+
 function getTodayDateValue() {
   const now = new Date();
   const year = now.getFullYear();
@@ -89,6 +114,34 @@ function getCurrentDateTimeValue() {
   const minutes = `${now.getMinutes()}`.padStart(2, "0");
 
   return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function getTrackFieldDefinition(trackFields: FormField[], key: string) {
+  return trackFields.find((field) => field.key === key);
+}
+
+function getTrackFieldMeta(
+  trackFields: FormField[],
+  key: string,
+  defaults: {
+    label: string;
+    helperText?: string;
+    required?: boolean;
+    options?: { label: string; value: string }[];
+  }
+) {
+  const field = getTrackFieldDefinition(trackFields, key);
+
+  return {
+    visible: Boolean(field),
+    label: field?.label ?? defaults.label,
+    helperText: field?.helperText ?? defaults.helperText ?? "",
+    required:
+      typeof field?.required === "boolean"
+        ? field.required
+        : Boolean(defaults.required),
+    options: field?.options ?? defaults.options ?? [],
+  };
 }
 
 export default function ReleaseIntakePage({
@@ -116,6 +169,7 @@ export default function ReleaseIntakePage({
 
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmissionComplete, setIsSubmissionComplete] = useState(false);
 
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [isHydratingDraft, setIsHydratingDraft] = useState(false);
@@ -201,6 +255,8 @@ export default function ReleaseIntakePage({
     return step.fields;
   }
 
+  const trackFields = getFieldsForStep("tracks");
+
   function validateTemplateStep(stepKey: "identification" | "release" | "marketing") {
     const errors: Record<string, string> = {};
     const fields = getFieldsForStep(stepKey);
@@ -254,7 +310,7 @@ export default function ReleaseIntakePage({
     return {
       ...validateTemplateStep("identification"),
       ...validateTemplateStep("release"),
-      ...validateTracks(values),
+      ...validateTracks(values, trackFields),
       ...validateTemplateStep("marketing"),
     };
   }
@@ -380,6 +436,29 @@ export default function ReleaseIntakePage({
   function clearMessages() {
     setSubmitMessage(null);
     setSubmitError(null);
+  }
+
+  function resetAfterSubmission() {
+    const nextValues = createInitialReleaseIntakeValues();
+
+    setValues(nextValues);
+    setErrors({});
+    setCurrentStep("intro");
+    setDraftToken(null);
+    setActiveTrackId(nextValues.tracks[0]?.local_id ?? null);
+    setAutosaveState("idle");
+    setDraftNotice(null);
+    setDraftNoticeType("success");
+    setDraftLinkEmailSent(false);
+    setUploadingFields({});
+    setSubmitMessage(null);
+    setSubmitError(null);
+    setIsSubmissionComplete(false);
+
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, "", window.location.pathname);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   function clearFieldError(path: string) {
@@ -959,7 +1038,7 @@ export default function ReleaseIntakePage({
       case "release":
         return validateTemplateStep("release");
       case "tracks":
-        return validateTracks(values);
+        return validateTracks(values, trackFields);
       case "marketing":
         return validateTemplateStep("marketing");
       default:
@@ -1030,8 +1109,13 @@ export default function ReleaseIntakePage({
 
       setSubmitMessage(
         template.successMessage ||
-          `Formulário enviado com sucesso. ID: ${data?.submission_id ?? data?.id ?? "ok"}`
+          "Seu formulário foi enviado com sucesso. Também enviamos um e-mail com o resumo do cadastro e os próximos passos para o endereço informado."
       );
+      setIsSubmissionComplete(true);
+
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setSubmitError(error?.message ?? "Falha ao enviar o formulário.");
@@ -1040,9 +1124,95 @@ export default function ReleaseIntakePage({
     }
   }
 
+  function renderProjectField(fieldKey: string) {
+    const field = getFieldsForStep("release").find((item) => item.key === fieldKey);
+    if (!field) return null;
+
+    if (field.key === "cover_file") {
+      return (
+        <FileField
+          key={field.key}
+          label={field.label}
+          helperText={field.helperText}
+          required={field.required}
+          error={errors[`project.${field.key}`]}
+          fileName={values.project.cover_file?.file_name ?? ""}
+          accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+          isUploading={Boolean(uploadingFields["project.cover_file"])}
+          onChange={handleProjectFile}
+        />
+      );
+    }
+
+    return (
+      <FormFieldRenderer
+        key={field.key}
+        field={field}
+        value={getStringFieldValue(values.project, field.key)}
+        error={errors[`project.${field.key}`]}
+        onChange={(value) =>
+          setProjectField(
+            field.key as keyof ReleaseIntakeFormValues["project"],
+            value
+          )
+        }
+      />
+    );
+  }
+
+  function renderMarketingField(fieldKey: string) {
+    const field = getFieldsForStep("marketing").find((item) => item.key === fieldKey);
+    if (!field) return null;
+
+    if (field.key === "additional_files") {
+      return (
+        <FileField
+          key={field.key}
+          label={field.label}
+          helperText={field.helperText}
+          required={field.required}
+          error={errors[`marketing.${field.key}`]}
+          fileName={
+            values.marketing.additional_files.length > 0
+              ? `${values.marketing.additional_files.length} arquivo(s) selecionado(s)`
+              : ""
+          }
+          accept=".jpg,.jpeg,.png,.pdf,.zip,image/jpeg,image/png,application/pdf,application/zip"
+          isUploading={Boolean(uploadingFields["marketing.additional_files"])}
+          multiple
+          onChange={handleMarketingFiles}
+        />
+      );
+    }
+
+    return (
+      <FormFieldRenderer
+        key={field.key}
+        field={field}
+        value={getStringFieldValue(values.marketing, field.key)}
+        error={errors[`marketing.${field.key}`]}
+        onChange={(value) =>
+          setMarketingField(
+            field.key as keyof ReleaseIntakeFormValues["marketing"],
+            value
+          )
+        }
+      />
+    );
+  }
+
+  const autosaveLabel =
+    autosaveState === "saving"
+      ? "Salvando rascunho"
+      : autosaveState === "saved"
+      ? "Rascunho salvo"
+      : autosaveState === "error"
+      ? "Erro ao salvar"
+      : null;
+
   if (isLoadingTemplate) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] px-4 py-16">
+      <div className="min-h-screen bg-[#ebdbba] px-4 py-16">
         <div className="mx-auto max-w-2xl text-center text-sm text-slate-500">
           Carregando formulário...
         </div>
@@ -1051,127 +1221,120 @@ export default function ReleaseIntakePage({
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F6F2] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#ebdbba] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
-        <header className="mb-6 rounded-[28px] border border-slate-200 bg-white px-6 py-6 shadow-[0_12px_30px_rgba(15,23,42,0.04)] sm:px-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              {template.intro.logoUrl ? (
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            {currentStep !== "intro" && template.intro.logoUrl ? (
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
                 <img
                   src={template.intro.logoUrl}
                   alt={template.intro.clientName}
-                  className="h-12 w-auto object-contain sm:h-14"
+                  className="h-10 w-auto object-contain"
                 />
-              ) : null}
-
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {template.intro.clientName}
-                </div>
-                <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-[32px]">
-                  {template.intro.formTitle}
-                </h1>
-                {introParagraphs[0] ? (
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
-                    {introParagraphs[0]}
-                  </p>
-                ) : null}
               </div>
+            ) : null}
+
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                {template.intro.clientName}
+              </div>
+              {currentStep !== "intro" ? (
+                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                  Formulário restrito ao time e aos parceiros autorizados. Preencha os dados do lançamento e envie para revisão da equipe.
+                </p>
+              ) : null}
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {autosaveLabel ? (
+              <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                {autosaveLabel}
+              </div>
+            ) : null}
 
             {(editToken || draftToken) && (
-              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600">
-                {editToken ? "Modo edicao ativo" : "Rascunho carregado"}
+              <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                {editToken ? "Modo edição ativo" : "Rascunho carregado"}
               </div>
             )}
           </div>
         </header>
 
         <div className="mb-6 overflow-x-auto">
-          <div className="flex min-w-[720px] gap-3 pb-1">
+          <div className="flex min-w-[720px] items-center gap-3 pb-1">
             {stepLabels.map((item, index) => {
               const active = item.key === currentStep;
               const completed = index < currentStepIndex;
 
               return (
-                <div
-                  key={item.key}
-                  className={`min-w-[118px] rounded-[22px] border px-4 py-3 transition ${
-                    active
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : completed
-                      ? "border-slate-300 bg-white text-slate-900"
-                      : "border-slate-200 bg-white text-slate-400"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
+                <Fragment key={item.key}>
+                  <div className="flex min-w-[92px] flex-col items-center gap-2 text-center">
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition ${
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
                         active
-                          ? "border-white/20 bg-white/10 text-white"
+                          ? "border-slate-900 bg-slate-900 text-white"
                           : completed
-                          ? "border-slate-300 bg-slate-100 text-slate-900"
-                          : "border-slate-200 bg-slate-50 text-slate-400"
+                          ? "border-slate-300 bg-white text-slate-900"
+                          : "border-slate-200 bg-white text-slate-400"
                       }`}
                     >
                       {completed ? "✓" : index + 1}
                     </div>
 
-                    <div className="min-w-0">
-                      <div
-                        className={`text-[10px] uppercase tracking-[0.18em] ${
-                          active
-                            ? "text-white/65"
-                            : completed
-                            ? "text-slate-500"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        Etapa {index + 1}
-                      </div>
-                      <div
-                        className={`mt-1 truncate text-sm font-medium ${
-                          active
-                            ? "text-white"
-                            : completed
-                            ? "text-slate-900"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {item.label}
-                      </div>
+                    <div
+                      className={`text-sm font-medium ${
+                        active
+                          ? "text-slate-900"
+                          : completed
+                          ? "text-slate-700"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {item.label}
                     </div>
                   </div>
-                </div>
+
+                  {index < stepLabels.length - 1 ? (
+                    <div
+                      className={`h-px min-w-[36px] flex-1 ${
+                        completed ? "bg-slate-900" : "bg-slate-200"
+                      }`}
+                    />
+                  ) : null}
+                </Fragment>
               );
             })}
           </div>
         </div>
 
-        {autosaveState !== "idle" ? (
-          <div className="mb-5 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-            {autosaveState === "saving" ? "Salvando rascunho" : null}
-            {autosaveState === "saved" ? "Rascunho salvo" : null}
-            {autosaveState === "error" ? "Erro ao salvar" : null}
-          </div>
-        ) : null}
-
         <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-8">
           {currentStep === "intro" && (
             <IntroStep
+              clientName={template.intro.clientName}
+              logoUrl={template.intro.logoUrl}
               title={template.intro.formTitle}
               text={template.intro.introText}
             />
           )}
 
           {currentStep !== "intro" && (
-            <div className="mb-8">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                {currentStepMeta?.title ?? "Etapa"}
+            <div className="mb-8 border-b border-slate-200 pb-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Etapa {currentStepIndex + 1}
               </div>
-              {currentStepMeta?.description ? (
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+                {currentStepMeta?.title ?? "Etapa"}
+              </h2>
+              {currentStep === "tracks" ? (
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {currentStepMeta.description}
+                  Cadastre as faixas e organize a ordem do projeto.
+                </p>
+              ) : null}
+              {currentStep === "review_submit" ? (
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Revise os dados antes de concluir o envio.
                 </p>
               ) : null}
             </div>
@@ -1198,42 +1361,32 @@ export default function ReleaseIntakePage({
 
           {currentStep === "release" && (
             <div className="grid gap-7">
-              {currentStepMeta?.fields.map((field) => {
-                if (!shouldRenderProjectField(field.key)) {
-                  return null;
-                }
+              {renderProjectField("release_date")}
 
-                if (field.key === "cover_file") {
-                  return (
-                    <FileField
-                      key={field.key}
-                      label={field.label}
-                      helperText={field.helperText}
-                      required={field.required}
-                      error={errors[`project.${field.key}`]}
-                      fileName={values.project.cover_file?.file_name ?? ""}
-                      accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                      isUploading={Boolean(uploadingFields["project.cover_file"])}
-                      onChange={handleProjectFile}
-                    />
-                  );
-                }
+              <div className="grid gap-7 md:grid-cols-2">
+                {renderProjectField("genre")}
+                {renderProjectField("explicit_content")}
+              </div>
 
-                return (
-                  <FormFieldRenderer
-                    key={field.key}
-                    field={field}
-                    value={getStringFieldValue(values.project, field.key)}
-                    error={errors[`project.${field.key}`]}
-                    onChange={(value) =>
-                      setProjectField(
-                        field.key as keyof ReleaseIntakeFormValues["project"],
-                        value
-                      )
-                    }
-                  />
-                );
-              })}
+              <div className="grid gap-7 md:grid-cols-2">
+                {renderProjectField("has_video_asset")}
+                {renderProjectField("tiktok_snippet")}
+              </div>
+
+              {values.project.has_video_asset === "yes" ? (
+                <div className="grid gap-7 md:grid-cols-2">
+                  {renderProjectField("video_link")}
+                  {renderProjectField("video_release_date")}
+                </div>
+              ) : null}
+
+              {renderProjectField("cover_file")}
+              {renderProjectField("cover_link")}
+
+              <div className="grid gap-7 md:grid-cols-2">
+                {renderProjectField("promo_assets_link")}
+                {renderProjectField("presskit_link")}
+              </div>
             </div>
           )}
 
@@ -1262,7 +1415,10 @@ export default function ReleaseIntakePage({
 
               <div className="grid gap-3">
                 {values.tracks.map((track, index) => {
-                  const pendingRequiredCount = getTrackPendingRequiredCount(track);
+                  const pendingRequiredCount = getTrackPendingRequiredCount(
+                    track,
+                    trackFields
+                  );
 
                   return (
                     <button
@@ -1302,6 +1458,7 @@ export default function ReleaseIntakePage({
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
                   <TrackEditor
                     track={activeTrack}
+                    trackFields={trackFields}
                     index={values.tracks.findIndex(
                       (track) => track.local_id === activeTrack.local_id
                     )}
@@ -1338,47 +1495,42 @@ export default function ReleaseIntakePage({
 
           {currentStep === "marketing" && (
             <div className="grid gap-7">
-              {currentStepMeta?.fields.map((field) => {
-                if (!shouldRenderMarketingField(field.key)) {
-                  return null;
-                }
+              {renderMarketingField("marketing_numbers")}
+              {renderMarketingField("marketing_focus")}
+              {renderMarketingField("marketing_objectives")}
 
-                if (field.key === "additional_files") {
-                  return (
-                    <FileField
-                      key={field.key}
-                      label={field.label}
-                      helperText={field.helperText}
-                      required={field.required}
-                      error={errors[`marketing.${field.key}`]}
-                      fileName={
-                        values.marketing.additional_files.length > 0
-                          ? `${values.marketing.additional_files.length} arquivo(s) selecionado(s)`
-                          : ""
-                      }
-                      accept=".jpg,.jpeg,.png,.pdf,.zip,image/jpeg,image/png,application/pdf,application/zip"
-                      isUploading={Boolean(uploadingFields["marketing.additional_files"])}
-                      multiple
-                      onChange={handleMarketingFiles}
-                    />
-                  );
-                }
+              <div className="grid gap-7 md:grid-cols-2">
+                {renderMarketingField("has_marketing_budget")}
+                {values.marketing.has_marketing_budget === "yes"
+                  ? renderMarketingField("marketing_budget")
+                  : null}
+              </div>
 
-                return (
-                  <FormFieldRenderer
-                    key={field.key}
-                    field={field}
-                    value={getStringFieldValue(values.marketing, field.key)}
-                    error={errors[`marketing.${field.key}`]}
-                    onChange={(value) =>
-                      setMarketingField(
-                        field.key as keyof ReleaseIntakeFormValues["marketing"],
-                        value
-                      )
-                    }
-                  />
-                );
-              })}
+              <div className="grid gap-7 md:grid-cols-2">
+                {["ep", "album"].includes(releaseType)
+                  ? renderMarketingField("focus_track_name")
+                  : null}
+                {renderMarketingField("date_flexibility")}
+              </div>
+
+              <div className="grid gap-7 md:grid-cols-2">
+                {renderMarketingField("has_special_guests")}
+                {values.marketing.has_special_guests === "yes"
+                  ? renderMarketingField("feat_will_promote")
+                  : null}
+              </div>
+
+              {values.marketing.has_special_guests === "yes"
+                ? renderMarketingField("special_guests_bio")
+                : null}
+
+              <div className="grid gap-7 md:grid-cols-2">
+                {renderMarketingField("promotion_participants")}
+                {renderMarketingField("influencers_brands_partners")}
+              </div>
+
+              {renderMarketingField("general_notes")}
+              {renderMarketingField("additional_files")}
             </div>
           )}
 
@@ -1396,7 +1548,7 @@ export default function ReleaseIntakePage({
             </div>
           ) : null}
 
-          {submitMessage ? (
+          {submitMessage && !isSubmissionComplete ? (
             <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {submitMessage}
             </div>
@@ -1408,83 +1560,93 @@ export default function ReleaseIntakePage({
             </div>
           ) : null}
 
-          <div className="mt-12 border-t border-slate-200 pt-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  disabled={currentStep === "intro"}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Voltar
-                </button>
-
-                {canShowDraftButtons && !editToken && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleSaveDraft}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900"
-                    >
-                      Salvar rascunho
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleSendDraftEmail}
-                      disabled={loadingSendDraftEmail || draftLinkEmailSent}
-                      className="rounded-xl border border-slate-900 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {draftLinkEmailSent
-                        ? "Link já enviado"
-                        : loadingSendDraftEmail
-                        ? "Enviando link..."
-                        : "Enviar rascunho por email"}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:flex-1">
-                {currentStep === "tracks" ? (
+          {isSubmissionComplete ? (
+            <SubmissionCompleteStep
+              message={
+                submitMessage ||
+                "Seu formulário foi enviado com sucesso. Também enviamos um e-mail com o resumo do cadastro e os próximos passos para o endereço informado."
+              }
+              onRestart={resetAfterSubmission}
+            />
+          ) : (
+            <div className="mt-12 border-t border-slate-200 pt-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <button
                     type="button"
-                    onClick={addTrack}
-                    disabled={!canAddMoreTracks(releaseType, values.tracks.length)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={prevStep}
+                    disabled={currentStep === "intro"}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    + Adicionar nova faixa
+                    Voltar
                   </button>
-                ) : null}
 
-                <div className="sm:min-w-[220px]">
-                  {currentStep !== "review_submit" ? (
-                    <button
-                      type="button"
-                      onClick={handleContinue}
-                      className="w-full rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white"
-                    >
-                      {currentStep === "intro" ? "Começar" : "Próximo"}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={loadingSubmit}
-                      className="w-full rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {loadingSubmit
-                        ? "Enviando..."
-                        : editToken
-                        ? "Salvar alterações"
-                        : "Enviar formulário"}
-                    </button>
+                  {canShowDraftButtons && !editToken && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSaveDraft}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900"
+                      >
+                        Salvar rascunho
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSendDraftEmail}
+                        disabled={loadingSendDraftEmail || draftLinkEmailSent}
+                        className="rounded-xl border border-slate-900 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {draftLinkEmailSent
+                          ? "Link já enviado"
+                          : loadingSendDraftEmail
+                          ? "Enviando link..."
+                          : "Enviar rascunho por email"}
+                      </button>
+                    </>
                   )}
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:flex-1">
+                  {currentStep === "tracks" ? (
+                    <button
+                      type="button"
+                      onClick={addTrack}
+                      disabled={!canAddMoreTracks(releaseType, values.tracks.length)}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      + Adicionar nova faixa
+                    </button>
+                  ) : null}
+
+                  <div className="sm:min-w-[220px]">
+                    {currentStep !== "review_submit" ? (
+                      <button
+                        type="button"
+                        onClick={handleContinue}
+                        className="w-full rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+                      >
+                        {currentStep === "intro" ? "Começar" : "Próximo"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={loadingSubmit}
+                        className="w-full rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {loadingSubmit
+                          ? "Enviando..."
+                          : editToken
+                          ? "Salvar alterações"
+                          : "Enviar formulário"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </section>
 
         {template.intro.supportLogoUrl ? (
@@ -1505,9 +1667,13 @@ export default function ReleaseIntakePage({
 }
 
 function IntroStep({
+  clientName,
+  logoUrl,
   title,
   text,
 }: {
+  clientName: string;
+  logoUrl?: string;
   title: string;
   text: string;
 }) {
@@ -1515,11 +1681,21 @@ function IntroStep({
 
   return (
     <div className="max-w-2xl">
-      <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 sm:py-6">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Início
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-5 py-6 sm:px-6 sm:py-7">
+        <div className="flex items-center gap-4">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={clientName}
+              className="h-16 w-auto object-contain sm:h-20"
+            />
+          ) : null}
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {clientName}
+          </div>
         </div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-[-0.02em] text-slate-900">
+
+        <h3 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-slate-900 sm:text-[34px]">
           {title}
         </h3>
 
@@ -1528,7 +1704,8 @@ function IntroStep({
             <p key={`${paragraph}-${index}`}>{paragraph}</p>
           ))}
         </div>
-        <p className="mt-4 text-sm leading-6 text-slate-500">
+
+        <p className="mt-5 text-sm leading-6 text-slate-500">
           Clique em <strong>Começar</strong> para seguir para o preenchimento.
         </p>
       </div>
@@ -1683,6 +1860,7 @@ function FileField({
 
 function TrackEditor({
   track,
+  trackFields,
   index,
   totalTracks,
   errors,
@@ -1697,6 +1875,7 @@ function TrackEditor({
   onRemove,
 }: {
   track: TrackInput;
+  trackFields: FormField[];
   index: number;
   totalTracks: number;
   errors: Record<string, string>;
@@ -1711,7 +1890,126 @@ function TrackEditor({
   onRemove: () => void;
 }) {
   const prefix = `tracks.${index}`;
-  const pendingRequiredCount = getTrackPendingRequiredCount(track);
+  const pendingRequiredCount = getTrackPendingRequiredCount(track, trackFields);
+
+  const titleField = getTrackFieldMeta(trackFields, "title", {
+    label: "Nome da Faixa (Título da Música)",
+    required: true,
+  });
+  const orderField = getTrackFieldMeta(trackFields, "order_number", {
+    label: "Ordem da Faixa",
+    helperText: "A ordem também pode ser ajustada pelos botões Subir e Descer.",
+  });
+  const primaryArtistsField = getTrackFieldMeta(trackFields, "primary_artists", {
+    label: "Artistas Principais (Plataformas Digitais)",
+    helperText: "Separe por vírgula se houver múltiplos artistas.",
+    required: true,
+  });
+  const featuredArtistsField = getTrackFieldMeta(trackFields, "featured_artists", {
+    label: "Artistas Feats (Plataformas Digitais)",
+    helperText: "Separe por vírgula se houver múltiplos artistas.",
+  });
+  const artistProfilesStatusField = getTrackFieldMeta(
+    trackFields,
+    "artist_profiles_status",
+    {
+      label:
+        "Os Artistas já têm Perfil nas plataformas ou o Perfil precisa ser criado?",
+      required: true,
+      options: [
+        { label: "Selecione", value: "" },
+        { label: "Já tem perfil", value: "already_exists" },
+        {
+          label:
+            "Alguns artistas já possuem perfil, enquanto outros precisam ser criados.",
+          value: "mixed",
+        },
+        { label: "O perfil precisa ser criado", value: "needs_creation" },
+      ],
+    }
+  );
+  const artistProfileNamesField = getTrackFieldMeta(
+    trackFields,
+    "artist_profile_names_to_create",
+    {
+      label:
+        "Escreva exatamente como deve ser o nome do Perfil de cada Artista que precisa ser criado",
+    }
+  );
+  const existingProfileLinksField = getTrackFieldMeta(
+    trackFields,
+    "existing_profile_links",
+    {
+      label: "Links do Perfil já existente de cada Artista",
+    }
+  );
+  const interpretersField = getTrackFieldMeta(trackFields, "interpreters", {
+    label: "Intérpretes (Créditos e cadastro do ISRC)",
+    helperText: "Intérpretes são os artistas vocais da música.",
+  });
+  const authorsField = getTrackFieldMeta(trackFields, "authors", {
+    label: "Autor(es)",
+    helperText: "Separe por vírgula caso tenha mais de um autor.",
+    required: true,
+  });
+  const publishersField = getTrackFieldMeta(trackFields, "publishers", {
+    label: "Editoras",
+    helperText: "Indique a editora de cada autor.",
+  });
+  const producersMusiciansField = getTrackFieldMeta(
+    trackFields,
+    "producers_musicians",
+    {
+      label: "Produtores / Músicos",
+      helperText: "Separe por vírgula e indique instrumentos quando necessário.",
+    }
+  );
+  const hasIsrcField = getTrackFieldMeta(trackFields, "has_isrc", {
+    label: "A música já tem o ISRC?",
+    required: true,
+    options: [
+      { label: "Selecione", value: "" },
+      { label: "Sim", value: "yes" },
+      { label: "Não", value: "no" },
+    ],
+  });
+  const explicitContentField = getTrackFieldMeta(
+    trackFields,
+    "explicit_content",
+    {
+      label: "Conteúdo Explícito? (+18)",
+      options: [
+        { label: "Selecione", value: "" },
+        { label: "Sim", value: "yes" },
+        { label: "Não", value: "no" },
+      ],
+    }
+  );
+  const phonographicProducerField = getTrackFieldMeta(
+    trackFields,
+    "phonographic_producer",
+    {
+      label: "Produtor Fonográfico",
+      helperText:
+        "Informe o produtor fonográfico tanto para faixas com ISRC quanto para faixas sem ISRC.",
+      required: true,
+    }
+  );
+  const isrcCodeField = getTrackFieldMeta(trackFields, "isrc_code", {
+    label: "Código do ISRC",
+    required: false,
+  });
+  const tiktokSnippetField = getTrackFieldMeta(trackFields, "tiktok_snippet", {
+    label: "Trecho do TikTok - Minutagem",
+    helperText:
+      "Especifique em qual trecho os 30 segundos do TikTok devem começar.",
+  });
+  const audioFileField = getTrackFieldMeta(trackFields, "audio_file", {
+    label: "Anexe aqui o áudio da música (WAV)",
+  });
+  const lyricsField = getTrackFieldMeta(trackFields, "lyrics", {
+    label: "Letra da Música",
+  });
 
   return (
     <div className="grid gap-7">
@@ -1770,51 +2068,61 @@ function TrackEditor({
         </div>
       </div>
 
-      <TrackInputField
-        label="Nome da Faixa (Título da Música)"
-        value={track.title}
-        required
-        error={errors[`${prefix}.title`]}
-        onChange={(value) => onChange({ title: value })}
-      />
+      {titleField.visible ? (
+        <TrackInputField
+          label={titleField.label}
+          value={track.title}
+          required={titleField.required}
+          helpText={titleField.helperText}
+          error={errors[`${prefix}.title`]}
+          onChange={(value) => onChange({ title: value })}
+        />
+      ) : null}
+
+      {orderField.visible ? (
+        <TrackReadOnlyField
+          label={orderField.label}
+          value={String(track.order_number || index + 1)}
+          helpText={orderField.helperText}
+        />
+      ) : null}
 
       <div className="grid gap-7 md:grid-cols-2">
-        <TrackInputField
-          label="Artistas Principais (Plataformas Digitais)"
-          value={track.primary_artists}
-          required
-          error={errors[`${prefix}.primary_artists`]}
-          onChange={(value) => onChange({ primary_artists: value })}
-          helpText="Separe por vírgula se houver múltiplos artistas."
-        />
-        <TrackInputField
-          label="Artistas Feats (Plataformas Digitais)"
-          value={track.featured_artists}
-          onChange={(value) => onChange({ featured_artists: value })}
-          helpText="Separe por vírgula se houver múltiplos artistas."
-        />
+        {primaryArtistsField.visible ? (
+          <TrackInputField
+            label={primaryArtistsField.label}
+            value={track.primary_artists}
+            required={primaryArtistsField.required}
+            error={errors[`${prefix}.primary_artists`]}
+            onChange={(value) => onChange({ primary_artists: value })}
+            helpText={primaryArtistsField.helperText}
+          />
+        ) : null}
+        {featuredArtistsField.visible ? (
+          <TrackInputField
+            label={featuredArtistsField.label}
+            value={track.featured_artists}
+            onChange={(value) => onChange({ featured_artists: value })}
+            helpText={featuredArtistsField.helperText}
+          />
+        ) : null}
       </div>
 
+      {artistProfilesStatusField.visible ? (
         <TrackSelectField
-          label="Os Artistas já têm Perfil nas plataformas ou o Perfil precisa ser criado?"
+          label={artistProfilesStatusField.label}
           value={track.artist_profiles_status}
-        error={errors[`${prefix}.artist_profiles_status`]}
-        options={[
-          { label: "Selecione", value: "" },
-          { label: "Já tem perfil", value: "already_exists" },
-          {
-            label:
-              "Alguns artistas já possuem perfil, enquanto outros precisam ser criados.",
-            value: "mixed",
-          },
-          { label: "O perfil precisa ser criado", value: "needs_creation" },
-        ]}
-        onChange={(value) =>
-          onChange({
-            artist_profiles_status: value as TrackInput["artist_profiles_status"],
-          })
-        }
-      />
+          helpText={artistProfilesStatusField.helperText}
+          required={artistProfilesStatusField.required}
+          error={errors[`${prefix}.artist_profiles_status`]}
+          options={artistProfilesStatusField.options}
+          onChange={(value) =>
+            onChange({
+              artist_profiles_status: value as TrackInput["artist_profiles_status"],
+            })
+          }
+        />
+      ) : null}
 
       {track.artist_profiles_status ? (
         <div
@@ -1822,20 +2130,28 @@ function TrackEditor({
             track.artist_profiles_status === "mixed" ? "md:grid-cols-2" : ""
           }`}
         >
-          {track.artist_profiles_status !== "already_exists" ? (
+          {track.artist_profiles_status !== "already_exists" &&
+          artistProfileNamesField.visible ? (
             <TrackTextareaField
-              label="Escreva exatamente como deve ser o nome do Perfil de cada Artista que precisa ser criado"
+              label={artistProfileNamesField.label}
               value={track.artist_profile_names_to_create}
+              helpText={artistProfileNamesField.helperText}
+              required={artistProfileNamesField.required}
+              error={errors[`${prefix}.artist_profile_names_to_create`]}
               onChange={(value) =>
                 onChange({ artist_profile_names_to_create: value })
               }
             />
           ) : null}
 
-          {track.artist_profiles_status !== "needs_creation" ? (
+          {track.artist_profiles_status !== "needs_creation" &&
+          existingProfileLinksField.visible ? (
             <TrackTextareaField
-              label="Links do Perfil já existente de cada Artista"
+              label={existingProfileLinksField.label}
               value={track.existing_profile_links}
+              helpText={existingProfileLinksField.helperText}
+              required={existingProfileLinksField.required}
+              error={errors[`${prefix}.existing_profile_links`]}
               onChange={(value) => onChange({ existing_profile_links: value })}
             />
           ) : null}
@@ -1843,85 +2159,83 @@ function TrackEditor({
       ) : null}
 
       <div className="grid gap-7 md:grid-cols-2">
-        <TrackInputField
-          label="Intérpretes (Créditos e cadastro do ISRC)"
-          value={track.interpreters}
-          error={errors[`${prefix}.interpreters`]}
-          onChange={(value) => onChange({ interpreters: value })}
-          helpText="Intérpretes são os artistas vocais da música."
-        />
-        <TrackInputField
-          label="Autor(es)"
-          value={track.authors}
-          required
-          error={errors[`${prefix}.authors`]}
-          onChange={(value) => onChange({ authors: value })}
-          helpText="Separe por vírgula caso tenha mais de um autor."
-        />
+        {interpretersField.visible ? (
+          <TrackInputField
+            label={interpretersField.label}
+            value={track.interpreters}
+            required={interpretersField.required}
+            error={errors[`${prefix}.interpreters`]}
+            onChange={(value) => onChange({ interpreters: value })}
+            helpText={interpretersField.helperText}
+          />
+        ) : null}
+        {authorsField.visible ? (
+          <TrackInputField
+            label={authorsField.label}
+            value={track.authors}
+            required={authorsField.required}
+            error={errors[`${prefix}.authors`]}
+            onChange={(value) => onChange({ authors: value })}
+            helpText={authorsField.helperText}
+          />
+        ) : null}
       </div>
 
       <div className="grid gap-7 md:grid-cols-2">
-        <TrackInputField
-          label="Editoras"
-          value={track.publishers}
-          onChange={(value) => onChange({ publishers: value })}
-          helpText="Indique a editora de cada autor."
-        />
-        <TrackInputField
-          label="Produtores / Músicos"
-          value={track.producers_musicians}
-          onChange={(value) => onChange({ producers_musicians: value })}
-          helpText="Separe por vírgula e indique instrumentos quando necessário."
-        />
+        {publishersField.visible ? (
+          <TrackInputField
+            label={publishersField.label}
+            value={track.publishers}
+            required={publishersField.required}
+            onChange={(value) => onChange({ publishers: value })}
+            helpText={publishersField.helperText}
+          />
+        ) : null}
+        {producersMusiciansField.visible ? (
+          <TrackInputField
+            label={producersMusiciansField.label}
+            value={track.producers_musicians}
+            required={producersMusiciansField.required}
+            onChange={(value) => onChange({ producers_musicians: value })}
+            helpText={producersMusiciansField.helperText}
+          />
+        ) : null}
       </div>
 
-      <TrackInputField
-        label="Trecho do TikTok - Minutagem"
-        value={track.tiktok_snippet}
-        onChange={(value) => onChange({ tiktok_snippet: value })}
-        helpText="Especifique em qual trecho os 30 segundos do TikTok devem começar."
-      />
+      <div className="grid gap-7 md:grid-cols-2">
+        {hasIsrcField.visible ? (
+          <TrackSelectField
+            label={hasIsrcField.label}
+            value={track.has_isrc}
+            helpText={hasIsrcField.helperText}
+            required={hasIsrcField.required}
+            error={errors[`${prefix}.has_isrc`]}
+            options={hasIsrcField.options}
+            onChange={(value) =>
+              onChange({
+                has_isrc: value as TrackInput["has_isrc"],
+                isrc_code: value === "yes" ? track.isrc_code : "",
+              })
+            }
+          />
+        ) : null}
 
-      <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-3">
-        <TrackSelectField
-          label="A música já tem o ISRC?"
-          value={track.has_isrc}
-          required
-          error={errors[`${prefix}.has_isrc`]}
-          options={[
-            { label: "Selecione", value: "" },
-            { label: "Sim", value: "yes" },
-            { label: "Não", value: "no" },
-          ]}
-          onChange={(value) =>
-            onChange({
-              has_isrc: value as TrackInput["has_isrc"],
-              isrc_code: value === "yes" ? track.isrc_code : "",
-            })
-          }
-        />
+        {explicitContentField.visible ? (
+          <TrackSelectField
+            label={explicitContentField.label}
+            value={track.explicit_content}
+            helpText={explicitContentField.helperText}
+            required={explicitContentField.required}
+            error={errors[`${prefix}.explicit_content`]}
+            options={explicitContentField.options}
+            onChange={(value) =>
+              onChange({
+                explicit_content: value as TrackInput["explicit_content"],
+              })
+            }
+          />
+        ) : null}
 
-        <TrackSelectField
-          label="Conteúdo Explícito? (+18)"
-          value={track.explicit_content}
-          error={errors[`${prefix}.explicit_content`]}
-          options={[
-            { label: "Selecione", value: "" },
-            { label: "Sim", value: "yes" },
-            { label: "Não", value: "no" },
-          ]}
-          onChange={(value) =>
-            onChange({
-              explicit_content: value as TrackInput["explicit_content"],
-            })
-          }
-        />
-
-        <TrackReadOnlyField
-          label="Ordem da Faixa"
-          value={String(track.order_number || index + 1)}
-          helpText="A ordem também pode ser ajustada pelos botões Subir e Descer."
-        />
       </div>
 
       {track.has_isrc ? (
@@ -1930,42 +2244,64 @@ function TrackEditor({
             track.has_isrc === "yes" ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2"
           }`}
         >
-          <TrackInputField
-            label="Produtor Fonográfico"
-            value={track.phonographic_producer}
-            required
-            error={errors[`${prefix}.phonographic_producer`]}
-            onChange={(value) => onChange({ phonographic_producer: value })}
-            helpText="Informe o produtor fonográfico tanto para faixas com ISRC quanto para faixas sem ISRC."
-          />
-
-          {track.has_isrc === "yes" ? (
+          {phonographicProducerField.visible ? (
             <TrackInputField
-              label="Código do ISRC"
+              label={phonographicProducerField.label}
+              value={track.phonographic_producer}
+              required={phonographicProducerField.required}
+              error={errors[`${prefix}.phonographic_producer`]}
+              onChange={(value) => onChange({ phonographic_producer: value })}
+              helpText={phonographicProducerField.helperText}
+            />
+          ) : null}
+
+          {track.has_isrc === "yes" && isrcCodeField.visible ? (
+            <TrackInputField
+              label={isrcCodeField.label}
               value={track.isrc_code}
-              required
+              required={isrcCodeField.required}
               error={errors[`${prefix}.isrc_code`]}
               onChange={(value) => onChange({ isrc_code: value })}
+              helpText={isrcCodeField.helperText}
             />
           ) : null}
         </div>
       ) : null}
 
-      <FileField
-        label="Anexe aqui o áudio da música (WAV)"
-        required={false}
-        fileName={track.audio_file?.file_name ?? ""}
-        error={errors[`${prefix}.audio_file`]}
-        accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3"
-        isUploading={audioUploading}
-        onChange={onAudioChange}
-      />
+      {tiktokSnippetField.visible ? (
+        <TrackInputField
+          label={tiktokSnippetField.label}
+          value={track.tiktok_snippet}
+          required={tiktokSnippetField.required}
+          onChange={(value) => onChange({ tiktok_snippet: value })}
+          helpText={tiktokSnippetField.helperText}
+          error={errors[`${prefix}.tiktok_snippet`]}
+        />
+      ) : null}
 
-      <TrackTextareaField
-        label="Letra da Música"
-        value={track.lyrics}
-        onChange={(value) => onChange({ lyrics: value })}
-      />
+      {audioFileField.visible ? (
+        <FileField
+          label={audioFileField.label}
+          helperText={audioFileField.helperText}
+          required={audioFileField.required}
+          fileName={track.audio_file?.file_name ?? ""}
+          error={errors[`${prefix}.audio_file`]}
+          accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3"
+          isUploading={audioUploading}
+          onChange={onAudioChange}
+        />
+      ) : null}
+
+      {lyricsField.visible ? (
+        <TrackTextareaField
+          label={lyricsField.label}
+          value={track.lyrics}
+          helpText={lyricsField.helperText}
+          required={lyricsField.required}
+          error={errors[`${prefix}.lyrics`]}
+          onChange={(value) => onChange({ lyrics: value })}
+        />
+      ) : null}
     </div>
   );
 }
@@ -2033,21 +2369,33 @@ function TrackTextareaField({
   label,
   value,
   onChange,
+  helpText,
+  error,
   required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  helpText?: string;
+  error?: string;
   required?: boolean;
 }) {
   return (
     <div>
       <FieldLabel label={label} required={required} />
+      {helpText ? (
+        <p className="mt-2 text-sm leading-6 text-slate-500">{helpText}</p>
+      ) : null}
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="mt-3 min-h-[140px] w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-[15px] text-slate-900 outline-none transition focus:border-slate-900"
       />
+      {error ? (
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2058,6 +2406,7 @@ function TrackSelectField({
   options,
   error,
   onChange,
+  helpText,
   required = false,
 }: {
   label: string;
@@ -2065,11 +2414,15 @@ function TrackSelectField({
   options: { label: string; value: string }[];
   error?: string;
   onChange: (value: string) => void;
+  helpText?: string;
   required?: boolean;
 }) {
   return (
     <div>
       <FieldLabel label={label} required={required} />
+      {helpText ? (
+        <p className="mt-2 text-sm leading-6 text-slate-500">{helpText}</p>
+      ) : null}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -2272,6 +2625,44 @@ function ReviewStep({ values }: { values: ReleaseIntakeFormValues }) {
     </div>
   );
 }
+
+function SubmissionCompleteStep({
+  message,
+  onRestart,
+}: {
+  message: string;
+  onRestart: () => void;
+}) {
+  return (
+    <div className="mt-12 border-t border-slate-200 pt-6">
+      <div className="rounded-[28px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-8 shadow-sm">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">
+            Envio concluído
+          </p>
+          <h3 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
+            Obrigado pelo preenchimento.
+          </h3>
+          <p className="mt-4 text-base leading-7 text-slate-600">{message}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            Se você quiser registrar outro lançamento, pode iniciar um novo preenchimento agora.
+          </p>
+
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={onRestart}
+              className="rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+            >
+              Preencher novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReviewSection({
   title,
   children,
@@ -2293,7 +2684,9 @@ function ReviewItem({ label, value }: { label: string; value?: string }) {
       <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
         {label}
       </div>
-      <div className="mt-2 text-sm leading-7 text-slate-800">{value || "-"}</div>
+      <div className="mt-2 text-sm leading-7 text-slate-800">
+        {formatReviewValue(value)}
+      </div>
     </div>
   );
 }
