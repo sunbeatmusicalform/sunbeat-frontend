@@ -62,8 +62,9 @@ function hasTextOverride(value: string | null | undefined) {
 export async function getReleaseTemplate(
   workspaceSlug: string
 ): Promise<ReleaseIntakeTemplate> {
+  const cacheKey = Date.now();
   const res = await fetch(
-    `/api/workspaces/${workspaceSlug}/release-intake-config`,
+    `/api/workspaces/${workspaceSlug}/release-intake-config?ts=${cacheKey}`,
     { cache: "no-store" }
   );
 

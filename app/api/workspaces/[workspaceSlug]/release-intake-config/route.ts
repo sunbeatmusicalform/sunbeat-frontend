@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getBackendApiBaseUrl, getErrorMessage } from "@/lib/server/backend-api";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   _req: Request,
   context: { params: Promise<{ workspaceSlug: string }> }
@@ -32,8 +35,18 @@ export async function GET(
 
   try {
     const json = JSON.parse(text);
-    return NextResponse.json(json, { status: upstream.status });
+    return NextResponse.json(json, {
+      status: upstream.status,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   } catch {
-    return new NextResponse(text, { status: upstream.status });
+    return new NextResponse(text, {
+      status: upstream.status,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   }
 }

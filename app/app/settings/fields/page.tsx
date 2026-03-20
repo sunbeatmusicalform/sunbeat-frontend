@@ -55,6 +55,21 @@ type StepSummary = {
   totalCount: number;
 };
 
+type FieldOverridesResponse = {
+  ok: boolean;
+  overrides?: ApiOverride[];
+  email_settings?: {
+    submission_email_enabled?: boolean;
+    submission_notification_emails?: string[];
+  };
+  security?: {
+    edit_password_enabled?: boolean;
+  };
+  stats?: WorkspaceStats;
+  code?: string;
+  error?: string;
+};
+
 function createEmptyEmailSettings(): EmailSettings {
   return {
     submissionEmailEnabled: true,
@@ -248,6 +263,34 @@ export default function FieldSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const initialSnapshotRef = useRef("");
 
+  function applyLoadedEditorState(data: FieldOverridesResponse, password = "") {
+    const nextFields = buildEditorFields(data.overrides ?? []);
+    const nextEmailSettings = buildInitialEmailSettings(data.email_settings);
+    const nextSecuritySettings = buildInitialSecuritySettings(data.security);
+
+    initialSnapshotRef.current = serializeEditorState(
+      nextFields,
+      nextEmailSettings,
+      nextSecuritySettings
+    );
+    setFields(nextFields);
+    setEmailSettings(nextEmailSettings);
+    setSecuritySettings(nextSecuritySettings);
+    setStats(data.stats ?? { submissions: 0, drafts: 0 });
+    setIsLocked(false);
+
+    if (typeof window !== "undefined") {
+      if (password) {
+        window.sessionStorage.setItem(
+          WORKSPACE_EDIT_PASSWORD_STORAGE_KEY,
+          password
+        );
+      } else {
+        window.sessionStorage.removeItem(WORKSPACE_EDIT_PASSWORD_STORAGE_KEY);
+      }
+    }
+  }
+
   useEffect(() => {
     let mounted = true;
 
@@ -268,20 +311,7 @@ export default function FieldSettingsPage() {
           }
         );
 
-        const data = (await response.json()) as {
-          ok: boolean;
-          overrides?: ApiOverride[];
-          email_settings?: {
-            submission_email_enabled?: boolean;
-            submission_notification_emails?: string[];
-          };
-          security?: {
-            edit_password_enabled?: boolean;
-          };
-          stats?: WorkspaceStats;
-          code?: string;
-          error?: string;
-        };
+        const data = (await response.json()) as FieldOverridesResponse;
 
         if (response.status === 403 && data.code === "PASSWORD_REQUIRED") {
           if (!mounted) {
@@ -302,30 +332,7 @@ export default function FieldSettingsPage() {
           return;
         }
 
-        const nextFields = buildEditorFields(data.overrides ?? []);
-        const nextEmailSettings = buildInitialEmailSettings(data.email_settings);
-        const nextSecuritySettings = buildInitialSecuritySettings(data.security);
-        initialSnapshotRef.current = serializeEditorState(
-          nextFields,
-          nextEmailSettings,
-          nextSecuritySettings
-        );
-        setFields(nextFields);
-        setEmailSettings(nextEmailSettings);
-        setSecuritySettings(nextSecuritySettings);
-        setStats(data.stats ?? { submissions: 0, drafts: 0 });
-        setIsLocked(false);
-
-        if (typeof window !== "undefined") {
-          if (password) {
-            window.sessionStorage.setItem(
-              WORKSPACE_EDIT_PASSWORD_STORAGE_KEY,
-              password
-            );
-          } else {
-            window.sessionStorage.removeItem(WORKSPACE_EDIT_PASSWORD_STORAGE_KEY);
-          }
-        }
+        applyLoadedEditorState(data, password);
       } catch (loadError) {
         if (!mounted) {
           return;
@@ -491,20 +498,7 @@ export default function FieldSettingsPage() {
         }
       );
 
-      const data = (await response.json()) as {
-        ok: boolean;
-        overrides?: ApiOverride[];
-        email_settings?: {
-          submission_email_enabled?: boolean;
-          submission_notification_emails?: string[];
-        };
-        security?: {
-          edit_password_enabled?: boolean;
-        };
-        stats?: WorkspaceStats;
-        code?: string;
-        error?: string;
-      };
+      const data = (await response.json()) as FieldOverridesResponse;
 
       if (response.status === 403 && data.code === "PASSWORD_REQUIRED") {
         throw new Error("Senha incorreta para acessar o modo edit.");
@@ -514,27 +508,7 @@ export default function FieldSettingsPage() {
         throw new Error(data.error || "Nao foi possivel desbloquear o workspace.");
       }
 
-      const nextFields = buildEditorFields(data.overrides ?? []);
-      const nextEmailSettings = buildInitialEmailSettings(data.email_settings);
-      const nextSecuritySettings = buildInitialSecuritySettings(data.security);
-
-      initialSnapshotRef.current = serializeEditorState(
-        nextFields,
-        nextEmailSettings,
-        nextSecuritySettings
-      );
-      setFields(nextFields);
-      setEmailSettings(nextEmailSettings);
-      setSecuritySettings(nextSecuritySettings);
-      setStats(data.stats ?? { submissions: 0, drafts: 0 });
-      setIsLocked(false);
-
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(
-          WORKSPACE_EDIT_PASSWORD_STORAGE_KEY,
-          workspacePassword.trim()
-        );
-      }
+      applyLoadedEditorState(data, workspacePassword.trim());
     } catch (unlockError) {
       setError(
         unlockError instanceof Error
@@ -609,9 +583,10 @@ export default function FieldSettingsPage() {
         editPassword: "",
       };
 
+      const activePassword =
+        securitySettings.editPassword.trim() || workspacePassword.trim();
+
       if (nextSecuritySettings.editPasswordEnabled) {
-        const activePassword =
-          securitySettings.editPassword.trim() || workspacePassword.trim();
 
         if (activePassword && typeof window !== "undefined") {
           window.sessionStorage.setItem(
@@ -625,12 +600,29 @@ export default function FieldSettingsPage() {
         setWorkspacePassword("");
       }
 
-      setSecuritySettings(nextSecuritySettings);
-      initialSnapshotRef.current = serializeEditorState(
-        fields,
-        emailSettings,
-        nextSecuritySettings
+      const refreshResponse = await fetch(
+        `/api/workspaces/${WORKSPACE_SLUG}/field-overrides`,
+        {
+          cache: "no-store",
+          headers: activePassword
+            ? {
+                "x-workspace-edit-password": activePassword,
+              }
+            : undefined,
+        }
       );
+
+      const refreshedData = (await refreshResponse.json()) as FieldOverridesResponse;
+
+      if (!refreshResponse.ok || !refreshedData.ok) {
+        throw new Error(
+          refreshedData.error ||
+            "As configuracoes foram salvas, mas nao foi possivel confirmar o estado atualizado."
+        );
+      }
+
+      applyLoadedEditorState(refreshedData, activePassword);
+      setSecuritySettings(nextSecuritySettings);
       setNotice(
         "Configuracoes salvas. O intake publico e os e-mails de resumo ja podem refletir essas mudancas."
       );

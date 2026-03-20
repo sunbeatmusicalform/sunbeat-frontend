@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const EMAIL_SETTINGS_STEP_KEY = "__workspace_settings__";
 const EMAIL_SETTINGS_FIELD_KEY = "submission_notification_emails";
 const SECURITY_SETTINGS_STEP_KEY = "__workspace_security__";
