@@ -19,7 +19,7 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
     formTitle: "Formul\u00e1rio de lan\u00e7amento",
     introText:
       "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
-    logoUrl: "/atabaque-mark.svg",
+    logoUrl: "/atabaque-logo.png",
     bannerUrl: "",
     brandWordmark: "",
     supportLogoUrl: "/favicon.ico",
