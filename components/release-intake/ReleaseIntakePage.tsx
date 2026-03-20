@@ -1857,8 +1857,8 @@ function FileField({
   isUploading = false,
   multiple = false,
   required = false,
-  previewUrl,
-  previewKind,
+  previewUrl: _previewUrl,
+  previewKind: _previewKind,
   downloadUrl,
 }: {
   label: string;
@@ -1874,8 +1874,7 @@ function FileField({
   downloadUrl?: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
-  const safePreviewUrl = previewUrl?.trim() || "";
-  const safeDownloadUrl = downloadUrl?.trim() || safePreviewUrl;
+  const safeDownloadUrl = downloadUrl?.trim() || "";
 
   return (
     <div>
@@ -1885,24 +1884,9 @@ function FileField({
         <p className="mt-2 text-sm leading-6 text-slate-500">{helperText}</p>
       ) : null}
 
-      {safePreviewUrl && previewKind === "image" ? (
-        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-          <img
-            src={safePreviewUrl}
-            alt={fileName || label}
-            className="h-auto max-h-[320px] w-full rounded-xl object-contain"
-          />
-        </div>
-      ) : null}
-
-      {safePreviewUrl && previewKind === "audio" ? (
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <audio className="w-full" controls preload="metadata" src={safePreviewUrl}>
-            Seu navegador não suporta reprodução de áudio.
-          </audio>
-          {fileName ? (
-            <div className="mt-2 text-sm text-slate-600">{fileName}</div>
-          ) : null}
+      {fileName ? (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          {fileName}
         </div>
       ) : null}
 
