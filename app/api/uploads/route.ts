@@ -84,15 +84,23 @@ function getRequestOrigin(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body: {
+      kind?: unknown;
+      fileName?: unknown;
+      mimeType?: unknown;
+      fileSize?: unknown;
+      workspaceSlug?: unknown;
+      draftToken?: unknown;
+      trackLocalId?: unknown;
+    } = await req.json();
 
-    const kind = body?.kind;
-    const fileName = String(body?.fileName || "");
-    const mimeType = String(body?.mimeType || "").toLowerCase();
-    const fileSize = Number(body?.fileSize || 0);
-    const workspaceSlug = String(body?.workspaceSlug || "atabaque");
-    const draftToken = String(body?.draftToken || "");
-    const trackLocalId = String(body?.trackLocalId || "");
+    const rawKind = body.kind;
+    const fileName = String(body.fileName || "");
+    const mimeType = String(body.mimeType || "").toLowerCase();
+    const fileSize = Number(body.fileSize || 0);
+    const workspaceSlug = String(body.workspaceSlug || "atabaque");
+    const draftToken = String(body.draftToken || "");
+    const trackLocalId = String(body.trackLocalId || "");
 
     if (!fileName) {
       return NextResponse.json(
@@ -108,13 +116,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (kind !== "cover" && kind !== "audio" && kind !== "asset") {
+    if (rawKind !== "cover" && rawKind !== "audio" && rawKind !== "asset") {
       return NextResponse.json(
         { ok: false, message: "Tipo de upload inválido." },
         { status: 400 }
       );
     }
 
+    const kind: UploadKind = rawKind;
     const rules = UPLOAD_RULES[kind];
     const extension = getFileExtension(fileName);
 
