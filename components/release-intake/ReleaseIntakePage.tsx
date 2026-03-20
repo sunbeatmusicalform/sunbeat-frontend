@@ -1171,6 +1171,17 @@ export default function ReleaseIntakePage({
           required={field.required}
           error={errors[`project.${field.key}`]}
           fileName={values.project.cover_file?.file_name ?? ""}
+          previewUrl={
+            values.project.cover_file?.public_url ||
+            values.project.cover_file?.download_url ||
+            ""
+          }
+          previewKind="image"
+          downloadUrl={
+            values.project.cover_file?.download_url ||
+            values.project.cover_file?.public_url ||
+            ""
+          }
           accept=".jpg,.jpeg,.png,image/jpeg,image/png"
           isUploading={Boolean(uploadingFields["project.cover_file"])}
           onChange={handleProjectFile}
@@ -1842,6 +1853,9 @@ function FileField({
   isUploading = false,
   multiple = false,
   required = false,
+  previewUrl,
+  previewKind,
+  downloadUrl,
 }: {
   label: string;
   helperText?: string;
@@ -1851,14 +1865,41 @@ function FileField({
   isUploading?: boolean;
   multiple?: boolean;
   required?: boolean;
+  previewUrl?: string;
+  previewKind?: "image" | "audio";
+  downloadUrl?: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
+  const safePreviewUrl = previewUrl?.trim() || "";
+  const safeDownloadUrl = downloadUrl?.trim() || safePreviewUrl;
+
   return (
     <div>
       <FieldLabel label={label} required={required} />
 
       {helperText ? (
         <p className="mt-2 text-sm leading-6 text-slate-500">{helperText}</p>
+      ) : null}
+
+      {safePreviewUrl && previewKind === "image" ? (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <img
+            src={safePreviewUrl}
+            alt={fileName || label}
+            className="h-auto max-h-[320px] w-full rounded-xl object-contain"
+          />
+        </div>
+      ) : null}
+
+      {safePreviewUrl && previewKind === "audio" ? (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <audio className="w-full" controls preload="metadata" src={safePreviewUrl}>
+            Seu navegador não suporta reprodução de áudio.
+          </audio>
+          {fileName ? (
+            <div className="mt-2 text-sm text-slate-600">{fileName}</div>
+          ) : null}
+        </div>
       ) : null}
 
       <label
@@ -1879,9 +1920,20 @@ function FileField({
         {isUploading
           ? "Enviando arquivo..."
           : fileName
-          ? fileName
+          ? "Clique para substituir arquivo"
           : "Clique para selecionar arquivo"}
       </label>
+
+      {fileName && safeDownloadUrl ? (
+        <a
+          href={safeDownloadUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex text-sm font-medium text-slate-700 underline underline-offset-4"
+        >
+          Abrir arquivo enviado
+        </a>
+      ) : null}
 
       {error ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -2319,6 +2371,17 @@ function TrackEditor({
           helperText={audioFileField.helperText}
           required={audioFileField.required}
           fileName={track.audio_file?.file_name ?? ""}
+          previewUrl={
+            track.audio_file?.public_url ||
+            track.audio_file?.download_url ||
+            ""
+          }
+          previewKind="audio"
+          downloadUrl={
+            track.audio_file?.download_url ||
+            track.audio_file?.public_url ||
+            ""
+          }
           error={errors[`${prefix}.audio_file`]}
           accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3"
           isUploading={audioUploading}
