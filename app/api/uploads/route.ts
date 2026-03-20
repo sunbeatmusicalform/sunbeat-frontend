@@ -166,38 +166,39 @@ export async function POST(req: Request) {
 
     const storagePath = pathParts.join("/");
 
-   const { data, error } = await supabase.storage
-  .from(bucket)
-  .createSignedUploadUrl(storagePath);
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUploadUrl(storagePath);
 
-const signedUploadToken = data?.token ?? null;
+    const signedUploadToken = data?.token ?? null;
 
-if (error || !signedUploadToken) {
-  return NextResponse.json(
-    { ok: false, message: error?.message || "Falha ao gerar upload assinado." },
-    { status: 500 }
-  );
-}
+    if (error || !signedUploadToken) {
+      return NextResponse.json(
+        { ok: false, message: error?.message || "Falha ao gerar upload assinado." },
+        { status: 500 }
+      );
+    }
 
-const origin = getRequestOrigin(req);
-const fileLinks = buildFileAccessUrls({
-  origin,
-  bucket,
-  storagePath,
-});
+    const origin = getRequestOrigin(req);
+    const fileLinks = buildFileAccessUrls({
+      origin,
+      bucket,
+      storagePath,
+    });
 
-return NextResponse.json({
-  ok: true,
-  file_id: `${bucket}:${storagePath}`,
-  file_name: fileName,
-  storage_bucket: bucket,
-  storage_path: storagePath,
-  public_url: fileLinks.previewUrl,
-  download_url: fileLinks.downloadUrl,
-  mime_type: mimeType || null,
-  size_bytes: fileSize || null,
-  signed_upload_token: signedUploadToken,
-});
+    return NextResponse.json({
+      ok: true,
+      file_id: `${bucket}:${storagePath}`,
+      file_name: fileName,
+      storage_bucket: bucket,
+      storage_path: storagePath,
+      public_url: fileLinks.previewUrl,
+      download_url: fileLinks.downloadUrl,
+      mime_type: mimeType || null,
+      size_bytes: fileSize || null,
+      signed_upload_token: signedUploadToken,
+    });
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         ok: false,
