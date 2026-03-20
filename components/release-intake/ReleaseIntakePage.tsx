@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import {
   atabaqueTemplate,
   createInitialReleaseIntakeValues,
@@ -562,19 +563,20 @@ export default function ReleaseIntakePage({
     clearFieldError(args.fieldPath);
 
     try {
-      const formData = new FormData();
-      formData.set("file", args.file);
-      formData.set("kind", args.kind);
-      formData.set("workspaceSlug", template.workspaceSlug);
-      formData.set("draftToken", stableDraftToken);
-
-      if (args.trackLocalId) {
-        formData.set("trackLocalId", args.trackLocalId);
-      }
-
       const response = await fetch("/api/uploads", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileName: args.file.name,
+          fileSize: args.file.size,
+          mimeType: args.file.type,
+          kind: args.kind,
+          workspaceSlug: template.workspaceSlug,
+          draftToken: stableDraftToken,
+          trackLocalId: args.trackLocalId || "",
+        }),
       });
 
       const raw = await response.text();
@@ -589,37 +591,42 @@ export default function ReleaseIntakePage({
       }
 
       if (!response.ok) {
-        const fallbackMessage =
-          /request entity too large/i.test(raw) || response.status === 413
-            ? args.kind === "cover"
-              ? "A capa excede o limite permitido para upload."
-              : args.kind === "audio"
-              ? "O áudio excede o limite permitido para upload nesta infraestrutura."
-              : "O arquivo excede o limite permitido para upload."
-            : raw?.trim() || "Falha ao enviar arquivo.";
-
         throw new Error(
-          (typeof data?.message === "string" && data.message) || fallbackMessage
+          String(data?.message || "Falha ao preparar upload do arquivo.")
+        );
+      }
+
+      const bucket = String(data?.storage_bucket || "");
+      const storagePath = String(data?.storage_path || "");
+      const signedUploadToken = String(data?.signed_upload_token || "");
+
+      if (!bucket || !storagePath || !signedUploadToken) {
+        throw new Error("Resposta de upload incompleta.");
+      }
+
+      const supabase = createSupabaseBrowser();
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .uploadToSignedUrl(storagePath, signedUploadToken, args.file, {
+          contentType: args.file.type || undefined,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(
+          uploadError.message || "Falha ao enviar arquivo ao storage."
         );
       }
 
       return {
-        file_id:
-          (typeof data?.file_id === "string" && data.file_id) || generateUuid(),
-        file_name:
-          (typeof data?.file_name === "string" && data.file_name) || args.file.name,
-        storage_bucket:
-          (typeof data?.storage_bucket === "string" && data.storage_bucket) ||
-          undefined,
-        storage_path:
-          (typeof data?.storage_path === "string" && data.storage_path) || "",
-        public_url: (typeof data?.public_url === "string" && data.public_url) || "",
-        download_url:
-          (typeof data?.download_url === "string" && data.download_url) || "",
-        mime_type:
-          (typeof data?.mime_type === "string" && data.mime_type) || args.file.type,
-        size_bytes:
-          (typeof data?.size_bytes === "number" && data.size_bytes) || args.file.size,
+        file_id: String(data?.file_id || generateUuid()),
+        file_name: String(data?.file_name || args.file.name),
+        storage_bucket: bucket || undefined,
+        storage_path: storagePath,
+        public_url: String(data?.public_url || ""),
+        download_url: String(data?.download_url || ""),
+        mime_type: String(data?.mime_type || args.file.type || ""),
+        size_bytes: Number(data?.size_bytes || args.file.size || 0),
       };
     } finally {
       setFieldUploading(args.fieldPath, false);

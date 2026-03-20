@@ -18,7 +18,7 @@ const UPLOAD_RULES: Record<
 > = {
   cover: {
     folder: "cover",
-    maxSizeBytes: 15 * 1024 * 1024,
+    maxSizeBytes: 50 * 1024 * 1024,
     allowedExtensions: [".jpg", ".jpeg", ".png"],
     allowedMimeTypes: ["image/jpeg", "image/png"],
   },
@@ -72,22 +72,10 @@ function resolveUploadBucket(kind: UploadKind) {
   );
 }
 
-function getStorageErrorMessage(message: string | null | undefined, bucket: string) {
-  const safeMessage = message?.trim();
-  if (!safeMessage) {
-    return "Falha ao enviar arquivo para o storage.";
-  }
-
-  if (/bucket not found/i.test(safeMessage)) {
-    return `Bucket de upload não encontrado: ${bucket}.`;
-  }
-
-  return safeMessage;
-}
-
 function getRequestOrigin(req: Request) {
   const url = new URL(req.url);
-  const protocol = req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
+  const protocol =
+    req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
   const host =
     req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
 
@@ -96,17 +84,19 @@ function getRequestOrigin(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
+    const body = await req.json();
 
-    const file = formData.get("file");
-    const kind = formData.get("kind");
-    const workspaceSlug = String(formData.get("workspaceSlug") || "atabaque");
-    const draftToken = String(formData.get("draftToken") || "");
-    const trackLocalId = String(formData.get("trackLocalId") || "");
+    const kind = body?.kind;
+    const fileName = String(body?.fileName || "");
+    const mimeType = String(body?.mimeType || "").toLowerCase();
+    const fileSize = Number(body?.fileSize || 0);
+    const workspaceSlug = String(body?.workspaceSlug || "atabaque");
+    const draftToken = String(body?.draftToken || "");
+    const trackLocalId = String(body?.trackLocalId || "");
 
-    if (!(file instanceof File)) {
+    if (!fileName) {
       return NextResponse.json(
-        { ok: false, message: "Arquivo não enviado." },
+        { ok: false, message: "Nome do arquivo é obrigatório." },
         { status: 400 }
       );
     }
@@ -126,8 +116,7 @@ export async function POST(req: Request) {
     }
 
     const rules = UPLOAD_RULES[kind];
-    const extension = getFileExtension(file.name);
-    const mimeType = file.type.toLowerCase();
+    const extension = getFileExtension(fileName);
 
     if (!rules.allowedExtensions.includes(extension)) {
       return NextResponse.json(
@@ -146,7 +135,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (file.size > rules.maxSizeBytes) {
+    if (fileSize > rules.maxSizeBytes) {
       return NextResponse.json(
         {
           ok: false,
@@ -163,7 +152,7 @@ export async function POST(req: Request) {
     const safeWorkspaceSlug = sanitizeSegment(workspaceSlug || "atabaque");
     const safeDraftToken = sanitizeSegment(draftToken);
     const safeTrackLocalId = sanitizeSegment(trackLocalId);
-    const safeFileName = sanitizeFileName(file.name);
+    const safeFileName = sanitizeFileName(fileName);
     const uniqueName = `${Date.now()}-${safeFileName}`;
 
     const pathParts = [
@@ -176,22 +165,14 @@ export async function POST(req: Request) {
     ].filter(Boolean);
 
     const storagePath = pathParts.join("/");
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    const { error: uploadError } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(storagePath, fileBuffer, {
-        cacheControl: "3600",
-        contentType: file.type || undefined,
-        upsert: false,
-      });
+      .createSignedUploadUrl(storagePath);
 
-    if (uploadError) {
+    if (error || !data?.token) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: getStorageErrorMessage(uploadError.message, bucket),
-        },
+        { ok: false, message: error?.message || "Falha ao gerar upload assinado." },
         { status: 500 }
       );
     }
@@ -206,23 +187,20 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       file_id: `${bucket}:${storagePath}`,
-      file_name: file.name,
+      file_name: fileName,
       storage_bucket: bucket,
       storage_path: storagePath,
       public_url: fileLinks.previewUrl,
       download_url: fileLinks.downloadUrl,
-      mime_type: file.type || null,
-      size_bytes: file.size,
+      mime_type: mimeType || null,
+      size_bytes: fileSize || null,
+      signed_upload_token: data.token,
     });
   } catch (error: unknown) {
-    const message = getErrorMessage(error, "Falha no upload.");
-
     return NextResponse.json(
       {
         ok: false,
-        message: /formdata|parse body/i.test(message)
-          ? "Não foi possível processar o upload. Para áudio, envie arquivos de até 100 MB."
-          : message,
+        message: getErrorMessage(error, "Falha ao preparar upload."),
       },
       { status: 500 }
     );
