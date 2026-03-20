@@ -578,21 +578,48 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      let data: Record<string, unknown> | null = null;
+
+      if (raw) {
+        try {
+          data = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          data = null;
+        }
+      }
 
       if (!response.ok) {
-        throw new Error(data?.message || "Falha ao enviar arquivo.");
+        const fallbackMessage =
+          /request entity too large/i.test(raw) || response.status === 413
+            ? args.kind === "cover"
+              ? "A capa excede o limite permitido para upload."
+              : args.kind === "audio"
+              ? "O áudio excede o limite permitido para upload nesta infraestrutura."
+              : "O arquivo excede o limite permitido para upload."
+            : raw?.trim() || "Falha ao enviar arquivo.";
+
+        throw new Error(
+          (typeof data?.message === "string" && data.message) || fallbackMessage
+        );
       }
 
       return {
-        file_id: data?.file_id || generateUuid(),
-        file_name: data?.file_name || args.file.name,
-        storage_bucket: data?.storage_bucket || undefined,
-        storage_path: data?.storage_path || "",
-        public_url: data?.public_url || "",
-        download_url: data?.download_url || "",
-        mime_type: data?.mime_type || args.file.type,
-        size_bytes: data?.size_bytes || args.file.size,
+        file_id:
+          (typeof data?.file_id === "string" && data.file_id) || generateUuid(),
+        file_name:
+          (typeof data?.file_name === "string" && data.file_name) || args.file.name,
+        storage_bucket:
+          (typeof data?.storage_bucket === "string" && data.storage_bucket) ||
+          undefined,
+        storage_path:
+          (typeof data?.storage_path === "string" && data.storage_path) || "",
+        public_url: (typeof data?.public_url === "string" && data.public_url) || "",
+        download_url:
+          (typeof data?.download_url === "string" && data.download_url) || "",
+        mime_type:
+          (typeof data?.mime_type === "string" && data.mime_type) || args.file.type,
+        size_bytes:
+          (typeof data?.size_bytes === "number" && data.size_bytes) || args.file.size,
       };
     } finally {
       setFieldUploading(args.fieldPath, false);
