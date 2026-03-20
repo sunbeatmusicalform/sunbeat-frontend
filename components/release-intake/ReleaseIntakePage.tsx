@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   Fragment,
@@ -618,12 +618,16 @@ export default function ReleaseIntakePage({
         );
       }
 
+      const previewUrl = String(
+        data?.preview_signed_url || data?.public_url || ""
+      );
+
       return {
         file_id: String(data?.file_id || generateUuid()),
         file_name: String(data?.file_name || args.file.name),
         storage_bucket: bucket || undefined,
         storage_path: storagePath,
-        public_url: String(data?.public_url || ""),
+        public_url: previewUrl,
         download_url: String(data?.download_url || ""),
         mime_type: String(data?.mime_type || args.file.type || ""),
         size_bytes: Number(data?.size_bytes || args.file.size || 0),
