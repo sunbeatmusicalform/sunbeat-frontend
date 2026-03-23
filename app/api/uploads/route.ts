@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getErrorMessage } from "@/lib/server/backend-api";
-import { buildFileAccessUrls } from "@/lib/server/storage-files";
+import {
+  buildFileAccessUrls,
+  createSignedStorageUrl,
+} from "@/lib/server/storage-files";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -195,6 +198,11 @@ export async function POST(req: Request) {
       storagePath,
     });
 
+    const previewSignedUrl = await createSignedStorageUrl({
+      bucket,
+      storagePath,
+    }).catch(() => null);
+
     return NextResponse.json({
       ok: true,
       file_id: `${bucket}:${storagePath}`,
@@ -203,6 +211,7 @@ export async function POST(req: Request) {
       storage_path: storagePath,
       public_url: fileLinks.previewUrl,
       download_url: fileLinks.downloadUrl,
+      preview_signed_url: previewSignedUrl,
       mime_type: mimeType || null,
       size_bytes: fileSize || null,
       signed_upload_token: signedUploadToken,

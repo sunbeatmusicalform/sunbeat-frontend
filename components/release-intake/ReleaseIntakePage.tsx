@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Fragment,
@@ -145,14 +145,135 @@ function getTrackFieldMeta(
   };
 }
 
+
+function parseJsonSafely(raw: string) {
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getRecordString(
+  record: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = record?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function isFormStepKey(value: string | null | undefined): value is FormStepKey {
+  return Boolean(value && STEP_ORDER.includes(value as FormStepKey));
+}
+
+function hasHydratableFormSections(value: unknown) {
+  if (!isRecord(value)) return false;
+
+  return (
+    isRecord(value.identification) ||
+    isRecord(value.project) ||
+    isRecord(value.marketing) ||
+    Array.isArray(value.tracks)
+  );
+}
+
+function normalizeHydratedTrack(track: unknown, index: number): TrackInput {
+  const base = createEmptyTrack(index + 1);
+
+  if (!isRecord(track)) {
+    return base;
+  }
+
+  return {
+    ...base,
+    ...(track as Partial<TrackInput>),
+    local_id:
+      typeof track.local_id === "string" && track.local_id.trim().length > 0
+        ? track.local_id
+        : generateUuid(),
+    order_number:
+      typeof track.order_number === "number" && track.order_number > 0
+        ? track.order_number
+        : index + 1,
+    is_focus_track:
+      typeof track.is_focus_track === "boolean"
+        ? track.is_focus_track
+        : index === 0,
+    track_status: track.track_status === "ready" ? "ready" : "draft",
+  };
+}
+
+function extractEditHydrationPayload(data: unknown) {
+  const root = isRecord(data) ? data : null;
+  const containers = [
+    root?.data,
+    root?.submission,
+    root?.payload,
+    root,
+  ].filter(isRecord);
+
+  for (const container of containers) {
+    const directValues = hasHydratableFormSections(container) ? container : null;
+    const nestedValues = hasHydratableFormSections(container.values)
+      ? (container.values as Record<string, unknown>)
+      : hasHydratableFormSections(container.form_values)
+      ? (container.form_values as Record<string, unknown>)
+      : hasHydratableFormSections(container.submission_values)
+      ? (container.submission_values as Record<string, unknown>)
+      : null;
+
+    const values = nestedValues ?? directValues;
+    if (!values) {
+      continue;
+    }
+
+    const containerStep = getRecordString(container, "current_step");
+    const rootStep = getRecordString(root, "current_step");
+
+    return {
+      values,
+      draftToken:
+        getRecordString(container, "draft_token") ??
+        getRecordString(root, "draft_token"),
+      currentStep: isFormStepKey(containerStep)
+        ? containerStep
+        : isFormStepKey(rootStep)
+        ? rootStep
+        : null,
+    };
+  }
+
+  return {
+    values: null,
+    draftToken: getRecordString(root, "draft_token"),
+    currentStep: null,
+  };
+}
+
+function humanizeFieldKey(key: string) {
+  return key
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function ReleaseIntakePage({
   workspaceSlug = "atabaque",
 }: {
   workspaceSlug?: string;
 }) {
   const searchParams = useSearchParams();
-  const resumeToken = searchParams.get("draft");
-  const editToken = searchParams.get("edit_token");
+  const resumeToken =
+    searchParams.get("draft") ?? searchParams.get("draft_token");
+  const editToken =
+    searchParams.get("edit_token") ??
+    searchParams.get("edit") ??
+    searchParams.get("token");
 
   const [template, setTemplate] = useState(atabaqueTemplate);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(true);
@@ -174,6 +295,8 @@ export default function ReleaseIntakePage({
 
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [isHydratingDraft, setIsHydratingDraft] = useState(false);
+  const [isHydratingEdit, setIsHydratingEdit] = useState(false);
+  const [editLoadError, setEditLoadError] = useState<string | null>(null);
 
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [draftNoticeType, setDraftNoticeType] =
@@ -316,6 +439,106 @@ export default function ReleaseIntakePage({
     };
   }
 
+
+  function getStepKeyFromErrorPath(path: string): FormStepKey | null {
+    if (path.startsWith("identification.")) return "identification";
+    if (path.startsWith("project.")) return "release";
+    if (path === "tracks" || path.startsWith("tracks.")) return "tracks";
+    if (path.startsWith("marketing.")) return "marketing";
+    return null;
+  }
+
+  function getFieldLabelFromErrorPath(path: string, message: string) {
+    if (path === "tracks") {
+      return `Faixas — ${message}`;
+    }
+
+    const [sectionKey, indexOrFieldKey, nestedFieldKey] = path.split(".");
+
+    if (sectionKey === "tracks" && nestedFieldKey) {
+      const trackIndex = Number(indexOrFieldKey);
+      const trackLabel =
+        Number.isInteger(trackIndex) && trackIndex >= 0
+          ? `Faixa ${trackIndex + 1}`
+          : "Faixa";
+      const trackFieldLabel =
+        getTrackFieldDefinition(trackFields, nestedFieldKey)?.label ??
+        humanizeFieldKey(nestedFieldKey);
+
+      return `${trackLabel} — ${trackFieldLabel}`;
+    }
+
+    const stepKey = getStepKeyFromErrorPath(path);
+    if (!stepKey || !(nestedFieldKey || indexOrFieldKey)) {
+      return message;
+    }
+
+    const fieldKey = sectionKey === "tracks" ? nestedFieldKey : indexOrFieldKey;
+    const stepLabel =
+      template.steps.find((step) => step.key === stepKey)?.title ??
+      humanizeFieldKey(stepKey);
+
+    if (!fieldKey) {
+      return stepLabel;
+    }
+
+    const fieldLabel =
+      getFieldsForStep(stepKey).find((field) => field.key === fieldKey)?.label ??
+      humanizeFieldKey(fieldKey);
+
+    return `${stepLabel} — ${fieldLabel}`;
+  }
+
+  function buildValidationSummary(validation: Record<string, string>) {
+    const labels = Array.from(
+      new Set(
+        Object.entries(validation)
+          .map(([path, message]) => getFieldLabelFromErrorPath(path, message))
+          .filter(Boolean)
+      )
+    );
+
+    if (labels.length === 0) {
+      return null;
+    }
+
+    const header =
+      labels.length === 1
+        ? "A submissão não foi concluída. Falta preencher o seguinte campo obrigatório:"
+        : "A submissão não foi concluída. Faltam preencher os seguintes campos obrigatórios:";
+
+    return `${header}\n- ${labels.join("\n- ")}`;
+  }
+
+  function focusFirstValidationError(validation: Record<string, string>) {
+    const paths = Object.keys(validation);
+    if (paths.length === 0) {
+      return;
+    }
+
+    const firstStepWithError = STEP_ORDER.find((stepKey) =>
+      paths.some((path) => getStepKeyFromErrorPath(path) === stepKey)
+    );
+
+    if (firstStepWithError) {
+      setCurrentStep(firstStepWithError);
+    }
+
+    const firstTrackErrorPath = paths.find((path) => path.startsWith("tracks."));
+    if (firstTrackErrorPath) {
+      const [, rawTrackIndex] = firstTrackErrorPath.split(".");
+      const trackIndex = Number(rawTrackIndex);
+
+      if (Number.isInteger(trackIndex) && values.tracks[trackIndex]) {
+        setActiveTrackId(values.tracks[trackIndex].local_id);
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
   const activeTrack =
     values.tracks.find((track) => track.local_id === activeTrackId) ??
     values.tracks[0] ??
@@ -371,6 +594,9 @@ export default function ReleaseIntakePage({
     didHydrateEditRef.current = true;
 
     async function loadEditSubmission() {
+      setIsHydratingEdit(true);
+      setEditLoadError(null);
+
       try {
         const response = await fetch(`/api/submissions/edit/${editToken}`, {
           method: "GET",
@@ -378,51 +604,78 @@ export default function ReleaseIntakePage({
         });
 
         const raw = await response.text();
-        const data = raw ? JSON.parse(raw) : null;
+        const data = parseJsonSafely(raw);
 
         if (!response.ok) {
+          const responseErrorMessage =
+            getRecordString(isRecord(data) ? data : null, "detail") ??
+            getRecordString(isRecord(data) ? data : null, "message") ??
+            "Falha ao carregar submissão para edição.";
+
+          throw new Error(responseErrorMessage);
+        }
+
+        const payload = extractEditHydrationPayload(data);
+
+        if (!payload.values) {
           throw new Error(
-            data?.detail ||
-              data?.message ||
-              "Falha ao carregar submissão para edição."
+            "Não foi possível hidratar este link de edição. O retorno não contém os dados esperados do formulário."
           );
         }
 
-        const payload = data?.data ?? null;
-        if (!payload) return;
+        const hydratedTracks = Array.isArray(payload.values.tracks)
+          ? payload.values.tracks.map((track, index) =>
+              normalizeHydratedTrack(track, index)
+            )
+          : [];
 
         setValues((prev) => ({
           ...prev,
-          identification: {
-            ...prev.identification,
-            ...(payload.identification ?? {}),
-          },
-          project: {
-            ...prev.project,
-            ...(payload.project ?? {}),
-          },
-          marketing: {
-            ...prev.marketing,
-            ...(payload.marketing ?? {}),
-          },
-          tracks:
-            Array.isArray(payload.tracks) && payload.tracks.length > 0
-              ? payload.tracks
-              : prev.tracks,
+          identification: isRecord(payload.values.identification)
+            ? {
+                ...prev.identification,
+                ...(payload.values.identification as Partial<
+                  ReleaseIntakeFormValues["identification"]
+                >),
+              }
+            : prev.identification,
+          project: isRecord(payload.values.project)
+            ? {
+                ...prev.project,
+                ...(payload.values.project as Partial<
+                  ReleaseIntakeFormValues["project"]
+                >),
+              }
+            : prev.project,
+          marketing: isRecord(payload.values.marketing)
+            ? {
+                ...prev.marketing,
+                ...(payload.values.marketing as Partial<
+                  ReleaseIntakeFormValues["marketing"]
+                >),
+              }
+            : prev.marketing,
+          tracks: hydratedTracks.length > 0 ? hydratedTracks : prev.tracks,
         }));
 
-        if (payload.draft_token) {
-          setDraftToken(payload.draft_token);
+        if (payload.draftToken) {
+          setDraftToken(payload.draftToken);
         }
 
-        const hydratedTracks = Array.isArray(payload.tracks) ? payload.tracks : [];
         if (hydratedTracks.length > 0) {
           setActiveTrackId(hydratedTracks[0].local_id ?? null);
         }
 
-        setCurrentStep("review_submit");
+        setCurrentStep(payload.currentStep ?? "review_submit");
       } catch (error) {
         console.error("Erro ao carregar submissão para edição:", error);
+        setEditLoadError(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar este link de edição. Ele pode estar inválido, expirado ou com formato incompatível."
+        );
+      } finally {
+        setIsHydratingEdit(false);
       }
     }
 
@@ -448,6 +701,8 @@ export default function ReleaseIntakePage({
     setDraftToken(null);
     setActiveTrackId(nextValues.tracks[0]?.local_id ?? null);
     setAutosaveState("idle");
+    setIsHydratingEdit(false);
+    setEditLoadError(null);
     setDraftNotice(null);
     setDraftNoticeType("success");
     setDraftLinkEmailSent(false);
@@ -1111,6 +1366,11 @@ export default function ReleaseIntakePage({
     const validation = validateBeforeSubmit();
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
+      setSubmitError(
+        buildValidationSummary(validation) ||
+          "A submissão não foi concluída porque ainda existem campos obrigatórios pendentes."
+      );
+      focusFirstValidationError(validation);
       return;
     }
 
@@ -1597,6 +1857,18 @@ export default function ReleaseIntakePage({
             </div>
           ) : null}
 
+          {isHydratingEdit ? (
+            <div className="mt-7 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+              Carregando os dados do link de edição...
+            </div>
+          ) : null}
+
+          {editLoadError ? (
+            <div className="mt-7 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {editLoadError}
+            </div>
+          ) : null}
+
           {submitMessage && !isSubmissionComplete ? (
             <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {submitMessage}
@@ -1604,7 +1876,7 @@ export default function ReleaseIntakePage({
           ) : null}
 
           {submitError ? (
-            <div className="mt-7 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-7 whitespace-pre-line rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {submitError}
             </div>
           ) : null}
