@@ -56,6 +56,16 @@ export function getTrackRequiredErrors(
     });
   }
 
+  if (
+    isTrackFieldRequired(trackFields, "artist_profiles_status") &&
+    !track.artist_profiles_status
+  ) {
+    errors.push({
+      field: "artist_profiles_status",
+      message: "Selecione o status de perfil dos artistas.",
+    });
+  }
+
   if (isTrackFieldRequired(trackFields, "has_isrc") && !track.has_isrc) {
     errors.push({
       field: "has_isrc",

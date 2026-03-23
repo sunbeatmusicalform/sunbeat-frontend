@@ -502,12 +502,14 @@ export default function ReleaseIntakePage({
       return null;
     }
 
-    const header =
+    const intro =
+      "A submissão não foi concluída. Existem campos mínimos obrigatórios para o lançamento. Esses campos derivam das regras operacionais do Edit/Atabaque e das validações do sistema de aprovação do submit final.";
+    const detailHeader =
       labels.length === 1
-        ? "A submissão não foi concluída. Falta preencher o seguinte campo obrigatório:"
-        : "A submissão não foi concluída. Faltam preencher os seguintes campos obrigatórios:";
+        ? "Revise o seguinte campo pendente:"
+        : "Revise os seguintes campos pendentes:";
 
-    return `${header}\n- ${labels.join("\n- ")}`;
+    return `${intro}\n${detailHeader}\n- ${labels.join("\n- ")}`;
   }
 
   function focusFirstValidationError(validation: Record<string, string>) {
@@ -1360,6 +1362,73 @@ export default function ReleaseIntakePage({
     nextStep();
   }
 
+  function normalizeBackendErrorPath(loc: unknown) {
+    if (!Array.isArray(loc) || loc.length === 0) {
+      return null;
+    }
+
+    const normalized = loc
+      .filter((part) => part !== "body" && part !== "query" && part !== "path")
+      .map((part) =>
+        typeof part === "string" || typeof part === "number"
+          ? String(part)
+          : null
+      )
+      .filter(Boolean) as string[];
+
+    if (normalized.length === 0) {
+      return null;
+    }
+
+    if (normalized[0] === "project_data") {
+      normalized[0] = "project";
+    }
+
+    return normalized.join(".");
+  }
+
+  function extractBackendValidation(
+    data: unknown
+  ): { fieldErrors: Record<string, string>; generalMessage: string | null } {
+    const root = isRecord(data) ? data : null;
+    const details = Array.isArray(root?.detail)
+      ? root?.detail
+      : Array.isArray(root?.errors)
+      ? root?.errors
+      : [];
+
+    const fieldErrors: Record<string, string> = {};
+
+    for (const detail of details) {
+      if (!isRecord(detail)) {
+        continue;
+      }
+
+      const path = normalizeBackendErrorPath(detail.loc);
+      const message =
+        (typeof detail.msg === "string" && detail.msg.trim().length > 0
+          ? detail.msg
+          : null) ??
+        (typeof detail.message === "string" && detail.message.trim().length > 0
+          ? detail.message
+          : null) ??
+        "Campo inválido ou pendente.";
+
+      if (!path) {
+        continue;
+      }
+
+      fieldErrors[path] = message;
+    }
+
+    const generalMessage =
+      getRecordString(root, "message") ??
+      getRecordString(root, "error") ??
+      (typeof root?.detail === "string" ? root.detail : null);
+
+    return { fieldErrors, generalMessage };
+  }
+
   async function handleSubmit() {
     clearMessages();
 
@@ -1399,10 +1468,25 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      const data = parseJsonSafely(raw);
 
       if (!response.ok) {
-        throw new Error(data?.detail || data?.message || "Falha no envio.");
+        const backendValidation = extractBackendValidation(data);
+
+        if (Object.keys(backendValidation.fieldErrors).length > 0) {
+          setErrors(backendValidation.fieldErrors);
+          setSubmitError(
+            buildValidationSummary(backendValidation.fieldErrors) ||
+              backendValidation.generalMessage ||
+              "A submissão não foi concluída porque ainda existem campos mínimos obrigatórios pendentes."
+          );
+          focusFirstValidationError(backendValidation.fieldErrors);
+          return;
+        }
+
+        throw new Error(
+          backendValidation.generalMessage || "Falha no envio."
+        );
       }
 
       setSubmitMessage(
