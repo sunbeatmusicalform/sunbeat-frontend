@@ -84,7 +84,7 @@ export function getTrackRequiredErrors(
   if (isTrackFieldRequired(trackFields, "title") && !track.title.trim()) {
     errors.push({
       field: "title",
-      message: "Preencha o titulo da faixa.",
+      message: "Preencha o título da faixa.",
     });
   }
 
@@ -108,7 +108,7 @@ export function getTrackRequiredErrors(
   if (isTrackFieldRequired(trackFields, "has_isrc") && !track.has_isrc) {
     errors.push({
       field: "has_isrc",
-      message: "Selecione se a faixa ja possui ISRC.",
+      message: "Selecione se a faixa já possui ISRC.",
     });
     return errors;
   }
@@ -121,7 +121,7 @@ export function getTrackRequiredErrors(
   ) {
     errors.push({
       field: "phonographic_producer",
-      message: "Preencha o produtor fonografico.",
+      message: "Preencha o produtor fonográfico.",
     });
   }
 
@@ -133,7 +133,7 @@ export function getTrackRequiredErrors(
   ) {
     errors.push({
       field: "isrc_code",
-      message: "Informe o codigo ISRC da faixa.",
+      message: "Informe o código ISRC da faixa.",
     });
   }
 
@@ -236,15 +236,15 @@ export function validateIdentification(values: ReleaseIntakeFormValues) {
   if (!values.identification.submitter_email.trim()) {
     errors["identification.submitter_email"] = "Preencha seu e-mail.";
   } else if (!/\S+@\S+\.\S+/.test(values.identification.submitter_email)) {
-    errors["identification.submitter_email"] = "Informe um e-mail valido.";
+    errors["identification.submitter_email"] = "Informe um e-mail válido.";
   }
 
   if (!values.identification.project_title.trim()) {
-    errors["identification.project_title"] = "Preencha o titulo do projeto.";
+    errors["identification.project_title"] = "Preencha o título do projeto.";
   }
 
   if (!values.identification.release_type) {
-    errors["identification.release_type"] = "Selecione o tipo de lancamento.";
+    errors["identification.release_type"] = "Selecione o tipo de lançamento.";
   }
 
   return errors;
@@ -252,9 +252,12 @@ export function validateIdentification(values: ReleaseIntakeFormValues) {
 
 export function validateProject(values: ReleaseIntakeFormValues) {
   const errors: Record<string, string> = {};
+  const normalizedReleaseDate = cleanString(
+    normalizeDateInputValue(values.project.release_date)
+  );
 
-  if (!values.project.release_date) {
-    errors["project.release_date"] = "Informe a data de lancamento.";
+  if (!normalizedReleaseDate) {
+    errors["project.release_date"] = "Informe a data de lançamento.";
   }
 
   return errors;
@@ -320,6 +323,25 @@ function cleanString(value: string | null | undefined) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeDateInputValue(value: string | null | undefined) {
+  const normalized = cleanString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const directMatch = normalized.match(/^(\d{4}-\d{2}-\d{2})$/);
+  if (directMatch) {
+    return directMatch[1];
+  }
+
+  const prefixedMatch = normalized.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/);
+  if (prefixedMatch) {
+    return prefixedMatch[1];
+  }
+
+  return undefined;
+}
+
 function cleanYesNo(value: string | null | undefined) {
   return value === "yes" || value === "no" ? value : undefined;
 }
@@ -360,6 +382,9 @@ export function buildReleaseIntakeSubmitPayload(
   args: WorkflowSubmitPayloadBuilderArgs
 ): ReleaseIntakeSubmitPayload {
   const values = args.values as ReleaseIntakeFormValues;
+  const normalizedReleaseDate = cleanString(
+    normalizeDateInputValue(values.project.release_date)
+  );
   const marketing = {
     marketing_numbers: cleanString(values.marketing.marketing_numbers),
     marketing_focus: cleanString(values.marketing.marketing_focus),
@@ -396,7 +421,7 @@ export function buildReleaseIntakeSubmitPayload(
       release_type: values.identification.release_type,
     },
     project: {
-      release_date: values.project.release_date,
+      release_date: normalizedReleaseDate,
       genre: cleanString(values.project.genre),
       explicit_content: cleanYesNo(values.project.explicit_content),
       tiktok_snippet: cleanString(values.project.tiktok_snippet),
