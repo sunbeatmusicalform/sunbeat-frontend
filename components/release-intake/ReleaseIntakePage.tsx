@@ -24,6 +24,7 @@ import {
 import { getWorkflowTemplate } from "@/lib/form-engine/get-release-template";
 import { resolveWorkflowRenderer } from "@/lib/form-engine/workflow-registry";
 import { createEmptyTrack } from "@/lib/form-engine/track-types";
+import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import type {
   FormVersion,
   FormField,
@@ -97,6 +98,39 @@ function formatReviewValue(value?: string) {
     default:
       return value;
   }
+}
+
+function parseJsonResponseText(raw: string) {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function getApiMessage(
+  data: Record<string, unknown> | null,
+  raw: string,
+  fallback: string
+) {
+  if (typeof data?.message === "string" && data.message.trim()) {
+    return data.message;
+  }
+
+  if (typeof data?.detail === "string" && data.detail.trim()) {
+    return data.detail;
+  }
+
+  const text = raw.trim();
+  if (!text || text.startsWith("<")) {
+    return fallback;
+  }
+
+  return text;
 }
 
 function normalizeDateInputValue(value: unknown) {
@@ -965,37 +999,74 @@ export default function ReleaseIntakePage({
     clearFieldError(args.fieldPath);
 
     try {
-      const formData = new FormData();
-      formData.set("file", args.file);
-      formData.set("kind", args.kind);
-      formData.set("workspaceSlug", template.workspaceSlug);
-      formData.set("draftToken", stableDraftToken);
-
-      if (args.trackLocalId) {
-        formData.set("trackLocalId", args.trackLocalId);
-      }
-
       const response = await fetch("/api/uploads", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          kind: args.kind,
+          fileName: args.file.name,
+          mimeType: args.file.type,
+          fileSize: args.file.size,
+          workspaceSlug: template.workspaceSlug,
+          draftToken: stableDraftToken,
+          trackLocalId: args.trackLocalId,
+        }),
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      const data = parseJsonResponseText(raw);
 
       if (!response.ok) {
-        throw new Error(data?.message || "Falha ao enviar arquivo.");
+        throw new Error(getApiMessage(data, raw, "Falha ao preparar upload."));
       }
 
+      const storageBucket =
+        typeof data?.storage_bucket === "string" ? data.storage_bucket : "";
+      const storagePath =
+        typeof data?.storage_path === "string" ? data.storage_path : "";
+      const signedUploadToken =
+        typeof data?.signed_upload_token === "string"
+          ? data.signed_upload_token
+          : "";
+
+      if (!storageBucket || !storagePath || !signedUploadToken) {
+        throw new Error("Upload assinado indisponível para este arquivo.");
+      }
+
+      const supabase = createSupabaseBrowser();
+      const { error: uploadError } = await supabase.storage
+        .from(storageBucket)
+        .uploadToSignedUrl(storagePath, signedUploadToken, args.file, {
+          contentType: args.file.type || undefined,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || "Falha ao enviar arquivo.");
+      }
+
+      const fileId = typeof data?.file_id === "string" ? data.file_id : generateUuid();
+      const fileName =
+        typeof data?.file_name === "string" ? data.file_name : args.file.name;
+      const publicUrl =
+        typeof data?.public_url === "string" ? data.public_url : "";
+      const downloadUrl =
+        typeof data?.download_url === "string" ? data.download_url : "";
+      const mimeType =
+        typeof data?.mime_type === "string" ? data.mime_type : args.file.type;
+      const sizeBytes =
+        typeof data?.size_bytes === "number" ? data.size_bytes : args.file.size;
+
       return {
-        file_id: data?.file_id || generateUuid(),
-        file_name: data?.file_name || args.file.name,
-        storage_bucket: data?.storage_bucket || undefined,
-        storage_path: data?.storage_path || "",
-        public_url: data?.public_url || "",
-        download_url: data?.download_url || "",
-        mime_type: data?.mime_type || args.file.type,
-        size_bytes: data?.size_bytes || args.file.size,
+        file_id: fileId,
+        file_name: fileName,
+        storage_bucket: storageBucket || undefined,
+        storage_path: storagePath,
+        public_url: publicUrl,
+        download_url: downloadUrl,
+        mime_type: mimeType,
+        size_bytes: sizeBytes,
       };
     } finally {
       setFieldUploading(args.fieldPath, false);
