@@ -1,9 +1,77 @@
 import type { TrackInput } from "./track-types";
 
 export type ReleaseType = "single" | "ep" | "album";
+export const DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE = "release_intake" as const;
+export const RIGHTS_CLEARANCE_WORKFLOW_TYPE = "rights_clearance" as const;
+export const PEOPLE_REGISTRY_WORKFLOW_TYPE = "people_registry" as const;
+export const LEGACY_RELEASE_INTAKE_FORM_VERSION = "legacy_v1" as const;
+export const ACTIVE_WORKFLOW_FORM_VERSION = "v1" as const;
+export const PLANNED_WORKFLOW_FORM_VERSION = "draft_v1" as const;
+
+export type KnownWorkflowType =
+  | typeof DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE
+  | typeof RIGHTS_CLEARANCE_WORKFLOW_TYPE
+  | typeof PEOPLE_REGISTRY_WORKFLOW_TYPE;
+
+export type WorkflowType = KnownWorkflowType | (string & {});
+export type FormVersion = string;
+export type WorkflowStatus = "active" | "planned" | "custom";
+export type WorkflowRenderer =
+  | "release_intake"
+  | "rights_clearance"
+  | "external";
+export type WorkflowTemplateFactoryKey =
+  | "release_intake"
+  | "rights_clearance"
+  | "external";
+export type WorkflowPayloadBuilderKey =
+  | "release_intake"
+  | "rights_clearance"
+  | "external";
+
+export function buildWorkflowSource(
+  workspaceSlug: string,
+  workflowType: WorkflowType,
+  formVersion: FormVersion
+) {
+  return `sunbeat.${workspaceSlug}.${workflowType}.${formVersion}`;
+}
+
+export function buildWorkflowTemplateId(
+  workspaceSlug: string,
+  workflowType: WorkflowType,
+  formVersion: FormVersion
+) {
+  return `${workspaceSlug}-${workflowType}-${formVersion}`;
+}
+
+export const buildReleaseTemplateId = buildWorkflowTemplateId;
+
+export type WorkflowRegistryEntry = {
+  workflowType: WorkflowType;
+  label: string;
+  description: string;
+  defaultFormVersion: FormVersion;
+  status: WorkflowStatus;
+  renderer: WorkflowRenderer;
+  templateFactory: WorkflowTemplateFactoryKey;
+  payloadBuilder: WorkflowPayloadBuilderKey;
+  publicPathPrefix: string;
+};
+
+export type WorkflowIdentity = WorkflowRegistryEntry & {
+  workspaceSlug: string;
+  formVersion: FormVersion;
+  source: string;
+  templateId: string;
+};
 
 export type YesNo = "yes" | "no";
 export type YesNoUnknown = "yes" | "no" | "unknown";
+export type ClearanceFormat =
+  | "music_release_clearance_intake"
+  | "music_project_track"
+  | "audiovisual_product_sync";
 
 export type FieldType =
   | "text"
@@ -60,6 +128,21 @@ export type FormStepKey =
   | "release"
   | "tracks"
   | "marketing"
+  | "requester_identification"
+  | "request_type"
+  | "project_context"
+  | "clearance_scope"
+  | "assets_references"
+  | "review_submit";
+
+export type RightsClearanceStepKey =
+  | "intro"
+  | "requester_identification"
+  | "request_type"
+  | "project_context"
+  | "tracks"
+  | "clearance_scope"
+  | "assets_references"
   | "review_submit";
 
 export type FormStep = {
@@ -69,15 +152,21 @@ export type FormStep = {
   fields: FormField[];
 };
 
-export type ReleaseIntakeTemplate = {
+export type WorkflowTemplate = {
   id: string;
   version: number;
   workspaceSlug: string;
+  workflowType: WorkflowType;
+  formVersion: FormVersion;
+  source: string;
   slogan: string;
   successMessage: string;
   intro: IntroConfig;
   steps: FormStep[];
 };
+
+export type ReleaseIntakeTemplate = WorkflowTemplate;
+export type RightsClearanceTemplate = WorkflowTemplate;
 
 export type IdentificationValues = {
   submitter_name: string;
@@ -124,15 +213,100 @@ export type ReleaseIntakeFormValues = {
   marketing: MarketingValues;
 };
 
+export type RightsClearanceRequesterValues = {
+  requester_name: string;
+  requester_email: string;
+  requester_company: string;
+  requester_role: string;
+};
+
+export type RightsClearanceRequestTypeValues = {
+  clearance_format: ClearanceFormat | "";
+};
+
+export type RightsClearanceProjectContextValues = {
+  project_title: string;
+  responsible_company: string;
+  client_or_distributor: string;
+  release_or_start_date: string;
+  release_type: ReleaseType | "";
+  project_synopsis: string;
+  has_brand_association: YesNo | "";
+  brand_context: string;
+  general_clearance_notes: string;
+};
+
+export type RightsClearanceScopeValues = {
+  music_title: string;
+  artist_name: string;
+  phonogram_owner: string;
+  territory: string;
+  licensing_period: string;
+  composer_author_info: string;
+  publisher_info: string;
+  material_type: string;
+  intended_use: string;
+  exclusivity: YesNo | "";
+  audiovisual_type: string;
+  director_name: string;
+  product_or_campaign_name: string;
+  scene_description: string;
+  sync_duration: string;
+  media_channels: string;
+};
+
+export type RightsClearanceAssetsValues = {
+  supporting_files: UploadedFileRef[];
+  reference_links: string;
+  additional_notes: string;
+};
+
+export type RightsClearanceTrackValues = {
+  local_id: string;
+  order_number: number;
+  title: string;
+  primary_artists: string;
+  authors: string;
+  publishers: string;
+  phonogram_owner: string;
+  has_isrc: YesNo | "";
+  isrc_code: string;
+  notes_for_clearance: string;
+};
+
+export type RightsClearanceFormValues = {
+  requester_identification: RightsClearanceRequesterValues;
+  request_type: RightsClearanceRequestTypeValues;
+  project_context: RightsClearanceProjectContextValues;
+  tracks: RightsClearanceTrackValues[];
+  clearance_scope: RightsClearanceScopeValues;
+  assets_references: RightsClearanceAssetsValues;
+};
+
 export type ReleaseIntakeDraftPayload = {
   draft_token?: string | null;
   workspace_slug: string;
+  workflow_type: WorkflowType;
   current_step: FormStepKey;
   progress_percent: number;
   values: ReleaseIntakeFormValues;
   meta: {
-    form_version: number;
-    source: "sunbeat_release_intake";
+    form_version: FormVersion;
+    source: string;
+    updated_at?: string;
+  };
+};
+
+export type RightsClearanceDraftPayload = {
+  draft_token?: string | null;
+  workspace_slug: string;
+  workflow_type: WorkflowType;
+  current_step: RightsClearanceStepKey;
+  progress_percent: number;
+  values: RightsClearanceFormValues;
+  meta: {
+    form_version: FormVersion;
+    source: string;
     updated_at?: string;
   };
 };
@@ -140,13 +314,73 @@ export type ReleaseIntakeDraftPayload = {
 export type ReleaseIntakeSubmitPayload = {
   draft_token?: string | null;
   workspace_slug: string;
+  workflow_type: WorkflowType;
   identification: IdentificationValues;
   project: ProjectValues;
   tracks: TrackInput[];
   marketing?: MarketingValues;
   meta: {
-    form_version: number;
-    source: "sunbeat_release_intake";
+    form_version: FormVersion;
+    source: string;
+    submitted_at?: string;
+  };
+};
+
+export type RightsClearanceSubmitPayload = {
+  draft_token?: string | null;
+  workspace_slug: string;
+  workflow_type: WorkflowType;
+  requester_identification: RightsClearanceRequesterValues;
+  request_type: RightsClearanceRequestTypeValues;
+  project_context: {
+    project_title: string;
+    responsible_company: string;
+    client_or_distributor: string;
+    release_or_start_date: string;
+    release_type?: ReleaseType;
+    project_synopsis?: string;
+    has_brand_association?: YesNo;
+    brand_context?: string;
+    general_clearance_notes?: string;
+  };
+  tracks?: Array<{
+    local_id: string;
+    order_number: number;
+    title: string;
+    primary_artists: string;
+    authors: string;
+    publishers?: string;
+    phonogram_owner: string;
+    has_isrc?: YesNo;
+    isrc_code?: string;
+    notes_for_clearance?: string;
+  }>;
+  clearance_scope?: {
+    music_title: string;
+    artist_name: string;
+    phonogram_owner: string;
+    territory: string;
+    licensing_period: string;
+    composer_author_info?: string;
+    publisher_info?: string;
+    material_type?: string;
+    intended_use?: string;
+    exclusivity?: YesNo | "";
+    audiovisual_type?: string;
+    director_name?: string;
+    product_or_campaign_name?: string;
+    scene_description?: string;
+    sync_duration?: string;
+    media_channels?: string;
+  };
+  assets_references?: {
+    supporting_files?: UploadedFileRef[];
+    reference_links?: string;
+    additional_notes?: string;
+  };
+  meta: {
+    form_version: FormVersion;
+    source: string;
     submitted_at?: string;
   };
 };

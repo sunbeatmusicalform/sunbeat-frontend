@@ -10,25 +10,27 @@ import {
   type ReactNode,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import {
   atabaqueTemplate,
   createInitialReleaseIntakeValues,
 } from "@/lib/form-engine/atabaque-template";
-import { getReleaseTemplate } from "@/lib/form-engine/get-release-template";
 import {
-  buildDraftPayload,
-  buildSubmitPayload,
+  buildWorkflowDraftPayload,
+  buildWorkflowSubmitPayload,
   canAddMoreTracks,
   getTrackPendingRequiredCount,
   validateTracks,
 } from "@/lib/form-engine/submission-payload";
+import { getWorkflowTemplate } from "@/lib/form-engine/get-release-template";
+import { resolveWorkflowRenderer } from "@/lib/form-engine/workflow-registry";
 import { createEmptyTrack } from "@/lib/form-engine/track-types";
 import type {
+  FormVersion,
   FormField,
   FormStepKey,
   ReleaseIntakeFormValues,
   UploadedFileRef,
+  WorkflowType,
 } from "@/lib/form-engine/types";
 import type { TrackInput } from "@/lib/form-engine/track-types";
 
@@ -97,6 +99,341 @@ function formatReviewValue(value?: string) {
   }
 }
 
+function normalizeDateInputValue(value: unknown) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const text = value.trim();
+  if (!text) {
+    return "";
+  }
+
+  const directMatch = text.match(/^(\d{4}-\d{2}-\d{2})$/);
+  if (directMatch) {
+    return directMatch[1];
+  }
+
+  const prefixedMatch = text.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/);
+  if (prefixedMatch) {
+    return prefixedMatch[1];
+  }
+
+  return "";
+}
+
+function normalizeDateTimeLocalInputValue(value: unknown) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const text = value.trim();
+  if (!text) {
+    return "";
+  }
+
+  const normalizedText = text.replace(" ", "T");
+  const match = normalizedText.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  return match ? match[1] : "";
+}
+
+function stripEmptyHydrationValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const cleaned = value
+      .map((item) => stripEmptyHydrationValue(item))
+      .filter((item) => {
+        if (item == null) return false;
+        if (typeof item === "string") return item.trim().length > 0;
+        if (Array.isArray(item)) return item.length > 0;
+        if (typeof item === "object") return Object.keys(item).length > 0;
+        return true;
+      });
+
+    return cleaned;
+  }
+
+  if (value && typeof value === "object") {
+    const cleaned = Object.entries(value).reduce<Record<string, unknown>>(
+      (acc, [key, item]) => {
+        const normalized = stripEmptyHydrationValue(item);
+        if (normalized == null) {
+          return acc;
+        }
+
+        if (typeof normalized === "string" && normalized.trim().length === 0) {
+          return acc;
+        }
+
+        if (Array.isArray(normalized) && normalized.length === 0) {
+          return acc;
+        }
+
+        if (
+          typeof normalized === "object" &&
+          !Array.isArray(normalized) &&
+          Object.keys(normalized).length === 0
+        ) {
+          return acc;
+        }
+
+        acc[key] = normalized;
+        return acc;
+      },
+      {}
+    );
+
+    return cleaned;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  return value;
+}
+
+function hasMeaningfulHydrationValue(value: unknown) {
+  const normalized = stripEmptyHydrationValue(value);
+
+  if (normalized == null) {
+    return false;
+  }
+
+  if (typeof normalized === "string") {
+    return normalized.trim().length > 0;
+  }
+
+  if (Array.isArray(normalized)) {
+    return normalized.length > 0;
+  }
+
+  if (typeof normalized === "object") {
+    return Object.keys(normalized).length > 0;
+  }
+
+  return true;
+}
+
+function normalizeProjectFieldValue(
+  key: keyof ReleaseIntakeFormValues["project"],
+  value: unknown
+) {
+  if (key === "release_date") {
+    return normalizeDateInputValue(value);
+  }
+
+  if (key === "video_release_date") {
+    return normalizeDateTimeLocalInputValue(value);
+  }
+
+  return value;
+}
+
+function normalizeHydratedProjectValues(
+  projectValue: unknown,
+  previousProject: ReleaseIntakeFormValues["project"],
+  sourceLabel: "draft" | "edit"
+) {
+  const project: Record<string, unknown> =
+    projectValue && typeof projectValue === "object"
+      ? { ...(projectValue as Record<string, unknown>) }
+      : {};
+
+  const rawReleaseDate = project.release_date;
+  if ("release_date" in project) {
+    const normalizedReleaseDate = normalizeDateInputValue(rawReleaseDate);
+    if (
+      typeof rawReleaseDate === "string" &&
+      rawReleaseDate.trim() &&
+      normalizedReleaseDate &&
+      normalizedReleaseDate !== rawReleaseDate.trim()
+    ) {
+      console.info(`[release_date:${sourceLabel}] normalized`, {
+        raw: rawReleaseDate,
+        normalized: normalizedReleaseDate,
+      });
+    }
+
+    if (!normalizedReleaseDate) {
+      if (previousProject.release_date) {
+        console.warn(`[release_date:${sourceLabel}] preserving previous value`, {
+          raw: rawReleaseDate,
+          previous: previousProject.release_date,
+        });
+        project.release_date = previousProject.release_date;
+      } else {
+        console.warn(`[release_date:${sourceLabel}] dropping invalid empty value`, {
+          raw: rawReleaseDate,
+        });
+        delete project.release_date;
+      }
+    } else {
+      project.release_date = normalizedReleaseDate;
+    }
+  }
+
+  const rawVideoReleaseDate = project.video_release_date;
+  if ("video_release_date" in project) {
+    const normalizedVideoReleaseDate =
+      normalizeDateTimeLocalInputValue(rawVideoReleaseDate);
+    if (!normalizedVideoReleaseDate) {
+      if (previousProject.video_release_date) {
+        project.video_release_date = previousProject.video_release_date;
+      } else {
+        delete project.video_release_date;
+      }
+    } else {
+      project.video_release_date = normalizedVideoReleaseDate;
+    }
+  }
+
+  return project;
+}
+
+function normalizeHydratedFormValues(
+  value: unknown,
+  previousValues: ReleaseIntakeFormValues,
+  sourceLabel: "draft" | "edit"
+): ReleaseIntakeFormValues | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const nextValues = createInitialReleaseIntakeValues();
+
+  const identification =
+    candidate.identification && typeof candidate.identification === "object"
+      ? (candidate.identification as Record<string, unknown>)
+      : {};
+  const project = normalizeHydratedProjectValues(
+    candidate.project,
+    previousValues.project,
+    sourceLabel
+  );
+  const marketing =
+    candidate.marketing && typeof candidate.marketing === "object"
+      ? (candidate.marketing as Record<string, unknown>)
+      : {};
+  const tracks = Array.isArray(candidate.tracks) ? candidate.tracks : [];
+
+  return {
+    identification: {
+      ...nextValues.identification,
+      ...previousValues.identification,
+      ...identification,
+    },
+    project: {
+      ...nextValues.project,
+      ...previousValues.project,
+      ...project,
+    },
+    marketing: {
+      ...nextValues.marketing,
+      ...previousValues.marketing,
+      ...marketing,
+    },
+    tracks: tracks.length > 0 ? (tracks as TrackInput[]) : previousValues.tracks,
+  };
+}
+
+function normalizeEditSubmissionPayload(value: unknown) {
+  function parseJsonString(input: unknown) {
+    if (typeof input !== "string") {
+      return input;
+    }
+
+    const trimmed = input.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return input;
+    }
+  }
+
+  function parseObject(input: unknown) {
+    const parsed = parseJsonString(input);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  }
+
+  function parseArray(input: unknown) {
+    const parsed = parseJsonString(input);
+    return Array.isArray(parsed) ? parsed : [];
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const nestedPayload = parseObject(candidate.payload);
+
+  const resolved =
+    candidate.identification ||
+    candidate.project ||
+    candidate.marketing ||
+    Array.isArray(candidate.tracks)
+      ? candidate
+      : nestedPayload;
+
+  if (!resolved) {
+    return null;
+  }
+
+  return {
+    draft_token:
+      typeof candidate.draft_token === "string"
+        ? candidate.draft_token
+        : typeof resolved.draft_token === "string"
+        ? resolved.draft_token
+        : null,
+    identification:
+      (stripEmptyHydrationValue(parseObject(resolved.identification) ?? {}) as Record<
+        string,
+        unknown
+      >) ?? {},
+    project:
+      (stripEmptyHydrationValue(parseObject(resolved.project) ?? {}) as Record<
+        string,
+        unknown
+      >) ?? {},
+    marketing:
+      (stripEmptyHydrationValue(parseObject(resolved.marketing) ?? {}) as Record<
+        string,
+        unknown
+      >) ?? {},
+    tracks:
+      (stripEmptyHydrationValue(parseArray(resolved.tracks)) as TrackInput[]) ??
+      [],
+    debug:
+      candidate.debug && typeof candidate.debug === "object"
+        ? (candidate.debug as Record<string, unknown>)
+        : null,
+  };
+}
+
+function hasEditHydrationData(
+  payload: ReturnType<typeof normalizeEditSubmissionPayload>
+) {
+  if (!payload) {
+    return false;
+  }
+
+  return Boolean(
+    hasMeaningfulHydrationValue(payload.identification) ||
+      hasMeaningfulHydrationValue(payload.project) ||
+      hasMeaningfulHydrationValue(payload.marketing) ||
+      hasMeaningfulHydrationValue(payload.tracks)
+  );
+}
+
 function getTodayDateValue() {
   const now = new Date();
   const year = now.getFullYear();
@@ -145,135 +482,18 @@ function getTrackFieldMeta(
   };
 }
 
-
-function parseJsonSafely(raw: string) {
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return null;
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getRecordString(
-  record: Record<string, unknown> | null | undefined,
-  key: string
-) {
-  const value = record?.[key];
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
-function isFormStepKey(value: string | null | undefined): value is FormStepKey {
-  return Boolean(value && STEP_ORDER.includes(value as FormStepKey));
-}
-
-function hasHydratableFormSections(value: unknown) {
-  if (!isRecord(value)) return false;
-
-  return (
-    isRecord(value.identification) ||
-    isRecord(value.project) ||
-    isRecord(value.marketing) ||
-    Array.isArray(value.tracks)
-  );
-}
-
-function normalizeHydratedTrack(track: unknown, index: number): TrackInput {
-  const base = createEmptyTrack(index + 1);
-
-  if (!isRecord(track)) {
-    return base;
-  }
-
-  return {
-    ...base,
-    ...(track as Partial<TrackInput>),
-    local_id:
-      typeof track.local_id === "string" && track.local_id.trim().length > 0
-        ? track.local_id
-        : generateUuid(),
-    order_number:
-      typeof track.order_number === "number" && track.order_number > 0
-        ? track.order_number
-        : index + 1,
-    is_focus_track:
-      typeof track.is_focus_track === "boolean"
-        ? track.is_focus_track
-        : index === 0,
-    track_status: track.track_status === "ready" ? "ready" : "draft",
-  };
-}
-
-function extractEditHydrationPayload(data: unknown) {
-  const root = isRecord(data) ? data : null;
-  const containers = [
-    root?.data,
-    root?.submission,
-    root?.payload,
-    root,
-  ].filter(isRecord);
-
-  for (const container of containers) {
-    const directValues = hasHydratableFormSections(container) ? container : null;
-    const nestedValues = hasHydratableFormSections(container.values)
-      ? (container.values as Record<string, unknown>)
-      : hasHydratableFormSections(container.form_values)
-      ? (container.form_values as Record<string, unknown>)
-      : hasHydratableFormSections(container.submission_values)
-      ? (container.submission_values as Record<string, unknown>)
-      : null;
-
-    const values = nestedValues ?? directValues;
-    if (!values) {
-      continue;
-    }
-
-    const containerStep = getRecordString(container, "current_step");
-    const rootStep = getRecordString(root, "current_step");
-
-    return {
-      values,
-      draftToken:
-        getRecordString(container, "draft_token") ??
-        getRecordString(root, "draft_token"),
-      currentStep: isFormStepKey(containerStep)
-        ? containerStep
-        : isFormStepKey(rootStep)
-        ? rootStep
-        : null,
-    };
-  }
-
-  return {
-    values: null,
-    draftToken: getRecordString(root, "draft_token"),
-    currentStep: null,
-  };
-}
-
-function humanizeFieldKey(key: string) {
-  return key
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 export default function ReleaseIntakePage({
-  workspaceSlug = "atabaque",
+  workspaceSlug = atabaqueTemplate.workspaceSlug,
+  workflowType = atabaqueTemplate.workflowType,
+  formVersion = atabaqueTemplate.formVersion,
 }: {
   workspaceSlug?: string;
+  workflowType?: WorkflowType;
+  formVersion?: FormVersion;
 }) {
   const searchParams = useSearchParams();
-  const resumeToken =
-    searchParams.get("draft") ?? searchParams.get("draft_token");
-  const editToken =
-    searchParams.get("edit_token") ??
-    searchParams.get("edit") ??
-    searchParams.get("token");
+  const resumeToken = searchParams.get("draft");
+  const editToken = searchParams.get("edit_token");
 
   const [template, setTemplate] = useState(atabaqueTemplate);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(true);
@@ -295,8 +515,6 @@ export default function ReleaseIntakePage({
 
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [isHydratingDraft, setIsHydratingDraft] = useState(false);
-  const [isHydratingEdit, setIsHydratingEdit] = useState(false);
-  const [editLoadError, setEditLoadError] = useState<string | null>(null);
 
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [draftNoticeType, setDraftNoticeType] =
@@ -322,6 +540,10 @@ export default function ReleaseIntakePage({
   const introParagraphs = useMemo(
     () => splitMultilineText(template.intro.introText),
     [template.intro.introText]
+  );
+  const requestedRenderer = useMemo(
+    () => resolveWorkflowRenderer(workflowType),
+    [workflowType]
   );
 
   function shouldRenderProjectField(fieldKey: string) {
@@ -439,108 +661,6 @@ export default function ReleaseIntakePage({
     };
   }
 
-
-  function getStepKeyFromErrorPath(path: string): FormStepKey | null {
-    if (path.startsWith("identification.")) return "identification";
-    if (path.startsWith("project.")) return "release";
-    if (path === "tracks" || path.startsWith("tracks.")) return "tracks";
-    if (path.startsWith("marketing.")) return "marketing";
-    return null;
-  }
-
-  function getFieldLabelFromErrorPath(path: string, message: string) {
-    if (path === "tracks") {
-      return `Faixas — ${message}`;
-    }
-
-    const [sectionKey, indexOrFieldKey, nestedFieldKey] = path.split(".");
-
-    if (sectionKey === "tracks" && nestedFieldKey) {
-      const trackIndex = Number(indexOrFieldKey);
-      const trackLabel =
-        Number.isInteger(trackIndex) && trackIndex >= 0
-          ? `Faixa ${trackIndex + 1}`
-          : "Faixa";
-      const trackFieldLabel =
-        getTrackFieldDefinition(trackFields, nestedFieldKey)?.label ??
-        humanizeFieldKey(nestedFieldKey);
-
-      return `${trackLabel} — ${trackFieldLabel}`;
-    }
-
-    const stepKey = getStepKeyFromErrorPath(path);
-    if (!stepKey || !(nestedFieldKey || indexOrFieldKey)) {
-      return message;
-    }
-
-    const fieldKey = sectionKey === "tracks" ? nestedFieldKey : indexOrFieldKey;
-    const stepLabel =
-      template.steps.find((step) => step.key === stepKey)?.title ??
-      humanizeFieldKey(stepKey);
-
-    if (!fieldKey) {
-      return stepLabel;
-    }
-
-    const fieldLabel =
-      getFieldsForStep(stepKey).find((field) => field.key === fieldKey)?.label ??
-      humanizeFieldKey(fieldKey);
-
-    return `${stepLabel} — ${fieldLabel}`;
-  }
-
-  function buildValidationSummary(validation: Record<string, string>) {
-    const labels = Array.from(
-      new Set(
-        Object.entries(validation)
-          .map(([path, message]) => getFieldLabelFromErrorPath(path, message))
-          .filter(Boolean)
-      )
-    );
-
-    if (labels.length === 0) {
-      return null;
-    }
-
-    const intro =
-      "A submissão não foi concluída. Existem campos mínimos obrigatórios para o lançamento. Esses campos derivam das regras operacionais do Edit/Atabaque e das validações do sistema de aprovação do submit final.";
-    const detailHeader =
-      labels.length === 1
-        ? "Revise o seguinte campo pendente:"
-        : "Revise os seguintes campos pendentes:";
-
-    return `${intro}\n${detailHeader}\n- ${labels.join("\n- ")}`;
-  }
-
-  function focusFirstValidationError(validation: Record<string, string>) {
-    const paths = Object.keys(validation);
-    if (paths.length === 0) {
-      return;
-    }
-
-    const firstStepWithError = STEP_ORDER.find((stepKey) =>
-      paths.some((path) => getStepKeyFromErrorPath(path) === stepKey)
-    );
-
-    if (firstStepWithError) {
-      setCurrentStep(firstStepWithError);
-    }
-
-    const firstTrackErrorPath = paths.find((path) => path.startsWith("tracks."));
-    if (firstTrackErrorPath) {
-      const [, rawTrackIndex] = firstTrackErrorPath.split(".");
-      const trackIndex = Number(rawTrackIndex);
-
-      if (Number.isInteger(trackIndex) && values.tracks[trackIndex]) {
-        setActiveTrackId(values.tracks[trackIndex].local_id);
-      }
-    }
-
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
-
   const activeTrack =
     values.tracks.find((track) => track.local_id === activeTrackId) ??
     values.tracks[0] ??
@@ -551,6 +671,8 @@ export default function ReleaseIntakePage({
 
   const didHydrateDraftRef = useRef(false);
   const didHydrateEditRef = useRef(false);
+  const previousReleaseDateRef = useRef(values.project.release_date);
+  const successCardRef = useRef<HTMLDivElement | null>(null);
 
   const identificationErrors = validateTemplateStep("identification");
   const isIdentificationComplete = Object.keys(identificationErrors).length === 0;
@@ -561,7 +683,11 @@ export default function ReleaseIntakePage({
 
     async function loadTemplate() {
       try {
-        const resolved = await getReleaseTemplate(workspaceSlug);
+        const resolved = await getWorkflowTemplate({
+          workspaceSlug,
+          workflowType,
+          formVersion,
+        });
         if (mounted) {
           setTemplate(resolved);
         }
@@ -579,7 +705,7 @@ export default function ReleaseIntakePage({
     return () => {
       mounted = false;
     };
-  }, [workspaceSlug]);
+  }, [formVersion, workflowType, workspaceSlug]);
 
   useEffect(() => {
     if (!draftNotice) return;
@@ -592,92 +718,104 @@ export default function ReleaseIntakePage({
   }, [draftNotice]);
 
   useEffect(() => {
+    const previous = previousReleaseDateRef.current;
+    const current = values.project.release_date;
+
+    if (previous !== current) {
+      console.info("[release_date] state changed", {
+        previous,
+        current,
+        currentStep,
+        draftToken,
+        editToken,
+      });
+
+      if (previous && !current) {
+        console.warn("[release_date] value cleared", {
+          previous,
+          currentStep,
+          draftToken,
+          editToken,
+        });
+      }
+
+      previousReleaseDateRef.current = current;
+    }
+  }, [currentStep, draftToken, editToken, values.project.release_date]);
+
+  useEffect(() => {
+    if (!isSubmissionComplete) return;
+    successCardRef.current?.focus({ preventScroll: true });
+  }, [isSubmissionComplete]);
+
+  useEffect(() => {
     if (!editToken || didHydrateEditRef.current) return;
     didHydrateEditRef.current = true;
 
     async function loadEditSubmission() {
-      setIsHydratingEdit(true);
-      setEditLoadError(null);
-
       try {
+        setSubmitError(null);
         const response = await fetch(`/api/submissions/edit/${editToken}`, {
           method: "GET",
           cache: "no-store",
         });
 
         const raw = await response.text();
-        const data = parseJsonSafely(raw);
+        const data = raw ? JSON.parse(raw) : null;
+        console.info("[edit hydration] raw response body", data);
 
         if (!response.ok) {
-          const responseErrorMessage =
-            getRecordString(isRecord(data) ? data : null, "detail") ??
-            getRecordString(isRecord(data) ? data : null, "message") ??
-            "Falha ao carregar submissão para edição.";
-
-          throw new Error(responseErrorMessage);
-        }
-
-        const payload = extractEditHydrationPayload(data);
-
-        if (!payload.values) {
           throw new Error(
-            "Não foi possível hidratar este link de edição. O retorno não contém os dados esperados do formulário."
+            data?.detail ||
+              data?.message ||
+              "Falha ao carregar submissão para edição."
           );
         }
 
-        const hydratedTracks = Array.isArray(payload.values.tracks)
-          ? payload.values.tracks.map((track, index) =>
-              normalizeHydratedTrack(track, index)
-            )
-          : [];
+        const payload = normalizeEditSubmissionPayload(data?.data ?? null);
+        console.info("[edit hydration] normalized payload", payload);
 
-        setValues((prev) => ({
-          ...prev,
-          identification: isRecord(payload.values.identification)
-            ? {
-                ...prev.identification,
-                ...(payload.values.identification as Partial<
-                  ReleaseIntakeFormValues["identification"]
-                >),
-              }
-            : prev.identification,
-          project: isRecord(payload.values.project)
-            ? {
-                ...prev.project,
-                ...(payload.values.project as Partial<
-                  ReleaseIntakeFormValues["project"]
-                >),
-              }
-            : prev.project,
-          marketing: isRecord(payload.values.marketing)
-            ? {
-                ...prev.marketing,
-                ...(payload.values.marketing as Partial<
-                  ReleaseIntakeFormValues["marketing"]
-                >),
-              }
-            : prev.marketing,
-          tracks: hydratedTracks.length > 0 ? hydratedTracks : prev.tracks,
-        }));
-
-        if (payload.draftToken) {
-          setDraftToken(payload.draftToken);
+        if (!payload || !hasEditHydrationData(payload)) {
+          console.error("[edit hydration] invalid payload", {
+            data,
+            payload,
+          });
+          throw new Error(
+            "Não foi possível hidratar a submissão para edição. Verifique o retorno de /api/submissions/edit e o backend usado pelo proxy."
+          );
         }
 
+        setValues((prev) => {
+          const nextValues = normalizeHydratedFormValues(
+            payload,
+            prev,
+            "edit"
+          );
+
+          if (!nextValues) {
+            return prev;
+          }
+
+          return nextValues;
+        });
+
+        if (payload.draft_token) {
+          setDraftToken(payload.draft_token);
+        }
+
+        const hydratedTracks = Array.isArray(payload.tracks) ? payload.tracks : [];
         if (hydratedTracks.length > 0) {
           setActiveTrackId(hydratedTracks[0].local_id ?? null);
         }
 
-        setCurrentStep(payload.currentStep ?? "review_submit");
+        setCurrentStep("review_submit");
       } catch (error) {
         console.error("Erro ao carregar submissão para edição:", error);
-        setEditLoadError(
+        setSubmitError(
           error instanceof Error
             ? error.message
-            : "Não foi possível carregar este link de edição. Ele pode estar inválido, expirado ou com formato incompatível."
+            : "Falha ao carregar submissão para edição."
         );
-      } finally {
-        setIsHydratingEdit(false);
       }
     }
 
@@ -703,8 +841,6 @@ export default function ReleaseIntakePage({
     setDraftToken(null);
     setActiveTrackId(nextValues.tracks[0]?.local_id ?? null);
     setAutosaveState("idle");
-    setIsHydratingEdit(false);
-    setEditLoadError(null);
     setDraftNotice(null);
     setDraftNoticeType("success");
     setDraftLinkEmailSent(false);
@@ -778,7 +914,16 @@ export default function ReleaseIntakePage({
     value: unknown
   ) {
     clearMessages();
-    setNestedValue("project", key, value);
+    const normalizedValue = normalizeProjectFieldValue(key, value);
+
+    if (key === "release_date") {
+      console.info("[release_date] setProjectField", {
+        raw: value,
+        normalized: normalizedValue,
+      });
+    }
+
+    setNestedValue("project", key, normalizedValue);
     clearFieldError(`project.${key}`);
   }
 
@@ -820,74 +965,37 @@ export default function ReleaseIntakePage({
     clearFieldError(args.fieldPath);
 
     try {
+      const formData = new FormData();
+      formData.set("file", args.file);
+      formData.set("kind", args.kind);
+      formData.set("workspaceSlug", template.workspaceSlug);
+      formData.set("draftToken", stableDraftToken);
+
+      if (args.trackLocalId) {
+        formData.set("trackLocalId", args.trackLocalId);
+      }
+
       const response = await fetch("/api/uploads", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fileName: args.file.name,
-          fileSize: args.file.size,
-          mimeType: args.file.type,
-          kind: args.kind,
-          workspaceSlug: template.workspaceSlug,
-          draftToken: stableDraftToken,
-          trackLocalId: args.trackLocalId || "",
-        }),
+        body: formData,
       });
 
       const raw = await response.text();
-      let data: Record<string, unknown> | null = null;
-
-      if (raw) {
-        try {
-          data = JSON.parse(raw) as Record<string, unknown>;
-        } catch {
-          data = null;
-        }
-      }
+      const data = raw ? JSON.parse(raw) : null;
 
       if (!response.ok) {
-        throw new Error(
-          String(data?.message || "Falha ao preparar upload do arquivo.")
-        );
+        throw new Error(data?.message || "Falha ao enviar arquivo.");
       }
-
-      const bucket = String(data?.storage_bucket || "");
-      const storagePath = String(data?.storage_path || "");
-      const signedUploadToken = String(data?.signed_upload_token || "");
-
-      if (!bucket || !storagePath || !signedUploadToken) {
-        throw new Error("Resposta de upload incompleta.");
-      }
-
-      const supabase = createSupabaseBrowser();
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .uploadToSignedUrl(storagePath, signedUploadToken, args.file, {
-          contentType: args.file.type || undefined,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw new Error(
-          uploadError.message || "Falha ao enviar arquivo ao storage."
-        );
-      }
-
-      const previewUrl = String(
-        data?.preview_signed_url || data?.public_url || ""
-      );
 
       return {
-        file_id: String(data?.file_id || generateUuid()),
-        file_name: String(data?.file_name || args.file.name),
-        storage_bucket: bucket || undefined,
-        storage_path: storagePath,
-        public_url: previewUrl,
-        download_url: String(data?.download_url || ""),
-        mime_type: String(data?.mime_type || args.file.type || ""),
-        size_bytes: Number(data?.size_bytes || args.file.size || 0),
+        file_id: data?.file_id || generateUuid(),
+        file_name: data?.file_name || args.file.name,
+        storage_bucket: data?.storage_bucket || undefined,
+        storage_path: data?.storage_path || "",
+        public_url: data?.public_url || "",
+        download_url: data?.download_url || "",
+        mime_type: data?.mime_type || args.file.type,
+        size_bytes: data?.size_bytes || args.file.size,
       };
     } finally {
       setFieldUploading(args.fieldPath, false);
@@ -1079,7 +1187,15 @@ export default function ReleaseIntakePage({
       const hydratedValues = draftData?.values ?? null;
 
       if (hydratedValues) {
-        setValues(hydratedValues);
+        setValues((prev) => {
+          const nextValues = normalizeHydratedFormValues(
+            hydratedValues,
+            prev,
+            "draft"
+          );
+
+          return nextValues ?? prev;
+        });
       }
 
       const hydratedStep = draftData?.current_step ?? null;
@@ -1124,10 +1240,11 @@ export default function ReleaseIntakePage({
       try {
         setAutosaveState("saving");
 
-        const payload = buildDraftPayload({
+        const payload = buildWorkflowDraftPayload({
           draftToken,
           workspaceSlug: template.workspaceSlug,
-          formVersion: template.version,
+          workflowType: template.workflowType,
+          formVersion: template.formVersion,
           currentStep,
           values,
         });
@@ -1172,7 +1289,8 @@ export default function ReleaseIntakePage({
     values,
     currentStep,
     template.workspaceSlug,
-    template.version,
+    template.workflowType,
+    template.formVersion,
     isHydratingDraft,
     isLoadingTemplate,
     editToken,
@@ -1190,10 +1308,11 @@ export default function ReleaseIntakePage({
     try {
       const token = ensureDraftToken();
 
-      const payload = buildDraftPayload({
+      const payload = buildWorkflowDraftPayload({
         draftToken: token,
         workspaceSlug: template.workspaceSlug,
-        formVersion: template.version,
+        workflowType: template.workflowType,
+        formVersion: template.formVersion,
         currentStep,
         values,
       });
@@ -1256,10 +1375,11 @@ export default function ReleaseIntakePage({
 
       const token = ensureDraftToken();
 
-      const savePayload = buildDraftPayload({
+      const savePayload = buildWorkflowDraftPayload({
         draftToken: token,
         workspaceSlug: template.workspaceSlug,
-        formVersion: template.version,
+        workflowType: template.workflowType,
+        formVersion: template.formVersion,
         currentStep,
         values,
       });
@@ -1362,84 +1482,12 @@ export default function ReleaseIntakePage({
     nextStep();
   }
 
-  function normalizeBackendErrorPath(loc: unknown) {
-    if (!Array.isArray(loc) || loc.length === 0) {
-      return null;
-    }
-
-    const normalized = loc
-      .filter((part) => part !== "body" && part !== "query" && part !== "path")
-      .map((part) =>
-        typeof part === "string" || typeof part === "number"
-          ? String(part)
-          : null
-      )
-      .filter(Boolean) as string[];
-
-    if (normalized.length === 0) {
-      return null;
-    }
-
-    if (normalized[0] === "project_data") {
-      normalized[0] = "project";
-    }
-
-    return normalized.join(".");
-  }
-
-  function extractBackendValidation(
-    data: unknown
-  ): { fieldErrors: Record<string, string>; generalMessage: string | null } {
-    const root = isRecord(data) ? data : null;
-    const details = Array.isArray(root?.detail)
-      ? root?.detail
-      : Array.isArray(root?.errors)
-      ? root?.errors
-      : [];
-
-    const fieldErrors: Record<string, string> = {};
-
-    for (const detail of details) {
-      if (!isRecord(detail)) {
-        continue;
-      }
-
-      const path = normalizeBackendErrorPath(detail.loc);
-      const message =
-        (typeof detail.msg === "string" && detail.msg.trim().length > 0
-          ? detail.msg
-          : null) ??
-        (typeof detail.message === "string" && detail.message.trim().length > 0
-          ? detail.message
-          : null) ??
-        "Campo inválido ou pendente.";
-
-      if (!path) {
-        continue;
-      }
-
-      fieldErrors[path] = message;
-    }
-
-    const generalMessage =
-      getRecordString(root, "message") ??
-      getRecordString(root, "error") ??
-      (typeof root?.detail === "string" ? root.detail : null);
-
-    return { fieldErrors, generalMessage };
-  }
-
   async function handleSubmit() {
     clearMessages();
 
     const validation = validateBeforeSubmit();
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
-      setSubmitError(
-        buildValidationSummary(validation) ||
-          "A submissão não foi concluída porque ainda existem campos obrigatórios pendentes."
-      );
-      focusFirstValidationError(validation);
       return;
     }
 
@@ -1447,10 +1495,11 @@ export default function ReleaseIntakePage({
     setLoadingSubmit(true);
 
     try {
-      const payload = buildSubmitPayload({
+      const payload = buildWorkflowSubmitPayload({
         draftToken: ensureDraftToken(),
         workspaceSlug: template.workspaceSlug,
-        formVersion: template.version,
+        workflowType: template.workflowType,
+        formVersion: template.formVersion,
         values,
       });
 
@@ -1468,25 +1517,10 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = parseJsonSafely(raw);
+      const data = raw ? JSON.parse(raw) : null;
 
       if (!response.ok) {
-        const backendValidation = extractBackendValidation(data);
-
-        if (Object.keys(backendValidation.fieldErrors).length > 0) {
-          setErrors(backendValidation.fieldErrors);
-          setSubmitError(
-            buildValidationSummary(backendValidation.fieldErrors) ||
-              backendValidation.generalMessage ||
-              "A submissão não foi concluída porque ainda existem campos mínimos obrigatórios pendentes."
-          );
-          focusFirstValidationError(backendValidation.fieldErrors);
-          return;
-        }
-
-        throw new Error(
-          backendValidation.generalMessage || "Falha no envio."
-        );
+        throw new Error(data?.detail || data?.message || "Falha no envio.");
       }
 
       setSubmitMessage(
@@ -1494,10 +1528,6 @@ export default function ReleaseIntakePage({
           "Seu formulário foi enviado com sucesso. Também enviamos um e-mail com o resumo do cadastro e os próximos passos para o endereço informado."
       );
       setIsSubmissionComplete(true);
-
-      if (typeof window !== "undefined") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setSubmitError(error?.message ?? "Falha ao enviar o formulário.");
@@ -1519,17 +1549,6 @@ export default function ReleaseIntakePage({
           required={field.required}
           error={errors[`project.${field.key}`]}
           fileName={values.project.cover_file?.file_name ?? ""}
-          previewUrl={
-            values.project.cover_file?.public_url ||
-            values.project.cover_file?.download_url ||
-            ""
-          }
-          previewKind="image"
-          downloadUrl={
-            values.project.cover_file?.download_url ||
-            values.project.cover_file?.public_url ||
-            ""
-          }
           accept=".jpg,.jpeg,.png,image/jpeg,image/png"
           isUploading={Boolean(uploadingFields["project.cover_file"])}
           onChange={handleProjectFile}
@@ -1608,6 +1627,27 @@ export default function ReleaseIntakePage({
       <div className="min-h-screen bg-[#ebdbba] px-4 py-16">
         <div className="mx-auto max-w-2xl text-center text-sm text-slate-500">
           Carregando formulário...
+        </div>
+      </div>
+    );
+  }
+
+  if (requestedRenderer !== "release_intake") {
+    return (
+      <div className="min-h-screen bg-[#ebdbba] px-4 py-16">
+        <div className="mx-auto max-w-2xl rounded-[28px] border border-slate-200 bg-white px-6 py-7 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-8">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            {workspaceSlug}
+          </div>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+            Workflow ainda nao renderizavel nesta tela
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            O workflow <strong>{workflowType}</strong> ja esta registrado
+            na base multi-workflow, mas ainda nao foi conectado a um renderer
+            proprio. O fluxo legado da Atabaque segue protegido em
+            <strong> release_intake / legacy_v1</strong>.
+          </p>
         </div>
       </div>
     );
@@ -1927,7 +1967,21 @@ export default function ReleaseIntakePage({
             </div>
           )}
 
-          {currentStep === "review_submit" && <ReviewStep values={values} />}
+          {currentStep === "review_submit" ? (
+            isSubmissionComplete ? (
+              <div ref={successCardRef} tabIndex={-1}>
+                <SubmissionCompleteStep
+                  message={
+                    submitMessage ||
+                    "Seu formulário foi enviado com sucesso. Também enviamos um e-mail com o resumo do cadastro e os próximos passos para o endereço informado."
+                  }
+                  onRestart={resetAfterSubmission}
+                />
+              </div>
+            ) : (
+              <ReviewStep values={values} />
+            )
+          ) : null}
 
           {draftNotice ? (
             <div
@@ -1941,18 +1995,6 @@ export default function ReleaseIntakePage({
             </div>
           ) : null}
 
-          {isHydratingEdit ? (
-            <div className="mt-7 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
-              Carregando os dados do link de edição...
-            </div>
-          ) : null}
-
-          {editLoadError ? (
-            <div className="mt-7 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {editLoadError}
-            </div>
-          ) : null}
-
           {submitMessage && !isSubmissionComplete ? (
             <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {submitMessage}
@@ -1960,20 +2002,12 @@ export default function ReleaseIntakePage({
           ) : null}
 
           {submitError ? (
-            <div className="mt-7 whitespace-pre-line rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-7 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {submitError}
             </div>
           ) : null}
 
-          {isSubmissionComplete ? (
-            <SubmissionCompleteStep
-              message={
-                submitMessage ||
-                "Seu formulário foi enviado com sucesso. Também enviamos um e-mail com o resumo do cadastro e os próximos passos para o endereço informado."
-              }
-              onRestart={resetAfterSubmission}
-            />
-          ) : (
+          {!isSubmissionComplete ? (
             <div className="mt-12 border-t border-slate-200 pt-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -2051,7 +2085,7 @@ export default function ReleaseIntakePage({
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </section>
 
         {template.intro.supportLogoUrl ? (
@@ -2154,6 +2188,12 @@ function FormFieldRenderer({
       : field.key === "video_release_date"
       ? getCurrentDateTimeValue()
       : undefined;
+  const inputValue =
+    field.type === "date"
+      ? normalizeDateInputValue(value)
+      : field.type === "datetime-local"
+      ? normalizeDateTimeLocalInputValue(value)
+      : value;
 
   return (
     <div>
@@ -2185,7 +2225,7 @@ function FormFieldRenderer({
       ) : (
         <input
           type={field.type}
-          value={value}
+          value={inputValue}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
           min={minValue}
@@ -2213,9 +2253,6 @@ function FileField({
   isUploading = false,
   multiple = false,
   required = false,
-  previewUrl: _previewUrl,
-  previewKind: _previewKind,
-  downloadUrl,
 }: {
   label: string;
   helperText?: string;
@@ -2225,25 +2262,14 @@ function FileField({
   isUploading?: boolean;
   multiple?: boolean;
   required?: boolean;
-  previewUrl?: string;
-  previewKind?: "image" | "audio";
-  downloadUrl?: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
-  const safeDownloadUrl = downloadUrl?.trim() || "";
-
   return (
     <div>
       <FieldLabel label={label} required={required} />
 
       {helperText ? (
         <p className="mt-2 text-sm leading-6 text-slate-500">{helperText}</p>
-      ) : null}
-
-      {fileName ? (
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          {fileName}
-        </div>
       ) : null}
 
       <label
@@ -2264,20 +2290,9 @@ function FileField({
         {isUploading
           ? "Enviando arquivo..."
           : fileName
-          ? "Clique para substituir arquivo"
+          ? fileName
           : "Clique para selecionar arquivo"}
       </label>
-
-      {fileName && safeDownloadUrl ? (
-        <a
-          href={safeDownloadUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex text-sm font-medium text-slate-700 underline underline-offset-4"
-        >
-          Abrir arquivo enviado
-        </a>
-      ) : null}
 
       {error ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -2715,17 +2730,6 @@ function TrackEditor({
           helperText={audioFileField.helperText}
           required={audioFileField.required}
           fileName={track.audio_file?.file_name ?? ""}
-          previewUrl={
-            track.audio_file?.public_url ||
-            track.audio_file?.download_url ||
-            ""
-          }
-          previewKind="audio"
-          downloadUrl={
-            track.audio_file?.download_url ||
-            track.audio_file?.public_url ||
-            ""
-          }
           error={errors[`${prefix}.audio_file`]}
           accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3"
           isUploading={audioUploading}

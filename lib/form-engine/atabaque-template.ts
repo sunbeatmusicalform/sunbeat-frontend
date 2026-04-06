@@ -1,5 +1,15 @@
 import type { ReleaseIntakeFormValues, ReleaseIntakeTemplate } from "./types";
+import {
+  buildWorkflowTemplateId,
+  buildWorkflowSource,
+  DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE,
+  LEGACY_RELEASE_INTAKE_FORM_VERSION,
+  type FormVersion,
+  type WorkflowType,
+} from "./types";
 import { createEmptyTrack } from "./track-types";
+
+const ATABAQUE_WORKSPACE_SLUG = "atabaque";
 
 const yesNoOptions = [
   { label: "Selecione", value: "" },
@@ -7,27 +17,41 @@ const yesNoOptions = [
   { label: "N\u00e3o", value: "no" },
 ];
 
-export const atabaqueTemplate: ReleaseIntakeTemplate = {
-  id: "atabaque-release-intake",
-  workspaceSlug: "atabaque",
-  version: 11,
-  slogan: "",
-  successMessage:
-    "Recebemos seu envio com sucesso. O time da Atabaque dar\u00e1 continuidade ao fluxo operacional.",
-  intro: {
-    clientName: "Atabaque",
-    formTitle: "Formul\u00e1rio de lan\u00e7amento",
-    introText:
-      "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
-    logoUrl: "/atabaque-logo.png",
-    bannerUrl: "",
-    brandWordmark: "",
-    supportLogoUrl: "/favicon.ico",
-    supportLogoAlt: "Sunbeat",
-    supportLabel: "Powered by Sunbeat",
-    highlights: [],
-  },
-  steps: [
+export function createLegacyReleaseIntakeTemplate(args?: {
+  workspaceSlug?: string;
+  workflowType?: WorkflowType;
+  formVersion?: FormVersion;
+}): ReleaseIntakeTemplate {
+  const workspaceSlug = args?.workspaceSlug ?? ATABAQUE_WORKSPACE_SLUG;
+  const workflowType =
+    args?.workflowType ?? DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE;
+  const formVersion =
+    args?.formVersion ?? LEGACY_RELEASE_INTAKE_FORM_VERSION;
+
+  return {
+    id: buildWorkflowTemplateId(workspaceSlug, workflowType, formVersion),
+    workspaceSlug,
+    workflowType,
+    formVersion,
+    source: buildWorkflowSource(workspaceSlug, workflowType, formVersion),
+    version: 11,
+    slogan: "",
+    successMessage:
+      "Recebemos seu envio com sucesso. O time da Atabaque dar\u00e1 continuidade ao fluxo operacional.",
+    intro: {
+      clientName: "Atabaque",
+      formTitle: "Formul\u00e1rio de lan\u00e7amento",
+      introText:
+        "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
+      logoUrl: "/atabaque-mark.svg",
+      bannerUrl: "",
+      brandWordmark: "",
+      supportLogoUrl: "/favicon.ico",
+      supportLogoAlt: "Sunbeat",
+      supportLabel: "Powered by Sunbeat",
+      highlights: [],
+    },
+    steps: [
     {
       key: "intro",
       title: "Introdu\u00e7\u00e3o",
@@ -476,8 +500,11 @@ export const atabaqueTemplate: ReleaseIntakeTemplate = {
       description: "Revise e envie.",
       fields: [],
     },
-  ],
-};
+    ],
+  };
+}
+
+export const atabaqueTemplate = createLegacyReleaseIntakeTemplate();
 
 export function createInitialReleaseIntakeValues(): ReleaseIntakeFormValues {
   return {

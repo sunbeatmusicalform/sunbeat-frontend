@@ -1,5 +1,14 @@
-import { atabaqueTemplate } from "./atabaque-template";
-import type { ReleaseIntakeTemplate } from "./types";
+import {
+  type FormVersion,
+  type ReleaseIntakeTemplate,
+  type WorkflowType,
+  type WorkflowRegistryEntry,
+} from "./types";
+import {
+  createWorkflowTemplate,
+  listRegisteredWorkflows,
+  resolveWorkflowIdentity,
+} from "./workflow-registry";
 
 type BrandingConfig = {
   workspace_slug: string;
@@ -25,6 +34,14 @@ type FieldOverride = {
 
 type WorkspaceConfigResponse = {
   ok: boolean;
+  workflow_type?: WorkflowType;
+  form_version?: FormVersion;
+  workflow_status?: string;
+  workflow_renderer?: string;
+  template_factory?: string;
+  payload_builder?: string;
+  public_path_prefix?: string;
+  available_workflows?: WorkflowRegistryEntry[];
   branding?: BrandingConfig | null;
   field_overrides?: FieldOverride[];
 };
@@ -59,25 +76,56 @@ function hasTextOverride(value: string | null | undefined) {
   return typeof value === "string";
 }
 
-export async function getReleaseTemplate(
+function createBaseWorkflowTemplate(args: {
+  workspaceSlug: string;
+  workflowType?: WorkflowType;
+  formVersion?: FormVersion;
+}): ReleaseIntakeTemplate {
+  return createWorkflowTemplate(resolveWorkflowIdentity(args));
+}
+
+export async function getWorkflowTemplate(args: {
+  workspaceSlug: string;
+  workflowType?: WorkflowType;
+  formVersion?: FormVersion;
+}): Promise<ReleaseIntakeTemplate>;
+export async function getWorkflowTemplate(
   workspaceSlug: string
+): Promise<ReleaseIntakeTemplate>;
+export async function getWorkflowTemplate(
+  input:
+    | string
+    | {
+        workspaceSlug: string;
+        workflowType?: WorkflowType;
+        formVersion?: FormVersion;
+      }
 ): Promise<ReleaseIntakeTemplate> {
+  const requested =
+    typeof input === "string" ? { workspaceSlug: input } : input;
+  const requestedIdentity = resolveWorkflowIdentity(requested);
   const cacheKey = Date.now();
+  const searchParams = new URLSearchParams({
+    ts: String(cacheKey),
+    workflow_type: requestedIdentity.workflowType,
+    form_version: requestedIdentity.formVersion,
+  });
   const res = await fetch(
-    `/api/workspaces/${workspaceSlug}/release-intake-config?ts=${cacheKey}`,
+    `/api/workspaces/${requestedIdentity.workspaceSlug}/workflow-config?${searchParams.toString()}`,
     { cache: "no-store" }
   );
 
   if (!res.ok) {
-    return atabaqueTemplate;
+    return createBaseWorkflowTemplate(requestedIdentity);
   }
 
   const data = (await res.json()) as WorkspaceConfigResponse;
-
-  const baseTemplate: ReleaseIntakeTemplate = {
-    ...atabaqueTemplate,
-    workspaceSlug,
-  };
+  const resolvedIdentity = resolveWorkflowIdentity({
+    workspaceSlug: requestedIdentity.workspaceSlug,
+    workflowType: data.workflow_type ?? requestedIdentity.workflowType,
+    formVersion: data.form_version ?? requestedIdentity.formVersion,
+  });
+  const baseTemplate = createBaseWorkflowTemplate(resolvedIdentity);
 
   const branding = data.branding
     ? {
@@ -107,7 +155,7 @@ export async function getReleaseTemplate(
     })) ?? [];
 
   const nextTemplate: ReleaseIntakeTemplate = {
-    ...baseTemplate,
+      ...baseTemplate,
     slogan: branding?.slogan || baseTemplate.slogan,
     successMessage: branding?.success_message || baseTemplate.successMessage,
     intro: {
@@ -166,3 +214,6 @@ export async function getReleaseTemplate(
 
   return nextTemplate;
 }
+
+export const getReleaseTemplate = getWorkflowTemplate;
+export const REGISTERED_WORKFLOW_OPTIONS = listRegisteredWorkflows();

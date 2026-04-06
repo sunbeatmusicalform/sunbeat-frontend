@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import ReleaseIntakePage from "@/components/release-intake/ReleaseIntakePage";
+import { atabaqueTemplate } from "@/lib/form-engine/atabaque-template";
 
 export default function PublicReleaseIntakePage() {
   const params = useParams();
@@ -11,7 +12,13 @@ export default function PublicReleaseIntakePage() {
       ? params.workspaceSlug
       : Array.isArray(params.workspaceSlug)
       ? params.workspaceSlug[0]
-      : "atabaque";
+      : atabaqueTemplate.workspaceSlug;
 
-  return <ReleaseIntakePage workspaceSlug={workspaceSlug} />;
+  return (
+    <ReleaseIntakePage
+      workspaceSlug={workspaceSlug}
+      workflowType={atabaqueTemplate.workflowType}
+      formVersion={atabaqueTemplate.formVersion}
+    />
+  );
 }
