@@ -12,6 +12,14 @@ const EDIT_PASSWORD_FIELD_KEY = "edit_mode_password_hash";
 const PUBLIC_EDIT_WORKSPACES = new Set(["atabaque"]);
 const LEGACY_EDITOR_WORKFLOW_TYPE = "release_intake";
 const LEGACY_EDITOR_FORM_VERSION = "legacy_v1";
+const FIELD_OVERRIDE_SELECT_WITH_SCOPE =
+  "id, workspace_slug, workflow_type, form_version, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order, created_at, updated_at";
+const FIELD_OVERRIDE_SELECT_LEGACY =
+  "id, workspace_slug, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order, created_at, updated_at";
+const FIELD_OVERRIDE_SETTINGS_SELECT_WITH_SCOPE =
+  "workspace_slug, workflow_type, form_version, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order";
+const FIELD_OVERRIDE_SETTINGS_SELECT_LEGACY =
+  "workspace_slug, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order";
 
 function getDefaultNotificationEmails(workspaceSlug: string) {
   if (workspaceSlug === "atabaque") {
@@ -156,12 +164,17 @@ function isLegacyReleaseIntakeScope(
 
 function toStoredFieldOverrideRow(
   row: Partial<StoredFieldOverrideRow>,
-  workspaceSlug: string
+  workspaceSlug: string,
+  supportsWorkflowScopeColumns: boolean
 ) {
   return {
     workspace_slug: workspaceSlug,
-    workflow_type: row.workflow_type ?? null,
-    form_version: row.form_version ?? null,
+    ...(supportsWorkflowScopeColumns
+      ? {
+          workflow_type: row.workflow_type ?? null,
+          form_version: row.form_version ?? null,
+        }
+      : {}),
     step_key: row.step_key ?? "",
     field_key: row.field_key ?? "",
     label_override: normalizeOptionalText(row.label_override),
@@ -171,6 +184,95 @@ function toStoredFieldOverrideRow(
       typeof row.is_required === "boolean" ? row.is_required : null,
     is_visible: typeof row.is_visible === "boolean" ? row.is_visible : true,
     sort_order: typeof row.sort_order === "number" ? row.sort_order : null,
+  };
+}
+
+function hasMissingWorkflowScopeColumns(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : "";
+
+  return message.includes(
+    "column workspace_field_overrides.workflow_type does not exist"
+  );
+}
+
+async function loadWorkspaceFieldOverrides(
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  workspaceSlug: string
+) {
+  const scopedResult = await supabase
+    .from("workspace_field_overrides")
+    .select(FIELD_OVERRIDE_SELECT_WITH_SCOPE)
+    .eq("workspace_slug", workspaceSlug)
+    .order("step_key", { ascending: true })
+    .order("sort_order", { ascending: true });
+
+  if (!scopedResult.error) {
+    return {
+      rows: scopedResult.data ?? [],
+      error: null,
+      supportsWorkflowScopeColumns: true,
+    };
+  }
+
+  if (!hasMissingWorkflowScopeColumns(scopedResult.error)) {
+    return {
+      rows: null,
+      error: scopedResult.error,
+      supportsWorkflowScopeColumns: true,
+    };
+  }
+
+  const legacyResult = await supabase
+    .from("workspace_field_overrides")
+    .select(FIELD_OVERRIDE_SELECT_LEGACY)
+    .eq("workspace_slug", workspaceSlug)
+    .order("step_key", { ascending: true })
+    .order("sort_order", { ascending: true });
+
+  return {
+    rows: legacyResult.data ?? [],
+    error: legacyResult.error,
+    supportsWorkflowScopeColumns: false,
+  };
+}
+
+async function loadWorkspaceFieldOverrideSettings(
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  workspaceSlug: string
+) {
+  const scopedResult = await supabase
+    .from("workspace_field_overrides")
+    .select(FIELD_OVERRIDE_SETTINGS_SELECT_WITH_SCOPE)
+    .eq("workspace_slug", workspaceSlug);
+
+  if (!scopedResult.error) {
+    return {
+      rows: scopedResult.data ?? [],
+      error: null,
+      supportsWorkflowScopeColumns: true,
+    };
+  }
+
+  if (!hasMissingWorkflowScopeColumns(scopedResult.error)) {
+    return {
+      rows: null,
+      error: scopedResult.error,
+      supportsWorkflowScopeColumns: true,
+    };
+  }
+
+  const legacyResult = await supabase
+    .from("workspace_field_overrides")
+    .select(FIELD_OVERRIDE_SETTINGS_SELECT_LEGACY)
+    .eq("workspace_slug", workspaceSlug);
+
+  return {
+    rows: legacyResult.data ?? [],
+    error: legacyResult.error,
+    supportsWorkflowScopeColumns: false,
   };
 }
 
@@ -190,20 +292,13 @@ export async function GET(
   const supabase = createSupabaseAdmin();
 
   const [
-    { data: overrides, error: overridesError },
+    overridesResult,
     { data: branding, error: brandingError },
     { count: submissionsCount },
       { count: draftsCount },
     ] =
     await Promise.all([
-      supabase
-        .from("workspace_field_overrides")
-        .select(
-          "id, workspace_slug, workflow_type, form_version, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order, created_at, updated_at"
-        )
-        .eq("workspace_slug", workspaceSlug)
-        .order("step_key", { ascending: true })
-        .order("sort_order", { ascending: true }),
+      loadWorkspaceFieldOverrides(supabase, workspaceSlug),
       supabase
         .from("workspace_branding")
         .select(
@@ -221,11 +316,11 @@ export async function GET(
         .eq("client_slug", workspaceSlug),
     ]);
 
-  if (overridesError) {
+  if (overridesResult.error) {
     return NextResponse.json(
       {
         ok: false,
-        error: overridesError.message,
+        error: overridesResult.error.message,
       },
       { status: 500 }
     );
@@ -242,7 +337,7 @@ export async function GET(
   }
 
   const storedPasswordHash =
-    overrides?.find(
+    overridesResult.rows?.find(
       (override) =>
         override.step_key === SECURITY_SETTINGS_STEP_KEY &&
         override.field_key === EDIT_PASSWORD_FIELD_KEY
@@ -265,7 +360,7 @@ export async function GET(
   }
 
   const storedNotificationEmails = parseStoredEmailList(
-    overrides?.find(
+    overridesResult.rows?.find(
       (override) =>
         override.step_key === EMAIL_SETTINGS_STEP_KEY &&
         override.field_key === EMAIL_SETTINGS_FIELD_KEY
@@ -275,7 +370,7 @@ export async function GET(
   return NextResponse.json({
     ok: true,
     overrides:
-      overrides?.filter(
+      overridesResult.rows?.filter(
         (override) =>
           !isSettingsOrSecurityStep(override.step_key) &&
           isLegacyReleaseIntakeScope(override)
@@ -326,30 +421,6 @@ export async function PUT(
     );
   }
 
-  const sanitizedOverrides = body.overrides
-    .filter(
-      (item) =>
-        typeof item.step_key === "string" &&
-        item.step_key.length > 0 &&
-        typeof item.field_key === "string" &&
-        item.field_key.length > 0
-    )
-    .map((item, index) => ({
-      workspace_slug: workspaceSlug,
-      workflow_type: LEGACY_EDITOR_WORKFLOW_TYPE,
-      form_version: LEGACY_EDITOR_FORM_VERSION,
-      step_key: item.step_key,
-      field_key: item.field_key,
-      label_override: normalizeOptionalText(item.label_override),
-      helper_text_override: normalizeOptionalText(item.helper_text_override),
-      placeholder_override: normalizeOptionalText(item.placeholder_override),
-      is_required:
-        typeof item.is_required === "boolean" ? item.is_required : null,
-      is_visible: typeof item.is_visible === "boolean" ? item.is_visible : true,
-      sort_order:
-        typeof item.sort_order === "number" ? item.sort_order : index + 1,
-    }));
-
   const supabase = createSupabaseAdmin();
 
   const { data: existingBranding, error: brandingLoadError } = await supabase
@@ -365,22 +436,48 @@ export async function PUT(
     );
   }
 
-  const { data: existingSettingsRows, error: settingsLoadError } = await supabase
-    .from("workspace_field_overrides")
-    .select(
-      "workspace_slug, workflow_type, form_version, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order"
-    )
-    .eq("workspace_slug", workspaceSlug);
+  const existingSettingsResult = await loadWorkspaceFieldOverrideSettings(
+    supabase,
+    workspaceSlug
+  );
 
-  if (settingsLoadError) {
+  if (existingSettingsResult.error) {
     return NextResponse.json(
-      { ok: false, error: settingsLoadError.message },
+      { ok: false, error: existingSettingsResult.error.message },
       { status: 500 }
     );
   }
 
+  const sanitizedOverrides = body.overrides
+    .filter(
+      (item) =>
+        typeof item.step_key === "string" &&
+        item.step_key.length > 0 &&
+        typeof item.field_key === "string" &&
+        item.field_key.length > 0
+    )
+    .map((item, index) => ({
+      workspace_slug: workspaceSlug,
+      ...(existingSettingsResult.supportsWorkflowScopeColumns
+        ? {
+            workflow_type: LEGACY_EDITOR_WORKFLOW_TYPE,
+            form_version: LEGACY_EDITOR_FORM_VERSION,
+          }
+        : {}),
+      step_key: item.step_key,
+      field_key: item.field_key,
+      label_override: normalizeOptionalText(item.label_override),
+      helper_text_override: normalizeOptionalText(item.helper_text_override),
+      placeholder_override: normalizeOptionalText(item.placeholder_override),
+      is_required:
+        typeof item.is_required === "boolean" ? item.is_required : null,
+      is_visible: typeof item.is_visible === "boolean" ? item.is_visible : true,
+      sort_order:
+        typeof item.sort_order === "number" ? item.sort_order : index + 1,
+    }));
+
   const existingPasswordHash =
-    existingSettingsRows?.find(
+    existingSettingsResult.rows?.find(
       (row) =>
         row.step_key === SECURITY_SETTINGS_STEP_KEY &&
         row.field_key === EDIT_PASSWORD_FIELD_KEY
@@ -429,13 +526,21 @@ export async function PUT(
     nextPasswordHash = "";
   }
 
-  const preservedWorkflowRows = (existingSettingsRows ?? [])
-    .filter(
-      (row) =>
-        !isSettingsOrSecurityStep(row.step_key) &&
-        !isLegacyReleaseIntakeScope(row)
-    )
-    .map((row) => toStoredFieldOverrideRow(row, workspaceSlug));
+  const preservedWorkflowRows = existingSettingsResult.supportsWorkflowScopeColumns
+    ? (existingSettingsResult.rows ?? [])
+        .filter(
+          (row) =>
+            !isSettingsOrSecurityStep(row.step_key) &&
+            !isLegacyReleaseIntakeScope(row)
+        )
+        .map((row) =>
+          toStoredFieldOverrideRow(
+            row,
+            workspaceSlug,
+            existingSettingsResult.supportsWorkflowScopeColumns
+          )
+        )
+    : [];
 
   const { error: deleteError } = await supabase
     .from("workspace_field_overrides")
