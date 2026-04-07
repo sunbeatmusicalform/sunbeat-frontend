@@ -454,7 +454,7 @@ export default function LoginPageClient() {
                 <span>Suporta codigos de 6 a 8 digitos.</span>
               </div>
             </form>
-          )}
+          ) : null}
 
           {loginMode === "otp" && err ? (
             <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
