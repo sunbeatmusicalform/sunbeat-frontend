@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { atabaqueTemplate } from "@/lib/form-engine/atabaque-template";
-import type { FormStepKey } from "@/lib/form-engine/types";
+import { createRightsClearanceTemplate } from "@/lib/form-engine/rights-clearance-template";
+import type { FormStepKey, WorkflowTemplate } from "@/lib/form-engine/types";
+
+type FormType = "intake" | "clearance";
 
 const WORKSPACE_SLUG = "atabaque";
 const WORKSPACE_EDIT_PASSWORD_STORAGE_KEY = `sunbeat:workspace-edit-password:${WORKSPACE_SLUG}`;
@@ -139,7 +142,10 @@ function buildInitialSecuritySettings(apiValues?: {
   } satisfies SecuritySettings;
 }
 
-function buildEditorFields(overrides: ApiOverride[]) {
+function buildEditorFieldsFromTemplate(
+  template: WorkflowTemplate,
+  overrides: ApiOverride[]
+) {
   const overridesMap = new Map(
     overrides.map((override) => [
       `${override.step_key}:${override.field_key}`,
@@ -147,7 +153,7 @@ function buildEditorFields(overrides: ApiOverride[]) {
     ])
   );
 
-  return atabaqueTemplate.steps
+  return template.steps
     .filter((step) => step.fields.length > 0)
     .flatMap((step) =>
       step.fields.map((field, index) => {
@@ -183,6 +189,10 @@ function buildEditorFields(overrides: ApiOverride[]) {
         } satisfies EditorField;
       })
     );
+}
+
+function buildEditorFields(overrides: ApiOverride[]) {
+  return buildEditorFieldsFromTemplate(atabaqueTemplate, overrides);
 }
 
 function serializeFields(fields: EditorField[]) {
@@ -243,6 +253,13 @@ function updateFieldValue(
 }
 
 export default function FieldSettingsPage() {
+  const [formType, setFormType] = useState<FormType>("intake");
+  const clearanceTemplate = useMemo(
+    () => createRightsClearanceTemplate({ workspaceSlug: WORKSPACE_SLUG }),
+    []
+  );
+  const activeTemplate: WorkflowTemplate = formType === "intake" ? atabaqueTemplate : clearanceTemplate;
+
   const [fields, setFields] = useState<EditorField[]>([]);
   const [emailSettings, setEmailSettings] = useState<EmailSettings>(
     createEmptyEmailSettings()
@@ -294,30 +311,44 @@ export default function FieldSettingsPage() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadEditor(password = "") {
+    async function loadEditor(password = "", currentFormType: FormType = "intake") {
       try {
         setIsLoading(true);
         setError(null);
 
+        if (currentFormType === "clearance") {
+          // Rights clearance: use workflow-config endpoint, no password
+          const response = await fetch(
+            `/api/workspaces/${WORKSPACE_SLUG}/workflow-config?workflow_type=rights_clearance`,
+            { cache: "no-store" }
+          );
+          const data = await response.json() as { ok: boolean; field_overrides?: ApiOverride[]; error?: string };
+          if (!mounted) return;
+          if (!response.ok || !data.ok) throw new Error(data.error || "Nao foi possivel carregar os campos.");
+          const nextFields = buildEditorFieldsFromTemplate(clearanceTemplate, data.field_overrides ?? []);
+          const snap = serializeEditorState(nextFields, createEmptyEmailSettings(), createEmptySecuritySettings());
+          initialSnapshotRef.current = snap;
+          setFields(nextFields);
+          setEmailSettings(createEmptyEmailSettings());
+          setSecuritySettings(createEmptySecuritySettings());
+          setStats({ submissions: 0, drafts: 0 });
+          setIsLocked(false);
+          return;
+        }
+
+        // Intake: legacy field-overrides endpoint with password support
         const response = await fetch(
           `/api/workspaces/${WORKSPACE_SLUG}/field-overrides`,
           {
             cache: "no-store",
-            headers: password
-              ? {
-                  "x-workspace-edit-password": password,
-                }
-              : undefined,
+            headers: password ? { "x-workspace-edit-password": password } : undefined,
           }
         );
 
         const data = (await response.json()) as FieldOverridesResponse;
 
         if (response.status === 403 && data.code === "PASSWORD_REQUIRED") {
-          if (!mounted) {
-            return;
-          }
-
+          if (!mounted) return;
           setIsLocked(true);
           setError(password ? "Senha incorreta para acessar o modo edit." : null);
           setIsLoading(false);
@@ -328,25 +359,17 @@ export default function FieldSettingsPage() {
           throw new Error(data.error || "Nao foi possivel carregar os campos.");
         }
 
-        if (!mounted) {
-          return;
-        }
-
+        if (!mounted) return;
         applyLoadedEditorState(data, password);
       } catch (loadError) {
-        if (!mounted) {
-          return;
-        }
-
+        if (!mounted) return;
         setError(
           loadError instanceof Error
             ? loadError.message
             : "Nao foi possivel carregar os campos."
         );
       } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
       }
     }
 
@@ -356,12 +379,13 @@ export default function FieldSettingsPage() {
         : "";
 
     setWorkspacePassword(storedPassword);
-    loadEditor(storedPassword);
+    loadEditor(storedPassword, formType);
 
     return () => {
       mounted = false;
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formType]);
 
   const visibleFieldsCount = useMemo(
     () => fields.filter((field) => field.isVisible).length,
@@ -383,7 +407,7 @@ export default function FieldSettingsPage() {
       initialSnapshotRef.current;
 
   const groupedSteps = useMemo(() => {
-    return atabaqueTemplate.steps
+    return activeTemplate.steps
       .filter((step) => step.fields.length > 0)
       .map((step) => ({
         key: step.key,
@@ -393,7 +417,8 @@ export default function FieldSettingsPage() {
           .filter((field) => field.stepKey === step.key)
           .sort((a, b) => a.sortOrder - b.sortOrder),
       }));
-  }, [fields]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, formType]);
   const stepSummaries = useMemo<StepSummary[]>(
     () =>
       groupedSteps.map((step) => ({
@@ -419,7 +444,7 @@ export default function FieldSettingsPage() {
   }
 
   function resetField(stepKey: FormStepKey, fieldKey: string) {
-    const baseField = buildEditorFields([]).find(
+    const baseField = buildEditorFieldsFromTemplate(activeTemplate, []).find(
       (field) => field.stepKey === stepKey && field.fieldKey === fieldKey
     );
 
@@ -440,7 +465,7 @@ export default function FieldSettingsPage() {
   }
 
   function resetAllFields() {
-    const defaults = buildEditorFields([]);
+    const defaults = buildEditorFieldsFromTemplate(activeTemplate, []);
     setFields(defaults);
     setEmailSettings(createEmptyEmailSettings());
     setSecuritySettings((current) => ({
@@ -525,6 +550,48 @@ export default function FieldSettingsPage() {
       setIsSaving(true);
       setError(null);
       setNotice(null);
+
+      // Rights clearance: simpler save via workflow-config PUT
+      if (formType === "clearance") {
+        const clearancePayload = {
+          workflow_type: "rights_clearance",
+          overrides: fields.map((field) => ({
+            step_key: field.stepKey,
+            field_key: field.fieldKey,
+            label_override: normalizeLabelOverride(field),
+            helper_text_override: normalizeHelperOverride(field),
+            is_required: field.isRequired,
+            is_visible: field.isVisible,
+            sort_order: field.sortOrder,
+          })),
+        };
+        const response = await fetch(
+          `/api/workspaces/${WORKSPACE_SLUG}/workflow-config`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(clearancePayload),
+          }
+        );
+        const data = await response.json() as { ok: boolean; error?: string };
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Nao foi possivel salvar as configuracoes.");
+        }
+        // Refresh clearance fields
+        const refreshResponse = await fetch(
+          `/api/workspaces/${WORKSPACE_SLUG}/workflow-config?workflow_type=rights_clearance`,
+          { cache: "no-store" }
+        );
+        const refreshData = await refreshResponse.json() as { ok: boolean; field_overrides?: ApiOverride[] };
+        if (refreshData.ok) {
+          const nextFields = buildEditorFieldsFromTemplate(clearanceTemplate, refreshData.field_overrides ?? []);
+          const snap = serializeEditorState(nextFields, createEmptyEmailSettings(), createEmptySecuritySettings());
+          initialSnapshotRef.current = snap;
+          setFields(nextFields);
+        }
+        setNotice("Configuracoes do formulario de clearance salvas com sucesso.");
+        return;
+      }
 
       const payload = {
         overrides: fields.map((field) => ({
@@ -733,6 +800,27 @@ export default function FieldSettingsPage() {
 
   return (
     <div className="grid gap-6">
+
+      {/* Form type switcher */}
+      <div className="flex rounded-2xl border border-black/8 bg-[#F8F5EF] p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => { setFormType("intake"); setNotice(null); setError(null); }}
+          className="rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition"
+          style={formType === "intake" ? { backgroundColor: "#111111", color: "#ffffff" } : { color: "#8D867B" }}
+        >
+          Release Intake
+        </button>
+        <button
+          type="button"
+          onClick={() => { setFormType("clearance"); setNotice(null); setError(null); }}
+          className="rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition"
+          style={formType === "clearance" ? { backgroundColor: "#111111", color: "#ffffff" } : { color: "#8D867B" }}
+        >
+          Rights Clearance
+        </button>
+      </div>
+
       <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <div className="rounded-[32px] border border-black/8 bg-white px-7 py-7 shadow-[0_18px_48px_rgba(0,0,0,0.04)]">
           <div className="flex flex-wrap items-center gap-3">
@@ -740,20 +828,22 @@ export default function FieldSettingsPage() {
               Modo edit
             </span>
             <span className="rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-[#8D867B]">
-              Workspace Atabaque
+              {formType === "intake" ? "Release Intake" : "Rights Clearance"}
             </span>
           </div>
 
           <h1 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-[#111111] md:text-5xl">
-            Edite o formulario
-            <span className="block text-[#6F695F]">sem tocar no codigo.</span>
+            {formType === "intake" ? (
+              <>Edite o formulario<span className="block text-[#6F695F]">sem tocar no codigo.</span></>
+            ) : (
+              <>Edite o clearance<span className="block text-[#6F695F]">de direitos autorais.</span></>
+            )}
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#605A52]">
-            Ajuste o formulario publico da Atabaque sem mexer em codigo:
-            visibilidade, obrigatoriedade, titulos, helper text, senha do modo
-            edit e e-mails de resumo. Esse link pode ser compartilhado apenas
-            com a lideranca do cliente.
+            {formType === "intake"
+              ? "Ajuste o formulario publico da Atabaque sem mexer em codigo: visibilidade, obrigatoriedade, titulos, helper text, senha do modo edit e e-mails de resumo."
+              : "Configure os campos do formulario de Rights Clearance: visibilidade, obrigatoriedade, titulos personalizados e helper texts. As mudancas refletem no formulario publico de clearance."}
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">

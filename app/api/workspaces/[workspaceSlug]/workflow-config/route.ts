@@ -187,3 +187,69 @@ export async function GET(
     );
   }
 }
+
+// ── PUT: save field overrides for a specific workflow type ──────────────────
+export async function PUT(
+  req: Request,
+  context: { params: Promise<{ workspaceSlug: string }> }
+) {
+  const { workspaceSlug } = await context.params;
+
+  try {
+    const body = await req.json() as {
+      workflow_type?: string;
+      overrides?: Array<{
+        step_key: string;
+        field_key: string;
+        label_override?: string | null;
+        helper_text_override?: string | null;
+        is_required?: boolean;
+        is_visible?: boolean;
+        sort_order?: number | null;
+      }>;
+    };
+
+    const workflowType = body.workflow_type ?? "rights_clearance";
+    const overrides = Array.isArray(body.overrides) ? body.overrides : [];
+
+    const supabase = createSupabaseAdmin();
+
+    // Delete existing overrides for this workflow_type + workspace
+    const { error: deleteError } = await supabase
+      .from("workspace_field_overrides")
+      .delete()
+      .eq("workspace_slug", workspaceSlug)
+      .eq("workflow_type", workflowType);
+
+    if (deleteError) {
+      return NextResponse.json({ ok: false, error: deleteError.message }, { status: 500 });
+    }
+
+    if (overrides.length > 0) {
+      const rows = overrides.map((override) => ({
+        workspace_slug: workspaceSlug,
+        workflow_type: workflowType,
+        step_key: override.step_key,
+        field_key: override.field_key,
+        label_override: override.label_override ?? null,
+        helper_text_override: override.helper_text_override ?? null,
+        is_required: typeof override.is_required === "boolean" ? override.is_required : null,
+        is_visible: typeof override.is_visible === "boolean" ? override.is_visible : null,
+        sort_order: override.sort_order ?? null,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("workspace_field_overrides")
+        .insert(rows);
+
+      if (insertError) {
+        return NextResponse.json({ ok: false, error: insertError.message }, { status: 500 });
+      }
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not save workflow config";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
