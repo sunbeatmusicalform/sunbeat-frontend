@@ -94,7 +94,7 @@ export default function ContactForm() {
             Sunbeat
           </div>
           <div className="text-sm text-[#5E5A54]">
-            Access, onboarding and intake setup
+            Acesso, onboarding e configuração do intake
           </div>
         </div>
       </div>

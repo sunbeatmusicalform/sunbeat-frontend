@@ -78,7 +78,8 @@ export default async function FilePreviewPage({
               <div className="flex shrink-0 flex-wrap gap-3">
                 <Link
                   href={downloadPath}
-                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-950 bg-slate-950 px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)] transition hover:border-slate-800 hover:bg-slate-800"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl px-5 text-sm font-semibold shadow-[0_12px_24px_rgba(15,23,42,0.18)] transition"
+                  style={{ backgroundColor: "#0f172a", borderWidth: "1px", borderStyle: "solid", borderColor: "#0f172a", color: "#ffffff" }}
                 >
                   Baixar arquivo
                 </Link>
