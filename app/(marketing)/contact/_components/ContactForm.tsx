@@ -207,7 +207,8 @@ export default function ContactForm() {
           <button
             type="submit"
             disabled={state === "submitting"}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#111111] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1D1D1D] disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#111111] px-6 py-3.5 text-sm font-semibold transition hover:bg-[#1D1D1D] disabled:opacity-60"
+            style={{ color: '#ffffff' }}
           >
             {state === "submitting" ? (
               <>

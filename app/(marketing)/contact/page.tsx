@@ -40,9 +40,10 @@ export default function ContactPage() {
           </Link>
           <Link
             href="/login"
-            className="inline-flex rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D1D1D]"
+            className="inline-flex rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold transition hover:bg-[#1D1D1D]"
+            style={{ color: '#ffffff' }}
           >
-            Client login
+            Entrar
           </Link>
         </div>
       </header>
@@ -51,11 +52,11 @@ export default function ContactPage() {
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#4A4744]">
-              Contact
+              Contato
             </div>
 
             <h1 className="mt-8 text-[3.1rem] font-semibold leading-[0.92] tracking-[-0.06em] text-[#111111] sm:text-[4.2rem]">
-              Let&apos;s configure your Sunbeat access.
+              Vamos configurar seu acesso à Sunbeat.
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-8 text-[#5E5A54]">
