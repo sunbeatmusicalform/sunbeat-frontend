@@ -1,8 +1,9 @@
 import Link from "next/link";
+import ContactForm from "./_components/ContactForm";
 
 const accessPillars = [
   "Onboarding sob medida",
-  "Configuracao dedicada",
+  "Configuração dedicada",
   "Acesso por convite",
 ];
 
@@ -24,7 +25,7 @@ export default function ContactPage() {
             <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#111111]">
               Sunbeat
             </div>
-            <div className="text-[11px] uppercase tracking-[0.24em] text-[#6A6660]">
+            <div className="text-[11px] uppercase tracking-[0.24em] text-[#4A4744]">
               Shine Brighter, Work Smarter
             </div>
           </div>
@@ -39,7 +40,7 @@ export default function ContactPage() {
           </Link>
           <Link
             href="/login"
-            className="inline-flex rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white"
+            className="inline-flex rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D1D1D]"
           >
             Client login
           </Link>
@@ -49,7 +50,7 @@ export default function ContactPage() {
       <section className="mx-auto max-w-7xl px-6 pb-20 pt-8 lg:px-8 lg:pt-10">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A6660]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#4A4744]">
               Contact
             </div>
 
@@ -59,7 +60,7 @@ export default function ContactPage() {
 
             <p className="mt-6 max-w-xl text-lg leading-8 text-[#5E5A54]">
               O contato da Sunbeat existe para iniciar onboarding, alinhamento
-              operacional e configuracao do workspace com clareza e confianca.
+              operacional e configuração do workspace com clareza e confiança.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -72,58 +73,87 @@ export default function ContactPage() {
                 </div>
               ))}
             </div>
-          </div>
 
-          <div className="rounded-[36px] border border-black/8 bg-white p-8 shadow-[0_22px_60px_rgba(0,0,0,0.05)] sm:p-10">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/8 bg-[#F9F7F2]">
-                <img
-                  src="/sunbeat-logan-transparent-black.ico"
-                  alt="Sunbeat"
-                  className="h-8 w-8 object-contain"
-                />
-              </div>
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-[#111111]">
-                  Sunbeat
+            <div className="mt-10 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/8 bg-white">
+                  <svg
+                    className="h-4 w-4 text-[#111111]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
                 </div>
-                <div className="text-sm text-[#6A6660]">
-                  Access, onboarding and intake setup
+                <div>
+                  <div className="text-sm font-semibold text-[#111111]">
+                    Formulário direto, sem burocracia
+                  </div>
+                  <div className="mt-0.5 text-sm leading-6 text-[#5E5A54]">
+                    Preencha com seu contexto e recebemos tudo organizado.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/8 bg-white">
+                  <svg
+                    className="h-4 w-4 text-[#111111]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-[#111111]">
+                    Retorno rápido
+                  </div>
+                  <div className="mt-0.5 text-sm leading-6 text-[#5E5A54]">
+                    Revisamos e respondemos para alinhar o próximo passo.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/8 bg-white">
+                  <svg
+                    className="h-4 w-4 text-[#111111]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-[#111111]">
+                    Acesso por convite
+                  </div>
+                  <div className="mt-0.5 text-sm leading-6 text-[#5E5A54]">
+                    A Sunbeat opera com onboarding dedicado e acesso controlado.
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div className="mt-8 space-y-6">
-              <div className="rounded-[28px] border border-black/8 bg-[#F9F7F2] p-6">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6A6660]">
-                  E-mail
-                </div>
-                <div className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
-                  contatofelipefonsek@gmail.com
-                </div>
-                <p className="mt-3 text-sm leading-7 text-[#5E5A54]">
-                  Use este canal para solicitar acesso, apresentar seu contexto
-                  operacional e iniciar a configuracao do seu intake com a
-                  Sunbeat.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="mailto:contatofelipefonsek@gmail.com?subject=Sunbeat%20Access%20Request"
-                  className="inline-flex items-center justify-center rounded-full bg-[#111111] px-6 py-3.5 text-sm font-semibold text-white"
-                >
-                  Send e-mail
-                </a>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white px-6 py-3.5 text-sm font-semibold text-[#111111]"
-                >
-                  Client login
-                </Link>
-              </div>
-            </div>
           </div>
+
+          <ContactForm />
         </div>
       </section>
     </main>

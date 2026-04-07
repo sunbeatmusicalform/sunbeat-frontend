@@ -138,20 +138,20 @@ export default function MarketingHome() {
           </div>
 
           <div className="rounded-[32px] border border-black/8 bg-[#111111] px-8 py-8 text-white shadow-[0_20px_60px_rgba(0,0,0,0.12)]">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/65">
               Core capabilities
             </div>
             <div className="mt-6 grid gap-3">
               {capabilities.map((item) => (
                 <div
                   key={item}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/78"
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/85"
                 >
                   {item}
                 </div>
               ))}
             </div>
-            <p className="mt-6 text-sm leading-7 text-white/58">
+            <p className="mt-6 text-sm leading-7 text-white/70">
               Clientes podem editar o intake via dashboard, ajustar campos,
               helper texts e obrigatoriedade, enquanto o formulario publico
               continua simples para quem vai preencher e o time recebe tudo de
