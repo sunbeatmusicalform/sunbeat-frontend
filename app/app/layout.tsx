@@ -141,7 +141,9 @@ export default async function AppLayout({
     if (ws) {
       workspaceName = ws.name;
       planId = ws.plan_id;
-      planName = (ws.plans as { name: string } | null)?.name ?? planId;
+      const plansData = ws.plans as { name: string }[] | { name: string } | null;
+      const planEntry = Array.isArray(plansData) ? plansData[0] : plansData;
+      planName = planEntry?.name ?? planId;
     }
   } catch {
     // graceful fallback
