@@ -14,6 +14,32 @@ export default function LoginPageClient() {
 
   const redirectTo = searchParams.get("next") || "/app";
 
+  // Login mode: "otp" (default, used by existing clients) or "password" (self-serve)
+  const [loginMode, setLoginMode] = useState<"otp" | "password">("otp");
+
+  // Password login state
+  const [pwEmail, setPwEmail] = useState("");
+  const [pwPassword, setPwPassword] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwErr, setPwErr] = useState<string | null>(null);
+
+  async function handlePasswordLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setPwLoading(true);
+    setPwErr(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: pwEmail.trim().toLowerCase(),
+      password: pwPassword,
+    });
+    setPwLoading(false);
+    if (error) {
+      setPwErr("E-mail ou senha incorretos.");
+      return;
+    }
+    router.push(redirectTo);
+    router.refresh();
+  }
+
   const [email, setEmail] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -260,14 +286,81 @@ export default function LoginPageClient() {
                 </h2>
               </div>
             </div>
-
-            <div className="rounded-full border border-black/8 bg-[#F8F5EF] px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-[#8D867B]">
-              OTP Supabase
-            </div>
           </div>
 
-          {step === "email" ? (
-            <form onSubmit={handleSendCode} className="mt-8">
+          {/* Mode switcher */}
+          <div className="mt-6 flex rounded-2xl border border-black/8 bg-[#F8F5EF] p-1">
+            <button
+              type="button"
+              onClick={() => setLoginMode("otp")}
+              className="flex-1 rounded-xl py-2 text-xs font-semibold tracking-[0.1em] uppercase transition"
+              style={loginMode === "otp" ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#8D867B' }}
+            >
+              Código por e-mail
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMode("password")}
+              className="flex-1 rounded-xl py-2 text-xs font-semibold tracking-[0.1em] uppercase transition"
+              style={loginMode === "password" ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#8D867B' }}
+            >
+              E-mail e senha
+            </button>
+          </div>
+
+          {/* Password login form */}
+          {loginMode === "password" && (
+            <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
+                  E-mail
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={pwEmail}
+                  onChange={(e) => { setPwEmail(e.target.value); setPwErr(null); }}
+                  placeholder="voce@empresa.com"
+                  className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={pwPassword}
+                  onChange={(e) => { setPwPassword(e.target.value); setPwErr(null); }}
+                  placeholder="Sua senha"
+                  className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                />
+              </div>
+              {pwErr && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {pwErr}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={pwLoading}
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: '#111111', color: '#ffffff' }}
+              >
+                {pwLoading ? "Entrando..." : "Entrar"}
+              </button>
+              <p className="text-center text-sm text-[#6F695F]">
+                Não tem conta?{" "}
+                <Link href="/signup" className="font-semibold text-[#111111] underline underline-offset-2">
+                  Criar workspace
+                </Link>
+              </p>
+            </form>
+          )}
+
+          {loginMode === "otp" && step === "email" ? (
+            <form onSubmit={handleSendCode} className="mt-6">
               <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
                 E-mail de trabalho
               </label>
@@ -283,7 +376,8 @@ export default function LoginPageClient() {
               <button
                 type="submit"
                 disabled={sending}
-                className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#111111] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: '#111111', color: '#ffffff' }}
               >
                 {sending ? "Enviando codigo..." : "Enviar codigo de acesso"}
               </button>
@@ -292,7 +386,7 @@ export default function LoginPageClient() {
                 Voce vai receber um codigo de acesso unico por e-mail.
               </p>
             </form>
-          ) : (
+          ) : loginMode === "otp" ? (
             <form onSubmit={handleVerifyCode} className="mt-8">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
@@ -342,7 +436,8 @@ export default function LoginPageClient() {
               <button
                 type="submit"
                 disabled={verifying}
-                className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#111111] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: '#111111', color: '#ffffff' }}
               >
                 {verifying ? "Entrando..." : "Entrar no workspace"}
               </button>
@@ -361,13 +456,13 @@ export default function LoginPageClient() {
             </form>
           )}
 
-          {err ? (
+          {loginMode === "otp" && err ? (
             <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {err}
             </div>
           ) : null}
 
-          {msg ? (
+          {loginMode === "otp" && msg ? (
             <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {msg}
             </div>
