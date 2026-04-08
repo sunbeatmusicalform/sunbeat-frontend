@@ -4,15 +4,10 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-// Necessário para ler o body raw do Stripe
-export const config = {
-  api: { bodyParser: false },
-};
-
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY não configurada.");
-  return new Stripe(key, { apiVersion: "2025-05-28.basil" });
+  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
 }
 
 // Mapeia price_id → plan_id interno do Sunbeat

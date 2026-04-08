@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY não configurada.");
-  return new Stripe(key, { apiVersion: "2025-05-28.basil" });
+  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
 }
 
 const PRICE_IDS: Record<string, string | undefined> = {
