@@ -33,7 +33,9 @@ export const metadata = { title: "Plano — Sunbeat" };
 
 export default async function PlanPage() {
   const host = (await headers()).get("host") ?? "";
-  const workspaceSlug = getTenantFromHost(host) ?? "atabaque";
+  const tenantRaw = getTenantFromHost(host);
+  const workspaceSlug: string =
+    (typeof tenantRaw === "string" ? tenantRaw : tenantRaw?.value) ?? "atabaque";
 
   let currentPlanId = "pro";
   let currentPlanName = "Pro";
