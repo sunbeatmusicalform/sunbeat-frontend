@@ -122,7 +122,7 @@ export async function POST(req: Request) {
         break;
 
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.CheckoutSession;
+        const session = event.data.object as Stripe.Checkout.Session;
         // Se a sessão criou uma assinatura, ela já será tratada pelo subscription.created
         // Aqui apenas logamos
         console.log("[webhook] Checkout concluído:", session.id, "workspace:", session.metadata?.workspace_slug);
