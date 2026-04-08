@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getTenantFromHost } from "@/lib/tenant";
+import { billingCatalog, resolveMarket, formatPrice, type Market, type BillingTier } from "@/lib/billing/catalog";
 import { UpgradeButton, ManageSubscriptionButton } from "./BillingButtons";
 
 type PlanRow = {
@@ -21,24 +22,23 @@ type PlanRow = {
   support_level: string | null;
 };
 
-// USD prices per plan — source of truth for display
-const USD_PRICES: Record<string, number> = {
-  free: 0,
-  starter: 19,
-  pro: 49,
-  enterprise: 0,
-};
-
 export const metadata = { title: "Plano — Sunbeat" };
 
 export default async function PlanPage() {
   const host = (await headers()).get("host") ?? "";
+
+  // Resolve workspace slug from subdomain
   const tenantRaw = getTenantFromHost(host);
   const workspaceSlug: string =
     (typeof tenantRaw === "string" ? tenantRaw : tenantRaw?.value) ?? "atabaque";
 
-  let currentPlanId = "pro";
-  let currentPlanName = "Pro";
+  // Resolve market (USD vs BRL) from hostname
+  const market: Market = resolveMarket(host);
+  const marketConfig = billingCatalog[market];
+  const isBrazil = market === "brazil";
+
+  let currentPlanId: BillingTier = "free";
+  let currentPlanName = "Free";
   let hasSubscription = false;
   let plans: PlanRow[] = [];
 
@@ -52,7 +52,7 @@ export default async function PlanPage() {
       .maybeSingle();
 
     if (ws) {
-      currentPlanId = ws.plan_id;
+      currentPlanId = ws.plan_id as BillingTier;
       hasSubscription = !!ws.stripe_customer_id;
     }
 
@@ -79,8 +79,8 @@ export default async function PlanPage() {
   };
 
   function fmt(n: number | null) {
-    if (n === null || n === 0) return "Unlimited";
-    return n.toLocaleString("en-US");
+    if (n === null || n === 0) return isBrazil ? "Ilimitado" : "Unlimited";
+    return n.toLocaleString(marketConfig.locale);
   }
 
   function fmtMB(n: number | null) {
@@ -88,42 +88,60 @@ export default async function PlanPage() {
     return `${n} MB`;
   }
 
-  function fmtPrice(id: string) {
-    const price = USD_PRICES[id] ?? 0;
-    if (id === "enterprise") return "Custom";
-    if (price === 0) return "Free";
-    return `$${price}/mo`;
-  }
-
-  const features = [
-    { key: "submissions_month" as const, label: "Submissions/mo", render: (p: PlanRow) => fmt(p.submissions_month) },
-    { key: "max_forms" as const, label: "Forms", render: (p: PlanRow) => fmt(p.max_forms) },
-    { key: "audio_upload_mb" as const, label: "Audio upload", render: (p: PlanRow) => fmtMB(p.audio_upload_mb) },
-    { key: "cover_upload_mb" as const, label: "Cover upload", render: (p: PlanRow) => fmtMB(p.cover_upload_mb) },
-    { key: "ai_enabled" as const, label: "AI (Lyric Engine)", render: (p: PlanRow) => p.ai_enabled ? "✓" : "—" },
-    { key: "airtable_enabled" as const, label: "Native Airtable", render: (p: PlanRow) => p.airtable_enabled ? "✓" : "—" },
-    { key: "gdrive_enabled" as const, label: "Google Drive", render: (p: PlanRow) => p.gdrive_enabled ? "✓" : "—" },
-    { key: "gsheets_enabled" as const, label: "Google Sheets", render: (p: PlanRow) => p.gsheets_enabled ? "✓" : "—" },
-    { key: "notion_enabled" as const, label: "Notion", render: (p: PlanRow) => p.notion_enabled ? "✓" : "—" },
-    { key: "custom_branding" as const, label: "Custom branding", render: (p: PlanRow) => p.custom_branding ? "✓" : "—" },
-    { key: "white_label" as const, label: "White label", render: (p: PlanRow) => p.white_label ? "✓" : "—" },
-    { key: "support_level" as const, label: "Support", render: (p: PlanRow) => p.support_level ?? "Email" },
-  ];
-
   // Hardcoded fallback if DB is empty
   if (plans.length === 0) {
     plans = [
       { id: "free",       name: "Free",       submissions_month: 50,   max_forms: 1,    audio_upload_mb: 10,  cover_upload_mb: 5,   ai_enabled: false, airtable_enabled: false, gdrive_enabled: false, gsheets_enabled: false, notion_enabled: false, custom_branding: false, white_label: false, support_level: "Email" },
-      { id: "starter",    name: "Starter",    submissions_month: 500,  max_forms: 2,    audio_upload_mb: 50,  cover_upload_mb: 20,  ai_enabled: false, airtable_enabled: true,  gdrive_enabled: false, gsheets_enabled: false, notion_enabled: false, custom_branding: false, white_label: false, support_level: "Priority email" },
-      { id: "pro",        name: "Pro",        submissions_month: 2000, max_forms: 5,    audio_upload_mb: 100, cover_upload_mb: 50,  ai_enabled: true,  airtable_enabled: true,  gdrive_enabled: true,  gsheets_enabled: true,  notion_enabled: false, custom_branding: true,  white_label: false, support_level: "Chat + Email" },
-      { id: "enterprise", name: "Enterprise", submissions_month: null, max_forms: null, audio_upload_mb: 200, cover_upload_mb: 100, ai_enabled: true,  airtable_enabled: true,  gdrive_enabled: true,  gsheets_enabled: true,  notion_enabled: true,  custom_branding: true,  white_label: true,  support_level: "Dedicated SLA" },
+      { id: "starter",    name: "Starter",    submissions_month: 500,  max_forms: 2,    audio_upload_mb: 50,  cover_upload_mb: 20,  ai_enabled: false, airtable_enabled: true,  gdrive_enabled: false, gsheets_enabled: false, notion_enabled: false, custom_branding: false, white_label: false, support_level: isBrazil ? "E-mail prioritário" : "Priority email" },
+      { id: "pro",        name: "Pro",        submissions_month: 2000, max_forms: 5,    audio_upload_mb: 100, cover_upload_mb: 50,  ai_enabled: true,  airtable_enabled: true,  gdrive_enabled: true,  gsheets_enabled: true,  notion_enabled: false, custom_branding: true,  white_label: false, support_level: isBrazil ? "Chat + E-mail" : "Chat + Email" },
+      { id: "enterprise", name: "Enterprise", submissions_month: null, max_forms: null, audio_upload_mb: 200, cover_upload_mb: 100, ai_enabled: true,  airtable_enabled: true,  gdrive_enabled: true,  gsheets_enabled: true,  notion_enabled: true,  custom_branding: true,  white_label: true,  support_level: isBrazil ? "SLA dedicado" : "Dedicated SLA" },
     ];
   }
+
+  const features = [
+    { key: "submissions_month" as const, label: isBrazil ? "Submissões/mês" : "Submissions/mo", render: (p: PlanRow) => fmt(p.submissions_month) },
+    { key: "max_forms" as const, label: isBrazil ? "Formulários" : "Forms", render: (p: PlanRow) => fmt(p.max_forms) },
+    { key: "audio_upload_mb" as const, label: isBrazil ? "Upload de áudio" : "Audio upload", render: (p: PlanRow) => fmtMB(p.audio_upload_mb) },
+    { key: "cover_upload_mb" as const, label: isBrazil ? "Upload de capa" : "Cover upload", render: (p: PlanRow) => fmtMB(p.cover_upload_mb) },
+    { key: "ai_enabled" as const, label: "AI — Lyric Engine", render: (p: PlanRow) => p.ai_enabled ? "✓" : "—" },
+    { key: "airtable_enabled" as const, label: "Airtable", render: (p: PlanRow) => p.airtable_enabled ? "✓" : "—" },
+    { key: "gdrive_enabled" as const, label: "Google Drive", render: (p: PlanRow) => p.gdrive_enabled ? "✓" : "—" },
+    { key: "gsheets_enabled" as const, label: "Google Sheets", render: (p: PlanRow) => p.gsheets_enabled ? "✓" : "—" },
+    { key: "notion_enabled" as const, label: "Notion", render: (p: PlanRow) => p.notion_enabled ? "✓" : "—" },
+    { key: "custom_branding" as const, label: isBrazil ? "Branding customizado" : "Custom branding", render: (p: PlanRow) => p.custom_branding ? "✓" : "—" },
+    { key: "white_label" as const, label: "White label", render: (p: PlanRow) => p.white_label ? "✓" : "—" },
+    { key: "support_level" as const, label: isBrazil ? "Suporte" : "Support", render: (p: PlanRow) => p.support_level ?? "Email" },
+  ];
 
   const colors = planColors[currentPlanId] ?? planColors.pro;
 
   // Plans eligible for self-serve upgrade
-  const upgradeablePlans = new Set(["starter", "pro"]);
+  const upgradeablePlans = new Set<string>(["starter", "pro"]);
+
+  // Labels
+  const labels = {
+    currentPlan: isBrazil ? "Plano atual" : "Current plan",
+    yourPlan: isBrazil ? "Seu plano Sunbeat" : "Your Sunbeat plan",
+    subtitle: isBrazil
+      ? "Veja os recursos do seu plano atual e compare as opções disponíveis. Faça upgrade quando quiser — mudanças entram em vigor imediatamente."
+      : "Review your current plan features and compare available options. Upgrade anytime — changes take effect immediately.",
+    fullComparison: isBrazil ? "Comparação completa" : "Full comparison",
+    feature: isBrazil ? "Recurso" : "Feature",
+    current: isBrazil ? "atual" : "current",
+    upgradeBtn: (name: string) => isBrazil ? `Fazer upgrade para ${name}` : `Upgrade to ${name}`,
+    contactUs: isBrazil ? "Falar com a equipe" : "Contact us",
+    manageTitle: isBrazil ? "Gerenciar assinatura" : "Manage your subscription",
+    manageDesc: isBrazil
+      ? "Atualize sua forma de pagamento, veja faturas ou cancele seu plano pelo portal do Stripe."
+      : "Update payment method, view invoices, or cancel your plan via the Stripe portal.",
+    needDifferent: isBrazil ? "Precisa de outro plano?" : "Need a different plan?",
+    needDifferentDesc: isBrazil
+      ? "Entre em contato com a equipe Sunbeat e encontraremos o plano certo para sua operação."
+      : "Contact the Sunbeat team and we'll set up the right plan for your operation.",
+    talkToSunbeat: isBrazil ? "Falar com a Sunbeat" : "Talk to Sunbeat",
+    manageBtn: isBrazil ? "Gerenciar assinatura" : "Manage subscription",
+    backToDashboard: isBrazil ? "← Voltar ao dashboard" : "← Back to dashboard",
+  };
 
   return (
     <main className="min-h-screen bg-[#F4F1EA] text-[#111111]">
@@ -136,14 +154,13 @@ export default async function PlanPage() {
             style={{ backgroundColor: colors.bg, color: colors.badge }}
           >
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.badge }} />
-            Current plan: {currentPlanName}
+            {labels.currentPlan}: {currentPlanName}
           </div>
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#111111]">
-            Your Sunbeat plan
+            {labels.yourPlan}
           </h1>
           <p className="mt-2 text-sm leading-7 text-[#5F5A53]">
-            Review your current plan features and compare available options.
-            Upgrade anytime — changes take effect immediately.
+            {labels.subtitle}
           </p>
         </div>
 
@@ -152,8 +169,8 @@ export default async function PlanPage() {
           {plans.map((plan) => {
             const isCurrent = plan.id === currentPlanId;
             const pc = planColors[plan.id] ?? planColors.pro;
-            const price = USD_PRICES[plan.id] ?? 0;
             const canUpgrade = upgradeablePlans.has(plan.id) && !isCurrent;
+            const priceLabel = formatPrice(market, plan.id as BillingTier);
 
             return (
               <div
@@ -177,26 +194,26 @@ export default async function PlanPage() {
                       className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.15em]"
                       style={{ backgroundColor: pc.badge, color: "#fff" }}
                     >
-                      Current
+                      {labels.current}
                     </span>
                   )}
                 </div>
 
                 <div className="mt-4">
                   <span className="text-2xl font-semibold tracking-tight text-[#111111]">
-                    {plan.id === "free" ? "Free" : plan.id === "enterprise" ? "Custom" : `$${price}`}
+                    {priceLabel}
                   </span>
-                  {price > 0 && (
-                    <span className="ml-1 text-xs text-[#7A746A]">/mo</span>
+                  {marketConfig.displayPrices[plan.id as BillingTier] > 0 && (
+                    <span className="ml-1 text-xs text-[#7A746A]">/mês</span>
                   )}
                 </div>
 
                 <ul className="mt-4 space-y-2 text-[13px] text-[#5F5A53]">
-                  <li><span className="font-medium text-[#111111]">{fmt(plan.submissions_month)}</span> submissions/mo</li>
-                  <li><span className="font-medium text-[#111111]">{fmt(plan.max_forms)}</span> forms</li>
-                  <li>Audio up to <span className="font-medium text-[#111111]">{fmtMB(plan.audio_upload_mb)}</span></li>
-                  {plan.ai_enabled && <li className="text-[#7C3AED] font-medium">✓ AI — Lyric Engine</li>}
-                  {plan.airtable_enabled && <li className="font-medium">✓ Native Airtable</li>}
+                  <li><span className="font-medium text-[#111111]">{fmt(plan.submissions_month)}</span> {isBrazil ? "submissões/mês" : "submissions/mo"}</li>
+                  <li><span className="font-medium text-[#111111]">{fmt(plan.max_forms)}</span> {isBrazil ? "formulários" : "forms"}</li>
+                  <li>{isBrazil ? "Áudio até" : "Audio up to"} <span className="font-medium text-[#111111]">{fmtMB(plan.audio_upload_mb)}</span></li>
+                  {plan.ai_enabled && <li className="font-medium" style={{ color: "#7C3AED" }}>✓ AI — Lyric Engine</li>}
+                  {plan.airtable_enabled && <li className="font-medium">✓ Airtable</li>}
                   {plan.notion_enabled && <li className="font-medium">✓ Notion</li>}
                   {plan.white_label && <li className="font-medium">✓ White label</li>}
                 </ul>
@@ -206,21 +223,22 @@ export default async function PlanPage() {
                   <UpgradeButton
                     planId={plan.id}
                     workspaceSlug={workspaceSlug}
+                    market={market}
                     className="mt-5 w-full rounded-2xl py-2 text-sm font-semibold transition disabled:opacity-60"
                     style={{ backgroundColor: pc.badge, color: "#ffffff" }}
                   >
-                    Upgrade to {plan.name}
+                    {labels.upgradeBtn(plan.name)}
                   </UpgradeButton>
                 )}
 
                 {/* Enterprise contact */}
                 {plan.id === "enterprise" && !isCurrent && (
                   <Link
-                    href="/"
+                    href={isBrazil ? "https://sunbeat.com.br/contato" : "/contact"}
                     className="mt-5 block w-full rounded-2xl py-2 text-center text-sm font-semibold"
                     style={{ backgroundColor: "#111111", color: "#ffffff" }}
                   >
-                    Contact us
+                    {labels.contactUs}
                   </Link>
                 )}
               </div>
@@ -231,14 +249,14 @@ export default async function PlanPage() {
         {/* Feature comparison table */}
         <div className="mt-12">
           <h2 className="mb-6 text-lg font-semibold tracking-[-0.03em] text-[#111111]">
-            Full comparison
+            {labels.fullComparison}
           </h2>
           <div className="overflow-x-auto rounded-[28px] border border-black/8 bg-white">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/6">
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-[#8D867B]">
-                    Feature
+                    {labels.feature}
                   </th>
                   {plans.map((plan) => {
                     const isCurrent = plan.id === currentPlanId;
@@ -255,7 +273,7 @@ export default async function PlanPage() {
                             className="ml-1.5 rounded-full px-1.5 py-0.5 text-[9px]"
                             style={{ backgroundColor: `${pc.badge}18`, color: pc.badge }}
                           >
-                            current
+                            {labels.current}
                           </span>
                         )}
                       </th>
@@ -302,17 +320,13 @@ export default async function PlanPage() {
             <div>
               {hasSubscription ? (
                 <>
-                  <h3 className="font-semibold text-[#111111]">Manage your subscription</h3>
-                  <p className="mt-1 text-sm text-[#5F5A53]">
-                    Update payment method, view invoices, or cancel your plan via the Stripe portal.
-                  </p>
+                  <h3 className="font-semibold text-[#111111]">{labels.manageTitle}</h3>
+                  <p className="mt-1 text-sm text-[#5F5A53]">{labels.manageDesc}</p>
                 </>
               ) : (
                 <>
-                  <h3 className="font-semibold text-[#111111]">Need a different plan?</h3>
-                  <p className="mt-1 text-sm text-[#5F5A53]">
-                    Contact the Sunbeat team and we&apos;ll set up the right plan for your operation.
-                  </p>
+                  <h3 className="font-semibold text-[#111111]">{labels.needDifferent}</h3>
+                  <p className="mt-1 text-sm text-[#5F5A53]">{labels.needDifferentDesc}</p>
                 </>
               )}
             </div>
@@ -321,26 +335,37 @@ export default async function PlanPage() {
                 workspaceSlug={workspaceSlug}
                 className="inline-flex h-11 items-center gap-2 rounded-2xl px-5 text-sm font-semibold disabled:opacity-60"
                 style={{ backgroundColor: "#111111", color: "#ffffff" }}
-              />
+              >
+                {labels.manageBtn}
+              </ManageSubscriptionButton>
             ) : (
               <Link
-                href="/"
+                href={isBrazil ? "https://sunbeat.com.br/contato" : "/contact"}
                 className="inline-flex h-11 items-center gap-2 rounded-2xl px-5 text-sm font-semibold"
                 style={{ backgroundColor: "#111111", color: "#ffffff" }}
               >
-                Talk to Sunbeat
+                {labels.talkToSunbeat}
               </Link>
             )}
           </div>
         </div>
 
+        {/* Market indicator (subtle) */}
+        <div className="mt-4 text-right">
+          <span className="text-[11px] text-[#9A9590]">
+            {isBrazil
+              ? `Preços em BRL · sunbeat.com.br`
+              : `Prices in USD · sunbeat.pro`}
+          </span>
+        </div>
+
         {/* Back */}
-        <div className="mt-6">
+        <div className="mt-4">
           <Link
             href="/app"
             className="text-sm font-medium text-[#6E685E] underline underline-offset-2"
           >
-            ← Back to dashboard
+            {labels.backToDashboard}
           </Link>
         </div>
       </div>

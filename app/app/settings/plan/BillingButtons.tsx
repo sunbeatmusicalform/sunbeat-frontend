@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import type { Market } from "@/lib/billing/catalog";
 
 export function UpgradeButton({
   planId,
   workspaceSlug,
+  market = "global",
   style,
   className,
   children,
 }: {
   planId: string;
   workspaceSlug: string;
+  market?: Market;
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
@@ -23,7 +26,7 @@ export function UpgradeButton({
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, workspace_slug: workspaceSlug }),
+        body: JSON.stringify({ plan_id: planId, workspace_slug: workspaceSlug, market }),
       });
       const data = await res.json();
       if (data.ok && data.url) {

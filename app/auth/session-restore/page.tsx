@@ -39,8 +39,8 @@ export default function SessionRestorePage() {
 
     supabase.auth
       .setSession({ access_token: at, refresh_token: rt })
-      .then(({ error }) => {
-        if (error) {
+      .then((result: { data: unknown; error: { message: string } | null }) => {
+        if (result.error) {
           setErrorMsg("Não foi possível restaurar a sessão. Por favor, faça login.");
           setStatus("error");
           return;

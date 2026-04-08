@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { resolvePlanFromPriceId } from "@/lib/billing/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +11,6 @@ function getStripe() {
   return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
 }
 
-// Mapeia price_id → plan_id interno do Sunbeat
-function resolvePlanId(priceId: string): string | null {
-  if (priceId === process.env.STRIPE_PRICE_ID_STARTER) return "starter";
-  if (priceId === process.env.STRIPE_PRICE_ID_PRO) return "pro";
-  return null;
-}
-
 async function handleSubscriptionChange(
   subscription: Stripe.Subscription
 ) {
@@ -24,17 +18,17 @@ async function handleSubscriptionChange(
   const customerId = subscription.customer as string;
   const status = subscription.status;
 
-  // Descobre o price_id do primeiro item da assinatura
+  // Resolve plan from Stripe price ID — works for both USD and BRL price IDs
   const priceId = subscription.items.data[0]?.price?.id ?? null;
-  const planId = priceId ? resolvePlanId(priceId) : null;
+  const resolved = priceId ? resolvePlanFromPriceId(priceId) : null;
+  const planId = resolved?.planId ?? null;
 
-  // Workspace slug vem do metadata da assinatura
+  // Workspace slug: prefer subscription metadata, fallback to customer lookup
   const workspaceSlug =
     subscription.metadata?.workspace_slug ?? null;
 
   if (!workspaceSlug) {
     console.warn("[webhook] Assinatura sem workspace_slug no metadata:", subscription.id);
-    // Tenta pelo customer_id
     const { data: ws } = await supabase
       .from("workspaces")
       .select("slug")
@@ -65,12 +59,12 @@ async function updateWorkspace(
     stripe_subscription_status: status,
   };
 
-  // Atualiza o plano ativo apenas se status for ativo
+  // Only update plan when subscription is active/trialing
   if (planId && (status === "active" || status === "trialing")) {
     patch.plan_id = planId;
   }
 
-  // Se cancelado/expirado, volta para free
+  // Revert to free on cancellation/non-payment
   if (status === "canceled" || status === "unpaid" || status === "past_due") {
     patch.plan_id = "free";
   }
@@ -83,7 +77,9 @@ async function updateWorkspace(
   if (error) {
     console.error("[webhook] Erro ao atualizar workspace:", workspaceSlug, error);
   } else {
-    console.log(`[webhook] Workspace ${workspaceSlug} atualizado: plan=${patch.plan_id ?? "sem alteração"} status=${status}`);
+    console.log(
+      `[webhook] Workspace ${workspaceSlug} atualizado: plan=${patch.plan_id ?? "sem alteração"} status=${status}`
+    );
   }
 }
 
@@ -123,14 +119,16 @@ export async function POST(req: Request) {
 
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        // Se a sessão criou uma assinatura, ela já será tratada pelo subscription.created
-        // Aqui apenas logamos
-        console.log("[webhook] Checkout concluído:", session.id, "workspace:", session.metadata?.workspace_slug);
+        console.log(
+          "[webhook] Checkout concluído:",
+          session.id,
+          "workspace:", session.metadata?.workspace_slug,
+          "market:", session.metadata?.market ?? "global"
+        );
         break;
       }
 
       default:
-        // Evento não tratado — ignorar silenciosamente
         break;
     }
 

@@ -17,6 +17,72 @@ const capabilities = [
   "Dashboard para ajustar campos e regras do intake",
 ];
 
+const plans = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    description: "Para começar a testar o fluxo de lançamento.",
+    cta: "Começar grátis",
+    href: "/signup",
+    highlight: false,
+    features: [
+      "50 submissões/mês",
+      "1 formulário",
+      "Upload: áudio 10 MB, capa 5 MB",
+      "Rascunho automático",
+      "E-mail de resumo",
+    ],
+    badge: null,
+    badgeColor: "#6B7280",
+    accentColor: "#6B7280",
+    bgColor: "#F9F9F9",
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    price: 19,
+    description: "Para labels e managers que precisam de mais controle.",
+    cta: "Criar workspace",
+    href: "/signup",
+    highlight: false,
+    features: [
+      "500 submissões/mês",
+      "2 formulários",
+      "Upload: áudio 50 MB, capa 20 MB",
+      "Airtable nativo (sync bidirecional)",
+      "Field mapping visual",
+      "Suporte por e-mail prioritário",
+    ],
+    badge: "Mais popular",
+    badgeColor: "#2563EB",
+    accentColor: "#2563EB",
+    bgColor: "#EFF6FF",
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: 49,
+    description: "Para operações completas com IA e integrações avançadas.",
+    cta: "Criar workspace",
+    href: "/signup",
+    highlight: true,
+    features: [
+      "2.000 submissões/mês",
+      "5 formulários",
+      "Upload: áudio 100 MB, capa 50 MB",
+      "IA — Lyric Engine",
+      "Google Drive + Sheets nativos",
+      "Branding customizado",
+      "Suporte chat + e-mail",
+    ],
+    badge: "Mais recursos",
+    badgeColor: "#7C3AED",
+    accentColor: "#7C3AED",
+    bgColor: "#F5F3FF",
+  },
+];
+
 export default function MarketingHome() {
   return (
     <main className="min-h-screen bg-[#F4F1EA] text-[#111111]">
@@ -24,6 +90,7 @@ export default function MarketingHome() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.94),transparent_38%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-black/8" />
 
+        {/* ── Header ── */}
         <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
           <Link href="/" className="inline-flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-white shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
@@ -43,23 +110,39 @@ export default function MarketingHome() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <nav className="hidden items-center gap-1 sm:flex">
+            <Link
+              href="#pricing"
+              className="rounded-full px-4 py-2 text-sm font-medium text-[#6A6660] hover:bg-black/5 hover:text-[#111111] transition"
+            >
+              Planos
+            </Link>
             <Link
               href="/login"
-              className="hidden rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-[#111111] sm:inline-flex"
+              className="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-[#111111]"
             >
               Entrar
             </Link>
             <Link
-              href="/contact"
-              className="inline-flex rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold transition hover:bg-[#1D1D1D]"
-              style={{ color: '#ffffff' }}
+              href="/signup"
+              className="rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold transition hover:bg-[#1D1D1D]"
+              style={{ color: "#ffffff" }}
             >
-              Contato
+              Criar conta
             </Link>
-          </div>
+          </nav>
+
+          {/* Mobile */}
+          <Link
+            href="/signup"
+            className="inline-flex rounded-full bg-[#111111] px-5 py-2.5 text-sm font-semibold sm:hidden"
+            style={{ color: "#ffffff" }}
+          >
+            Criar conta
+          </Link>
         </header>
 
+        {/* ── Hero ── */}
         <section className="relative z-10 mx-auto max-w-7xl px-6 pb-20 pt-8 lg:px-8 lg:pb-24 lg:pt-10">
           <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <div>
@@ -70,7 +153,9 @@ export default function MarketingHome() {
 
               <h1 className="mt-8 max-w-4xl text-[3.4rem] font-semibold leading-[0.9] tracking-[-0.07em] text-[#111111] sm:text-[4.8rem] lg:text-[5.6rem]">
                 A base sólida
-                <span className="block" style={{ color: "rgba(17,17,17,0.55)" }}>por trás do lançamento.</span>
+                <span className="block" style={{ color: "rgba(17,17,17,0.55)" }}>
+                  por trás do lançamento.
+                </span>
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5E5A54]">
@@ -81,17 +166,17 @@ export default function MarketingHome() {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/contact"
+                  href="/signup"
                   className="inline-flex items-center justify-center rounded-full bg-[#111111] px-6 py-3.5 text-sm font-semibold"
-                  style={{ color: '#ffffff' }}
+                  style={{ color: "#ffffff" }}
                 >
-                  Fale com a Sunbeat
+                  Criar workspace grátis
                 </Link>
                 <Link
-                  href="/login"
+                  href="#pricing"
                   className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white px-6 py-3.5 text-sm font-semibold text-[#111111]"
                 >
-                  Entrar
+                  Ver planos
                 </Link>
               </div>
             </div>
@@ -111,6 +196,7 @@ export default function MarketingHome() {
         </section>
       </div>
 
+      {/* ── Ecosystem + Capabilities ── */}
       <section className="mx-auto max-w-7xl px-6 pb-8 lg:px-8">
         <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-[32px] border border-black/8 bg-white px-8 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.04)]">
@@ -125,7 +211,6 @@ export default function MarketingHome() {
               precisa operar com clareza — do primeiro envio até a continuidade
               do fluxo interno.
             </p>
-
             <div className="mt-8 flex flex-wrap gap-3">
               {ecosystem.map((item) => (
                 <div
@@ -172,6 +257,172 @@ export default function MarketingHome() {
               continua simples para quem preenche e o time recebe tudo
               organizado no fluxo operacional.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section id="pricing" className="mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-20">
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A6660]">
+            <span className="h-2 w-2 rounded-full bg-[#111111]" />
+            Planos e preços
+          </div>
+          <h2 className="mt-5 text-4xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-5xl">
+            Simples. Transparente. USD.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-base leading-8 text-[#5E5A54]">
+            Comece grátis e faça upgrade quando sua operação crescer.
+            Sem surpresas, sem contratos longos.
+          </p>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-3">
+          {plans.map((plan) => (
+            <div
+              key={plan.id}
+              className="relative flex flex-col rounded-[32px] border p-7 transition"
+              style={{
+                borderColor: plan.highlight ? plan.accentColor + "50" : "rgba(0,0,0,0.08)",
+                backgroundColor: plan.highlight ? plan.bgColor : "#FFFFFF",
+                boxShadow: plan.highlight
+                  ? `0 0 0 2px ${plan.accentColor}22, 0 20px 48px rgba(0,0,0,0.06)`
+                  : "0 14px 34px rgba(0,0,0,0.04)",
+              }}
+            >
+              {/* Badge */}
+              {plan.badge && (
+                <div
+                  className="mb-4 inline-flex w-fit rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]"
+                  style={{
+                    backgroundColor: plan.accentColor + "18",
+                    color: plan.accentColor,
+                  }}
+                >
+                  {plan.badge}
+                </div>
+              )}
+
+              {/* Plan name */}
+              <div
+                className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] w-fit"
+                style={{
+                  backgroundColor: plan.accentColor + "14",
+                  color: plan.accentColor,
+                }}
+              >
+                {plan.name}
+              </div>
+
+              {/* Price */}
+              <div className="mt-5">
+                {plan.price === 0 ? (
+                  <span className="text-3xl font-semibold tracking-tight text-[#111111]">
+                    Grátis
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-3xl font-semibold tracking-tight text-[#111111]">
+                      ${plan.price}
+                    </span>
+                    <span className="ml-1 text-sm text-[#7A746A]">/mês</span>
+                  </>
+                )}
+              </div>
+
+              <p className="mt-2 text-sm leading-6 text-[#5E5A54]">{plan.description}</p>
+
+              {/* Features */}
+              <ul className="mt-6 flex-1 space-y-2.5">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-[#393733]">
+                    <svg
+                      className="mt-0.5 h-4 w-4 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      style={{ color: plan.accentColor }}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA */}
+              <Link
+                href={plan.href}
+                className="mt-7 inline-flex w-full items-center justify-center rounded-2xl py-3 text-sm font-semibold transition"
+                style={
+                  plan.highlight
+                    ? { backgroundColor: plan.accentColor, color: "#ffffff" }
+                    : {
+                        backgroundColor: "transparent",
+                        color: plan.accentColor,
+                        border: `1.5px solid ${plan.accentColor}40`,
+                      }
+                }
+              >
+                {plan.cta} →
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        {/* Enterprise row */}
+        <div className="mt-5 rounded-[28px] border border-black/8 bg-[#111111] px-8 py-6">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.55)" }}>
+                Enterprise
+              </div>
+              <h3 className="mt-1 text-lg font-semibold" style={{ color: "#ffffff" }}>
+                Operação ilimitada com SLA dedicado
+              </h3>
+              <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
+                Submissões ilimitadas · White label · Notion nativo · Onboarding dedicado · Contrato personalizado
+              </p>
+            </div>
+            <Link
+              href="/contact"
+              className="shrink-0 inline-flex items-center justify-center rounded-2xl border px-6 py-3 text-sm font-semibold transition"
+              style={{ borderColor: "rgba(255,255,255,0.2)", color: "#ffffff" }}
+            >
+              Falar com a equipe →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA ── */}
+      <section className="mx-auto max-w-7xl px-6 pb-20 lg:px-8">
+        <div className="rounded-[40px] border border-black/8 bg-white px-10 py-14 text-center shadow-[0_24px_60px_rgba(0,0,0,0.04)]">
+          <h2 className="text-4xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-5xl">
+            Pronto para organizar seus lançamentos?
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-base leading-8 text-[#5E5A54]">
+            Crie seu workspace em menos de um minuto. Sem cartão de crédito para começar.
+          </p>
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center rounded-full bg-[#111111] px-8 py-3.5 text-sm font-semibold"
+              style={{ color: "#ffffff" }}
+            >
+              Criar workspace grátis
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center rounded-full border border-black/10 bg-[#F4F1EA] px-8 py-3.5 text-sm font-semibold text-[#111111]"
+            >
+              Falar com a equipe
+            </Link>
           </div>
         </div>
       </section>
