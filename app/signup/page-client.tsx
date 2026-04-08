@@ -73,12 +73,32 @@ export default function SignupPageClient() {
       });
 
       if (loginError) {
-        setError("Conta criada, mas não foi possível fazer login automático. Acesse /login.");
+        // Signup succeeded but auto-login failed — show success with manual link
+        setWorkspaceSlug(data.workspace_slug);
+        setStep("success");
         setLoading(false);
         return;
       }
 
-      setWorkspaceSlug(data.workspace_slug);
+      // 3. Get session tokens and redirect to subdomain via session-restore
+      //    Tokens go in the URL hash (not query params) to keep them off server logs.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const slug = data.workspace_slug;
+
+      if (sessionData?.session) {
+        const { access_token, refresh_token } = sessionData.session;
+        const hash = [
+          `at=${encodeURIComponent(access_token)}`,
+          `rt=${encodeURIComponent(refresh_token)}`,
+          `next=${encodeURIComponent("/app/settings/plan")}`,
+        ].join("&");
+        window.location.href = `https://${slug}.sunbeat.pro/auth/session-restore#${hash}`;
+        // setLoading stays true intentionally — page will navigate away
+        return;
+      }
+
+      // Fallback: show success with manual link
+      setWorkspaceSlug(slug);
       setStep("success");
     } catch {
       setError("Erro de conexão. Tente novamente.");
@@ -104,13 +124,16 @@ export default function SignupPageClient() {
             Acesse o dashboard para configurar seus formulários.
           </p>
           <a
-            href={`https://${workspaceSlug}.sunbeat.pro/app`}
+            href={`https://${workspaceSlug}.sunbeat.pro/login?next=/app/settings/plan`}
             className="mt-8 inline-flex w-full items-center justify-center rounded-full py-3.5 text-sm font-semibold"
             style={{ backgroundColor: '#111111', color: '#ffffff' }}
           >
-            Ir para o dashboard →
+            Acessar workspace →
           </a>
-          <p className="mt-4 text-xs text-[#9A9590]">
+          <p className="mt-3 text-xs text-[#9A9590]">
+            Você será redirecionado para a página de planos após o login.
+          </p>
+          <p className="mt-2 text-xs text-[#9A9590]">
             URL:{" "}
             <code className="rounded bg-[#F4F1EA] px-1.5 py-0.5 text-[#393733]">
               {workspaceSlug}.sunbeat.pro

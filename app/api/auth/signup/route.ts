@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   const { error: wsError } = await admin.from("workspaces").insert({
     slug: workspaceSlug,
     name: workspace_name.trim(),
-    plan_id: "starter",
+    plan_id: "free",
     owner_email: normalizedEmail,
   });
 
