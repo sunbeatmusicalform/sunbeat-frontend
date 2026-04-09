@@ -1,6 +1,11 @@
 import { headers } from "next/headers";
 
-import { getTenantFromHost, type TenantRef } from "./tenant";
+import {
+  getTenantFromHost,
+  isSunbeatRootHost,
+  normalizeHostHeader,
+  type TenantRef,
+} from "./tenant";
 
 export const DEFAULT_WORKSPACE_FALLBACK_SLUG = "atabaque";
 
@@ -31,14 +36,6 @@ type ResolveWorkspaceTenantOptions = {
   pathname?: string | null;
   fallbackWorkspaceSlug?: string;
 };
-
-function normalizeHostHeader(hostHeader?: string | null) {
-  return String(hostHeader || "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLowerCase();
-}
 
 function normalizePathname(pathname?: string | null) {
   const normalized = String(pathname || "").split("?")[0].trim();
@@ -79,7 +76,7 @@ function getFallbackReason(
     return "custom_domain";
   }
 
-  if (host === "sunbeat.pro" || host === "www.sunbeat.pro") {
+  if (isSunbeatRootHost(host)) {
     return "root_host";
   }
 

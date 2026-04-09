@@ -3,12 +3,55 @@ export type TenantRef =
   | { type: "custom_domain"; value: string }
   | null;
 
+const ROOT_HOSTS = new Set([
+  "sunbeat.pro",
+  "www.sunbeat.pro",
+  "sunbeat.com.br",
+  "www.sunbeat.com.br",
+]);
+
+export function normalizeHostHeader(hostHeader: string | null | undefined) {
+  return String(hostHeader || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLowerCase();
+}
+
+export function isSunbeatRootHost(hostHeader: string | null | undefined) {
+  const host = normalizeHostHeader(hostHeader);
+  return ROOT_HOSTS.has(host);
+}
+
+export function sanitizeWorkspaceSlug(value: unknown) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+
+  return normalized || null;
+}
+
+export function buildWorkspaceUrl(workspaceSlug: string, path = "/app") {
+  const slug = sanitizeWorkspaceSlug(workspaceSlug);
+  const safePath =
+    typeof path === "string" && path.startsWith("/") ? path : "/app";
+
+  if (!slug) {
+    return safePath;
+  }
+
+  return `https://${slug}.sunbeat.pro${safePath}`;
+}
+
 export function getTenantFromHost(hostHeader: string | null): TenantRef {
-  const host = (hostHeader || "").split(":")[0].toLowerCase();
+  const host = normalizeHostHeader(hostHeader);
   if (!host) return null;
 
   // marketing/root
-  if (host === "sunbeat.pro" || host === "www.sunbeat.pro") return null;
+  if (isSunbeatRootHost(host)) return null;
 
   // subdomain tenant
   const suffix = ".sunbeat.pro";

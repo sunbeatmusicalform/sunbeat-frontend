@@ -4,15 +4,124 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
+import {
+  buildWorkspaceUrl,
+  getTenantFromHost,
+  isSunbeatRootHost,
+  sanitizeWorkspaceSlug,
+} from "@/lib/tenant";
 
 const OTP_LENGTH = 8;
+
+function safeNextPath(next: string | null) {
+  if (!next || !next.startsWith("/")) {
+    return "/app";
+  }
+
+  return next;
+}
 
 export default function LoginPageClient() {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const redirectTo = searchParams.get("next") || "/app";
+  const redirectTo = safeNextPath(searchParams.get("next"));
+  const workspaceHint = useMemo(
+    () =>
+      sanitizeWorkspaceSlug(
+        searchParams.get("workspace") ?? searchParams.get("workspace_slug")
+      ),
+    [searchParams]
+  );
+  const authErrorMessage = useMemo(() => {
+    const error = searchParams.get("error");
+
+    switch (error) {
+      case "otp_failed":
+        return "O link de acesso expirou ou nao pode ser validado. Solicite um novo codigo.";
+      case "workspace_required":
+        return "Entramos na sua conta, mas nao foi possivel identificar o workspace. Use a URL do seu workspace para continuar.";
+      case "session_transfer_failed":
+        return "Nao foi possivel transferir a sessao para o workspace. Tente novamente pelo link do seu workspace.";
+      default:
+        return null;
+    }
+  }, [searchParams]);
+
+  function getCurrentHostWorkspaceSlug() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const tenant = getTenantFromHost(window.location.host);
+    return tenant?.type === "subdomain" ? tenant.value : null;
+  }
+
+  function getWorkspaceSlugForAuth(userWorkspaceSlug?: unknown) {
+    return (
+      getCurrentHostWorkspaceSlug() ??
+      workspaceHint ??
+      sanitizeWorkspaceSlug(userWorkspaceSlug)
+    );
+  }
+
+  function buildOtpRedirectUrl() {
+    const redirectUrl = new URL("/auth/callback", window.location.origin);
+    redirectUrl.searchParams.set("next", redirectTo);
+
+    const workspaceSlug = getWorkspaceSlugForAuth();
+    if (workspaceSlug) {
+      redirectUrl.searchParams.set("workspace", workspaceSlug);
+    }
+
+    return redirectUrl.toString();
+  }
+
+  async function completeAuthRedirect() {
+    const currentHost =
+      typeof window !== "undefined" ? window.location.host : "";
+    const shouldTransferSessionToWorkspace =
+      isSunbeatRootHost(currentHost) && redirectTo.startsWith("/app");
+
+    if (!shouldTransferSessionToWorkspace) {
+      router.push(redirectTo);
+      router.refresh();
+      return null;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const workspaceSlug = getWorkspaceSlugForAuth(
+      user?.user_metadata?.workspace_slug
+    );
+
+    if (!workspaceSlug) {
+      await supabase.auth.signOut();
+      return "Entramos na sua conta, mas nao foi possivel identificar o workspace. Use a URL do seu workspace para continuar.";
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+
+    if (!session?.access_token || !session.refresh_token) {
+      await supabase.auth.signOut();
+      return "Nao foi possivel preparar a sessao do workspace. Tente novamente.";
+    }
+
+    const restoreUrl = new URL(
+      buildWorkspaceUrl(workspaceSlug, "/auth/session-restore")
+    );
+    restoreUrl.hash = [
+      `at=${encodeURIComponent(session.access_token)}`,
+      `rt=${encodeURIComponent(session.refresh_token)}`,
+      `next=${encodeURIComponent(redirectTo)}`,
+    ].join("&");
+
+    window.location.href = restoreUrl.toString();
+    return null;
+  }
 
   // Login mode: "otp" (default, used by existing clients) or "password" (self-serve)
   const [loginMode, setLoginMode] = useState<"otp" | "password">("otp");
@@ -36,8 +145,10 @@ export default function LoginPageClient() {
       setPwErr("E-mail ou senha incorretos.");
       return;
     }
-    router.push(redirectTo);
-    router.refresh();
+    const redirectError = await completeAuthRedirect();
+    if (redirectError) {
+      setPwErr(redirectError);
+    }
   }
 
   const [email, setEmail] = useState("");
@@ -70,9 +181,7 @@ export default function LoginPageClient() {
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-          redirectTo
-        )}`,
+        emailRedirectTo: buildOtpRedirectUrl(),
       },
     });
 
@@ -116,8 +225,10 @@ export default function LoginPageClient() {
       return;
     }
 
-    router.push(redirectTo);
-    router.refresh();
+    const redirectError = await completeAuthRedirect();
+    if (redirectError) {
+      setErr(redirectError);
+    }
   }
 
   async function handleResendCode() {
@@ -128,9 +239,7 @@ export default function LoginPageClient() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-          redirectTo
-        )}`,
+        emailRedirectTo: buildOtpRedirectUrl(),
       },
     });
 
@@ -287,6 +396,12 @@ export default function LoginPageClient() {
               </div>
             </div>
           </div>
+
+          {authErrorMessage && (
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {authErrorMessage}
+            </div>
+          )}
 
           {/* Mode switcher */}
           <div className="mt-6 flex rounded-2xl border border-black/8 bg-[#F8F5EF] p-1">
