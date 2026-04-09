@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   buildWorkspaceUrl,
   isSunbeatRootHost,
   sanitizeWorkspaceSlug,
 } from "@/lib/tenant";
+import {
+  choosePreferredWorkspace,
+  listAccessibleWorkspacesForUser,
+} from "@/lib/workspace-access";
 
 function safeNext(next: string | null) {
   // Prevent open-redirects. Only allow internal paths.
@@ -53,62 +56,34 @@ function buildSessionRestoreRedirect(args: {
   return redirect;
 }
 
-async function resolveWorkspaceSlugForAuth(args: {
+function buildWorkspaceSelectorRedirect(args: {
+  origin: string;
+  next: string;
+}) {
+  const redirect = new URL("/auth/select-workspace", args.origin);
+  redirect.searchParams.set("next", args.next);
+  return redirect;
+}
+
+async function resolveAuthWorkspaceChoice(args: {
   userId?: string | null;
   email?: string | null;
   workspaceHint?: string | null;
   metadataWorkspaceSlug?: unknown;
 }) {
-  const workspaceHint = sanitizeWorkspaceSlug(args.workspaceHint);
-  if (workspaceHint) {
-    return workspaceHint;
-  }
+  const workspaces = await listAccessibleWorkspacesForUser(args);
+  const preferredWorkspace = choosePreferredWorkspace({
+    workspaces,
+    preferredSlugs: [
+      args.workspaceHint,
+      sanitizeWorkspaceSlug(args.metadataWorkspaceSlug),
+    ],
+  });
 
-  const metadataWorkspaceSlug = sanitizeWorkspaceSlug(
-    args.metadataWorkspaceSlug
-  );
-  if (metadataWorkspaceSlug) {
-    return metadataWorkspaceSlug;
-  }
-
-  const admin = createSupabaseAdmin();
-
-  if (args.userId) {
-    const { data, error } = await admin
-      .from("workspace_users")
-      .select("workspace_slug")
-      .eq("user_id", args.userId)
-      .limit(1);
-
-    if (!error) {
-      const membership = Array.isArray(data) ? data[0] : data;
-      const membershipSlug = sanitizeWorkspaceSlug(
-        membership?.workspace_slug
-      );
-
-      if (membershipSlug) {
-        return membershipSlug;
-      }
-    }
-  }
-
-  const normalizedEmail = String(args.email || "").trim().toLowerCase();
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  const { data, error } = await admin
-    .from("workspaces")
-    .select("slug")
-    .eq("owner_email", normalizedEmail)
-    .limit(1);
-
-  if (error) {
-    return null;
-  }
-
-  const workspace = Array.isArray(data) ? data[0] : data;
-  return sanitizeWorkspaceSlug(workspace?.slug);
+  return {
+    workspaces,
+    preferredWorkspace,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -164,12 +139,13 @@ export async function GET(req: NextRequest) {
     isSunbeatRootHost(url.hostname) && next.startsWith("/app");
 
   if (shouldTransferSessionToWorkspace) {
-    const workspaceSlug = await resolveWorkspaceSlugForAuth({
+    const workspaceChoice = await resolveAuthWorkspaceChoice({
       userId: data.user?.id ?? data.session?.user?.id ?? null,
       email: data.user?.email ?? data.session?.user?.email ?? null,
       workspaceHint,
       metadataWorkspaceSlug: data.user?.user_metadata?.workspace_slug,
     });
+    const workspaceSlug = workspaceChoice.preferredWorkspace?.slug ?? null;
 
     if (
       workspaceSlug &&
@@ -181,6 +157,11 @@ export async function GET(req: NextRequest) {
         next,
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
+      });
+    } else if (workspaceChoice.workspaces.length > 1) {
+      redirect = buildWorkspaceSelectorRedirect({
+        origin: url.origin,
+        next,
       });
     } else {
       await supabase.auth.signOut();

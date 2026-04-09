@@ -343,7 +343,8 @@ export async function PUT(
       .from("workspace_field_overrides")
       .delete()
       .eq("workspace_slug", workspaceSlug)
-      .eq("workflow_type", resolvedWorkflow.workflowType);
+      .eq("workflow_type", resolvedWorkflow.workflowType)
+      .eq("form_version", resolvedWorkflow.formVersion);
 
     if (deleteError) {
       return NextResponse.json({ ok: false, error: deleteError.message }, { status: 500 });

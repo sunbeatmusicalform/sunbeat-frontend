@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { createSupabaseServer } from "@/lib/supabase/server";
+import {
+  canAccessWorkspace,
+  listAccessibleWorkspacesForUser,
+} from "@/lib/workspace-access";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -9,7 +14,6 @@ const EMAIL_SETTINGS_STEP_KEY = "__workspace_settings__";
 const EMAIL_SETTINGS_FIELD_KEY = "submission_notification_emails";
 const SECURITY_SETTINGS_STEP_KEY = "__workspace_security__";
 const EDIT_PASSWORD_FIELD_KEY = "edit_mode_password_hash";
-const PUBLIC_EDIT_WORKSPACES = new Set(["atabaque"]);
 const LEGACY_EDITOR_WORKFLOW_TYPE = "release_intake";
 const LEGACY_EDITOR_FORM_VERSION = "legacy_v1";
 const FIELD_OVERRIDE_SELECT_WITH_SCOPE =
@@ -138,10 +142,6 @@ function getPasswordHeader(request: Request) {
   return normalizePassword(request.headers.get("x-workspace-edit-password"));
 }
 
-function isWorkspaceAllowed(workspaceSlug: string) {
-  return PUBLIC_EDIT_WORKSPACES.has(workspaceSlug);
-}
-
 function isSettingsOrSecurityStep(stepKey: string) {
   return (
     stepKey === EMAIL_SETTINGS_STEP_KEY || stepKey === SECURITY_SETTINGS_STEP_KEY
@@ -195,7 +195,42 @@ function hasMissingWorkflowScopeColumns(error: unknown) {
 
   return message.includes(
     "column workspace_field_overrides.workflow_type does not exist"
+  ) || message.includes(
+    "column workspace_field_overrides.form_version does not exist"
   );
+}
+
+async function authorizeWorkspaceEditorAccess(workspaceSlug: string) {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      response: NextResponse.json(
+        { ok: false, error: "Authentication required" },
+        { status: 401 }
+      ),
+    };
+  }
+
+  const workspaces = await listAccessibleWorkspacesForUser({
+    userId: user.id,
+    email: user.email ?? null,
+    metadataWorkspaceSlug: user.user_metadata?.workspace_slug,
+  });
+
+  if (!canAccessWorkspace({ workspaceSlug, workspaces })) {
+    return {
+      response: NextResponse.json(
+        { ok: false, error: "Workspace nao disponivel para este usuario." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { user };
 }
 
 async function loadWorkspaceFieldOverrides(
@@ -281,12 +316,9 @@ export async function GET(
   context: { params: Promise<{ workspaceSlug: string }> }
 ) {
   const { workspaceSlug } = await context.params;
-
-  if (!isWorkspaceAllowed(workspaceSlug)) {
-    return NextResponse.json(
-      { ok: false, error: "Workspace nao disponivel para edicao publica." },
-      { status: 404 }
-    );
+  const access = await authorizeWorkspaceEditorAccess(workspaceSlug);
+  if ("response" in access) {
+    return access.response;
   }
 
   const supabase = createSupabaseAdmin();
@@ -400,12 +432,9 @@ export async function PUT(
   context: { params: Promise<{ workspaceSlug: string }> }
 ) {
   const { workspaceSlug } = await context.params;
-
-  if (!isWorkspaceAllowed(workspaceSlug)) {
-    return NextResponse.json(
-      { ok: false, error: "Workspace nao disponivel para edicao publica." },
-      { status: 404 }
-    );
+  const access = await authorizeWorkspaceEditorAccess(workspaceSlug);
+  if ("response" in access) {
+    return access.response;
   }
 
   const body = (await request.json()) as {

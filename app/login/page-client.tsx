@@ -78,6 +78,30 @@ export default function LoginPageClient() {
     return redirectUrl.toString();
   }
 
+  async function loadAccessibleWorkspaces() {
+    const response = await fetch("/api/auth/workspaces", { cache: "no-store" });
+    const data = (await response.json()) as {
+      ok: boolean;
+      workspaces?: Array<{ slug: string; name: string }>;
+      preferred_workspace_slug?: string | null;
+      error?: string;
+    };
+
+    if (!response.ok || !data.ok) {
+      throw new Error(
+        data.error ||
+          "Nao foi possivel identificar os workspaces da sua conta."
+      );
+    }
+
+    return {
+      workspaces: Array.isArray(data.workspaces) ? data.workspaces : [],
+      preferredWorkspaceSlug: sanitizeWorkspaceSlug(
+        data.preferred_workspace_slug
+      ),
+    };
+  }
+
   async function completeAuthRedirect() {
     const currentHost =
       typeof window !== "undefined" ? window.location.host : "";
@@ -93,9 +117,24 @@ export default function LoginPageClient() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const workspaceSlug = getWorkspaceSlugForAuth(
+    let workspaceSlug = getWorkspaceSlugForAuth(
       user?.user_metadata?.workspace_slug
     );
+
+    if (!workspaceSlug) {
+      const workspaceData = await loadAccessibleWorkspaces();
+      workspaceSlug =
+        workspaceData.preferredWorkspaceSlug ??
+        (workspaceData.workspaces.length === 1
+          ? workspaceData.workspaces[0].slug
+          : null);
+
+      if (!workspaceSlug && workspaceData.workspaces.length > 1) {
+        router.push(`/auth/select-workspace?next=${encodeURIComponent(redirectTo)}`);
+        router.refresh();
+        return null;
+      }
+    }
 
     if (!workspaceSlug) {
       await supabase.auth.signOut();
