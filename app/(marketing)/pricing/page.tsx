@@ -34,7 +34,14 @@ export async function generateMetadata() {
   const host = (await headers()).get("host") ?? "";
   const market = resolveMarket(host);
   return {
-    title: market === "brazil" ? "Planos — Sunbeat" : "Pricing — Sunbeat",
+    title:
+      market === "brazil"
+        ? "Planos — Sunbeat | Infraestrutura inteligente para mercados criativos"
+        : "Pricing — Sunbeat | Intelligent infrastructure for creative markets",
+    description:
+      market === "brazil"
+        ? "Planos Free, Starter, Pro e Enterprise da Sunbeat. Preços em BRL para o mercado brasileiro. Comece grátis."
+        : "Sunbeat Free, Starter, Pro and Enterprise plans. USD pricing for the global market. Start free.",
   };
 }
 
@@ -312,8 +319,8 @@ export default async function PricingPage() {
     signup: isBrazil ? "Criar conta" : "Get started",
     heroTitle: isBrazil ? "Simples. Transparente." : "Simple. Transparent.",
     heroSub: isBrazil
-      ? `Comece grátis, faça upgrade quando precisar. Preços em ${marketConfig.currency} para o mercado ${isBrazil ? "brasileiro" : "global"}.`
-      : `Start free, upgrade when you need it. Prices in ${marketConfig.currency} for the global market.`,
+      ? `Comece grátis e faça upgrade quando sua operação crescer. Preços em BRL para o mercado brasileiro.`
+      : `Start free and upgrade as your operation scales. Prices in USD for the global market.`,
     perMonth: isBrazil ? "/mês" : "/mo",
     enterpriseTag: isBrazil ? "Enterprise" : "Enterprise",
     enterpriseTitle: isBrazil ? "Para operações de grande escala" : "For large-scale operations",

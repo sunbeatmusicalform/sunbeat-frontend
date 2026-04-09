@@ -3,33 +3,35 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   metadataBase: new URL("https://sunbeat.pro"),
   title: {
-    default: "Sunbeat - intake e operacao para lancamentos musicais",
+    default: "Sunbeat — Infraestrutura inteligente de intake, workflow e operação",
     template: "%s | Sunbeat",
   },
   description:
-    "Sunbeat e a infraestrutura para intake publico, metadata, assets, faixas e operacao de lancamentos para labels e distribuidoras.",
+    "Sunbeat é uma infraestrutura inteligente de intake, workflow e operação para mercados criativos. Transforme formulários e briefings em execução organizada.",
   keywords: [
-    "music metadata platform",
+    "intake workflow operação mercados criativos",
+    "gestão inteligente mercados criativos",
+    "music operations platform",
     "release intake for labels",
-    "airtable music workflow",
-    "music operations automation",
-    "DSP metadata submission",
-    "record label SaaS",
+    "creative workflow management",
     "music release management",
+    "record label SaaS",
+    "intake workflow automation",
+    "creative operations infrastructure",
   ],
   openGraph: {
-    title: "Sunbeat - infraestrutura para lancamentos musicais",
+    title: "Sunbeat — Infraestrutura de intake, workflow e operação",
     description:
-      "Intake publico, drafts, uploads, Supabase e Airtable para a operacao moderna de lancamentos.",
+      "Transforme formulários, briefing e entrada de demandas em workflow, contexto operacional e execução organizada para equipes criativas.",
     url: "https://sunbeat.pro",
     siteName: "Sunbeat",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sunbeat - intake para labels e distribuidoras",
+    title: "Sunbeat — Intelligent infrastructure for creative operations",
     description:
-      "Infraestrutura de intake, metadata e operacao para lancamentos musicais.",
+      "Turn forms, briefs and incoming work into structured workflows, operational context and scalable execution.",
   },
   robots: {
     index: true,
