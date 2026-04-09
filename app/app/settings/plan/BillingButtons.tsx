@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Market } from "@/lib/billing/catalog";
 
 export function UpgradeButton({
   planId,
   workspaceSlug,
   market = "global",
+  autoCheckout = false,
   style,
   className,
   children,
@@ -14,11 +15,13 @@ export function UpgradeButton({
   planId: string;
   workspaceSlug: string;
   market?: Market;
+  /** When true, triggers checkout automatically on mount (used when arriving from signup with plan_intent). */
+  autoCheckout?: boolean;
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(autoCheckout); // start in loading if auto-triggering
 
   async function handleUpgrade() {
     setLoading(true);
@@ -40,6 +43,15 @@ export function UpgradeButton({
       setLoading(false);
     }
   }
+
+  // Auto-trigger checkout on mount when arriving from pricing → signup funnel
+  useEffect(() => {
+    if (autoCheckout) {
+      handleUpgrade();
+    }
+    // Only run on mount — intentional dependency omission
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <button

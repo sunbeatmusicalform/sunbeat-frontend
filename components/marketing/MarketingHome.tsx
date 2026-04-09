@@ -243,6 +243,8 @@ interface PlanConfig {
   accentColor: string;
   bgColor: string;
   highlight: boolean;
+  /** Signup URL with plan param — preserves intent through the funnel. Omit for free plan. */
+  signupHref?: string;
 }
 
 const PLANS: PlanConfig[] = [

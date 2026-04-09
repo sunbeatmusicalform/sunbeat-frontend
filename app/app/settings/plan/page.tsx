@@ -24,8 +24,13 @@ type PlanRow = {
 
 export const metadata = { title: "Plano — Sunbeat" };
 
-export default async function PlanPage() {
+export default async function PlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan_intent?: string }>;
+}) {
   const host = (await headers()).get("host") ?? "";
+  const { plan_intent: rawPlanIntent } = await searchParams;
 
   // Resolve workspace slug from subdomain
   const tenantRaw = getTenantFromHost(host);
@@ -36,6 +41,14 @@ export default async function PlanPage() {
   const market: Market = resolveMarket(host);
   const marketConfig = billingCatalog[market];
   const isBrazil = market === "brazil";
+
+  // plan_intent: passed from signup when user selected a plan before creating workspace.
+  // Kept separate from plan_id — it's a funnel signal, not a billing state.
+  // Only valid for self-serve tiers (starter, pro). Never enterprise or free.
+  const planIntent =
+    rawPlanIntent && isSelfServePlan(rawPlanIntent as BillingTier)
+      ? (rawPlanIntent as BillingTier)
+      : null;
 
   let currentPlanId: BillingTier = "free";
   let currentPlanName = "Free";
@@ -173,10 +186,34 @@ export default async function PlanPage() {
           </p>
         </div>
 
+        {/* Plan intent banner — shown when arriving from pricing → signup funnel */}
+        {planIntent && (
+          <div className="mb-8 flex items-start gap-4 rounded-[20px] border border-black/8 bg-white px-6 py-5 shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#111111]">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#ffffff" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#111111]">
+                {isBrazil
+                  ? `Workspace criado! Ativando plano ${planIntent === "starter" ? "Starter" : "Pro"}…`
+                  : `Workspace created! Activating ${planIntent === "starter" ? "Starter" : "Pro"} plan…`}
+              </p>
+              <p className="mt-0.5 text-[13px] text-[#5F5A53]">
+                {isBrazil
+                  ? "Você está sendo redirecionado ao checkout do Stripe para concluir sua assinatura."
+                  : "You're being redirected to Stripe checkout to complete your subscription."}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Plan cards */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => {
             const isCurrent = plan.id === currentPlanId;
+            const isIntent = planIntent === plan.id;
             const pc = planColors[plan.id] ?? planColors.pro;
             const canUpgrade = isSelfServePlan(plan.id as BillingTier) && !isCurrent;
             const priceLabel = formatPrice(market, plan.id as BillingTier);
@@ -186,9 +223,13 @@ export default async function PlanPage() {
                 key={plan.id}
                 className="rounded-[28px] border p-6 transition"
                 style={{
-                  borderColor: isCurrent ? pc.badge : "rgba(0,0,0,0.08)",
-                  backgroundColor: isCurrent ? pc.bg : "#FFFFFF",
-                  boxShadow: isCurrent ? `0 0 0 2px ${pc.badge}22` : "0 14px 34px rgba(0,0,0,0.04)",
+                  borderColor: isIntent ? pc.badge : isCurrent ? pc.badge : "rgba(0,0,0,0.08)",
+                  backgroundColor: isIntent ? pc.bg : isCurrent ? pc.bg : "#FFFFFF",
+                  boxShadow: isIntent
+                    ? `0 0 0 3px ${pc.badge}33, 0 14px 34px rgba(0,0,0,0.08)`
+                    : isCurrent
+                    ? `0 0 0 2px ${pc.badge}22`
+                    : "0 14px 34px rgba(0,0,0,0.04)",
                 }}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -228,17 +269,23 @@ export default async function PlanPage() {
                 </ul>
 
                 {/* Upgrade button */}
-                {canUpgrade && (
-                  <UpgradeButton
-                    planId={plan.id}
-                    workspaceSlug={workspaceSlug}
-                    market={market}
-                    className="mt-5 w-full rounded-2xl py-2 text-sm font-semibold transition disabled:opacity-60"
-                    style={{ backgroundColor: pc.badge, color: "#ffffff" }}
-                  >
-                    {labels.upgradeBtn(plan.name)}
-                  </UpgradeButton>
-                )}
+                {canUpgrade && (() => {
+                  const isIntent = planIntent === plan.id;
+                  return (
+                    <UpgradeButton
+                      planId={plan.id}
+                      workspaceSlug={workspaceSlug}
+                      market={market}
+                      autoCheckout={isIntent}
+                      className="mt-5 w-full rounded-2xl py-2 text-sm font-semibold transition disabled:opacity-60"
+                      style={{ backgroundColor: pc.badge, color: "#ffffff" }}
+                    >
+                      {isIntent
+                        ? (isBrazil ? `Ativar plano ${plan.name}` : `Activate ${plan.name} plan`)
+                        : labels.upgradeBtn(plan.name)}
+                    </UpgradeButton>
+                  );
+                })()}
 
                 {/* Enterprise contact */}
                 {plan.id === "enterprise" && !isCurrent && (
