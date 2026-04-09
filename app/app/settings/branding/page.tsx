@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getTenantFromHost } from "@/lib/tenant";
+import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 
 export const metadata = { title: "Branding — Sunbeat" };
 
@@ -17,9 +16,7 @@ type BrandingRow = {
 };
 
 export default async function BrandingSettingsPage() {
-  const host = (await headers()).get("host") ?? "";
-  const tenant = getTenantFromHost(host);
-  const workspaceSlug = tenant?.type === "subdomain" ? tenant.value : "atabaque";
+  const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
 
   let branding: BrandingRow | null = null;
   let brandingError = false;
@@ -245,3 +242,4 @@ function BrandTextBlock({
     </div>
   );
 }
+                                                                                                                                

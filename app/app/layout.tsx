@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/app/app/logout-button";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getTenantFromHost } from "@/lib/tenant";
+import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 
 // ─── Nav structure ───────────────────────────────────────────────────────────
 
@@ -119,11 +118,7 @@ export default async function AppLayout({
 
   const userEmail = user.email ?? "workspace@sunbeat.pro";
 
-  // Resolve workspace slug from subdomain
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const tenant = getTenantFromHost(host);
-  const workspaceSlug = tenant?.type === "subdomain" ? tenant.value : "atabaque";
+  const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
 
   // Fetch workspace + plan info
   let workspaceName = workspaceSlug;
@@ -303,3 +298,4 @@ export default async function AppLayout({
     </div>
   );
 }
+                                                                                                                                                                                                            

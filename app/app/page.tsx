@@ -1,17 +1,14 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getTenantFromHost } from "@/lib/tenant";
+import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 
 export default async function AppHome() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const userEmail = user?.email ?? "workspace@sunbeat.pro";
 
-  const host = (await headers()).get("host") ?? "";
-  const tenant = getTenantFromHost(host);
-  const workspaceSlug = tenant?.type === "subdomain" ? tenant.value : "atabaque";
+  const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
 
   // Branding status
   let hasBranding = false;
@@ -20,6 +17,7 @@ export default async function AppHome() {
   let planId = "free";
   let submissionCount: number | null = null;
   let hasAirtable = false;
+  let emailEnabled: boolean | null = null;
 
   try {
     const admin = createSupabaseAdmin();
@@ -32,13 +30,13 @@ export default async function AppHome() {
         .maybeSingle(),
       admin
         .from("workspace_branding")
-        .select("workspace_name")
+        .select("workspace_name, submission_email_enabled")
         .eq("workspace_slug", workspaceSlug)
         .maybeSingle(),
       admin
-        .from("release_intake_submissions")
+        .from("submissions")
         .select("id", { count: "exact", head: true })
-        .eq("workspace_slug", workspaceSlug),
+        .eq("client_slug", workspaceSlug),
       admin
         .from("workspace_airtable_mapping")
         .select("id", { count: "exact", head: true })
@@ -55,6 +53,8 @@ export default async function AppHome() {
     }
 
     hasBranding = brandingResult.data !== null;
+    const brandingData = brandingResult.data as { workspace_name?: string | null; submission_email_enabled?: boolean | null } | null;
+    emailEnabled = brandingData?.submission_email_enabled ?? null;
     submissionCount = submissionsResult.count ?? null;
     hasAirtable = (airtableResult.count ?? 0) > 0;
   } catch {
@@ -180,8 +180,20 @@ export default async function AppHome() {
           />
           <IntegrationStatus
             name="E-mail (Resend)"
-            status="connected"
-            note="Notificações de submissão ativas"
+            status={
+              emailEnabled === true
+                ? "connected"
+                : emailEnabled === false
+                ? "not_configured"
+                : "deferred"
+            }
+            note={
+              emailEnabled === true
+                ? "Notificações de submissão ativas"
+                : emailEnabled === false
+                ? "Notificações desativadas"
+                : "Não verificado"
+            }
           />
         </div>
       </section>
@@ -297,3 +309,4 @@ function IntegrationStatus({
     </div>
   );
 }
+                                                                                                                                

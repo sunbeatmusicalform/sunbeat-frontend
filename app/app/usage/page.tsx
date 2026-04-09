@@ -1,95 +1,145 @@
-const metrics = [
-  {
-    label: "Active Workspaces",
-    value: "1",
-  },
-  {
-    label: "Release Submissions",
-    value: "3",
-  },
-  {
-    label: "Draft Sessions",
-    value: "2",
-  },
-  {
-    label: "AI Guidance Calls",
-    value: "0",
-  },
-];
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 
-export default function UsagePage() {
+export const metadata = { title: "Uso — Sunbeat" };
+
+export default async function UsagePage() {
+  const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+
+  let submissionCount: number | null = null;
+  let draftCount: number | null = null;
+  let loadError = false;
+
+  try {
+    const admin = createSupabaseAdmin();
+
+    const [submissionsResult, draftsResult] = await Promise.all([
+      admin
+        .from("submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("client_slug", workspaceSlug),
+      admin
+        .from("release_intake_drafts")
+        .select("id", { count: "exact", head: true })
+        .eq("client_slug", workspaceSlug),
+    ]);
+
+    submissionCount = submissionsResult.count ?? 0;
+    draftCount = draftsResult.count ?? 0;
+  } catch {
+    loadError = true;
+  }
+
   return (
     <div className="grid gap-6">
 
-      <section className="glass-panel-strong premium-border rounded-[32px] p-7">
-
-        <span className="sunbeat-badge">
-          <span className="sunbeat-dot" />
-          Platform Usage
-        </span>
-
-        <h1 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-white">
-          Workspace activity
+      {/* Header */}
+      <section className="rounded-[28px] border border-black/8 bg-white px-7 py-7 shadow-[0_18px_48px_rgba(0,0,0,0.04)]">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8D867B]">
+          Uso
+        </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">
+          Atividade do workspace
         </h1>
-
-        <p className="mt-4 max-w-2xl text-white/60 leading-8">
-          This dashboard will provide visibility into submissions, workspace activity
-          and operational signals across the Sunbeat platform.
+        <p className="mt-2 max-w-2xl text-sm leading-7 text-[#5F5A53]">
+          Métricas de volume de submissões e rascunhos para o workspace{" "}
+          <span className="font-medium text-[#111111]">{workspaceSlug}</span>.
         </p>
-
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {/* Error banner */}
+      {loadError && (
+        <div className="rounded-[20px] border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
+          Não foi possível carregar as métricas. Tente novamente.
+        </div>
+      )}
 
-        {metrics.map((item) => (
-          <div
-            key={item.label}
-            className="sunbeat-card rounded-[28px] p-6"
-          >
-            <div className="text-3xl font-semibold text-white">
-              {item.value}
-            </div>
-
-            <div className="mt-2 text-sm text-white/55">
-              {item.label}
-            </div>
-          </div>
-        ))}
-
+      {/* Metric cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Submissões recebidas"
+          value={submissionCount !== null ? String(submissionCount) : "—"}
+          note="Total via intake público"
+        />
+        <MetricCard
+          label="Rascunhos ativos"
+          value={draftCount !== null ? String(draftCount) : "—"}
+          note="Em preenchimento"
+        />
+        <MetricCard
+          label="Chamadas de IA"
+          value="—"
+          note="Não rastreado ainda"
+          muted
+        />
+        <MetricCard
+          label="Workspaces"
+          value="1"
+          note="Este workspace"
+        />
       </section>
 
-      <section className="sunbeat-card rounded-[32px] p-7">
-
-        <h2 className="text-2xl font-semibold text-white">
-          Future analytics layer
+      {/* Future analytics note */}
+      <section className="rounded-[28px] border border-black/8 bg-white px-7 py-7 shadow-[0_18px_48px_rgba(0,0,0,0.04)]">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8D867B]">
+          Próxima camada
+        </div>
+        <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#111111]">
+          Analytics operacional
         </h2>
-
-        <p className="mt-4 max-w-3xl text-white/60 leading-7">
-          Sunbeat will provide analytics for intake performance,
-          submission volume, validation errors and operational throughput.
+        <p className="mt-2 max-w-2xl text-sm leading-7 text-[#5F5A53]">
+          Em desenvolvimento: taxa de conversão do intake, tempo médio de preenchimento,
+          frequência de erros de metadados e volume de submissões por período.
         </p>
 
-        <div className="mt-6 grid gap-3">
-
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
           {[
-            "Submission conversion rate",
-            "Average completion time",
-            "Metadata error frequency",
-            "AI assistance usage",
-            "Label workspace activity",
+            "Taxa de conversão do intake",
+            "Tempo médio de preenchimento",
+            "Frequência de erros de metadados",
+            "Volume por período",
           ].map((item) => (
             <div
               key={item}
-              className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-white/78"
+              className="rounded-[16px] border border-black/8 bg-[#F8F5EF] px-4 py-3 text-sm text-[#8D867B]"
             >
               {item}
             </div>
           ))}
-
         </div>
-
       </section>
 
+    </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function MetricCard({
+  label,
+  value,
+  note,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="rounded-[24px] border border-black/8 bg-white px-6 py-6 shadow-[0_14px_34px_rgba(0,0,0,0.04)]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8D867B]">
+        {label}
+      </div>
+      <div
+        className="mt-3 text-4xl font-semibold tracking-[-0.04em]"
+        style={{ color: muted ? "#B5B0A8" : "#111111" }}
+      >
+        {value}
+      </div>
+      {note && (
+        <div className="mt-1.5 text-xs text-[#9A9590]">{note}</div>
+      )}
     </div>
   );
 }
