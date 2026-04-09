@@ -1,9 +1,13 @@
 import Link from "next/link";
 import {
   billingCatalog,
+  enterpriseTiers,
   formatPrice,
   type Market,
+  type BillingTierType,
 } from "@/lib/billing/catalog";
+
+// ─── Static data ──────────────────────────────────────────────────────────────
 
 const ecosystem = [
   "Artistas",
@@ -25,12 +29,16 @@ const capabilities = [
 interface PlanConfig {
   id: "free" | "starter" | "pro";
   name: string;
-  description: string;
-  cta: string;
+  descriptionPt: string;
+  descriptionEn: string;
+  ctaPt: string;
+  ctaEn: string;
   href: string;
   highlight: boolean;
-  features: string[];
+  featuresPt: string[];
+  featuresEn: string[];
   badge: string | null;
+  badgeEn: string | null;
   accentColor: string;
   bgColor: string;
 }
@@ -39,29 +47,41 @@ const plansConfig: PlanConfig[] = [
   {
     id: "free",
     name: "Free",
-    description: "Para começar a testar o fluxo de lançamento.",
-    cta: "Começar grátis",
+    descriptionPt: "Para começar a testar o fluxo de lançamento.",
+    descriptionEn: "Start testing your release workflow with no commitment.",
+    ctaPt: "Começar grátis",
+    ctaEn: "Start for free",
     href: "/signup",
     highlight: false,
-    features: [
+    featuresPt: [
       "50 submissões/mês",
       "1 formulário",
       "Upload: áudio 10 MB, capa 5 MB",
       "Rascunho automático",
       "E-mail de resumo",
     ],
+    featuresEn: [
+      "50 submissions/mo",
+      "1 intake form",
+      "Upload: audio 10 MB, cover 5 MB",
+      "Auto-draft on submission",
+      "Summary email per submission",
+    ],
     badge: null,
+    badgeEn: null,
     accentColor: "#6B7280",
     bgColor: "#F9F9F9",
   },
   {
     id: "starter",
     name: "Starter",
-    description: "Para labels e managers que precisam de mais controle.",
-    cta: "Criar workspace",
+    descriptionPt: "Para labels e managers que precisam de mais controle.",
+    descriptionEn: "For labels and managers with a steady release operation.",
+    ctaPt: "Criar workspace",
+    ctaEn: "Create workspace",
     href: "/signup",
     highlight: false,
-    features: [
+    featuresPt: [
       "500 submissões/mês",
       "2 formulários",
       "Upload: áudio 50 MB, capa 20 MB",
@@ -69,18 +89,29 @@ const plansConfig: PlanConfig[] = [
       "Field mapping visual",
       "Suporte por e-mail prioritário",
     ],
+    featuresEn: [
+      "500 submissions/mo",
+      "2 forms",
+      "Upload: audio 50 MB, cover 20 MB",
+      "Native Airtable (2-way sync)",
+      "Visual field mapping",
+      "Priority email support",
+    ],
     badge: "Mais popular",
+    badgeEn: "Most popular",
     accentColor: "#2563EB",
     bgColor: "#EFF6FF",
   },
   {
     id: "pro",
     name: "Pro",
-    description: "Para operações completas com IA e integrações avançadas.",
-    cta: "Criar workspace",
+    descriptionPt: "Para operações completas com IA e integrações avançadas.",
+    descriptionEn: "For full operations with AI, advanced integrations, and branding.",
+    ctaPt: "Criar workspace",
+    ctaEn: "Create workspace",
     href: "/signup",
     highlight: true,
-    features: [
+    featuresPt: [
       "2.000 submissões/mês",
       "5 formulários",
       "Upload: áudio 100 MB, capa 50 MB",
@@ -89,11 +120,90 @@ const plansConfig: PlanConfig[] = [
       "Branding customizado",
       "Suporte chat + e-mail",
     ],
+    featuresEn: [
+      "2,000 submissions/mo",
+      "5 forms",
+      "Upload: audio 100 MB, cover 50 MB",
+      "AI — Lyric Engine",
+      "Native Google Drive + Sheets",
+      "Custom branding",
+      "Chat + email support",
+    ],
     badge: "Mais recursos",
+    badgeEn: "Most powerful",
     accentColor: "#7C3AED",
     bgColor: "#F5F3FF",
   },
 ];
+
+// Features per enterprise tier
+const enterpriseTierDisplay: Record<string, { featuresPt: string[]; featuresEn: string[] }> = {
+  enterprise_core: {
+    featuresPt: [
+      "Submissões ilimitadas",
+      "Formulários ilimitados",
+      "SLA contratual",
+      "Onboarding dedicado",
+      "Usuários ilimitados",
+    ],
+    featuresEn: [
+      "Unlimited submissions",
+      "Unlimited forms",
+      "Contractual SLA",
+      "Dedicated onboarding",
+      "Unlimited users",
+    ],
+  },
+  enterprise_ops: {
+    featuresPt: [
+      "Tudo do Core",
+      "Todos os produtos IA",
+      "Notion nativo",
+      "20+ usuários",
+      "Suporte dedicado",
+    ],
+    featuresEn: [
+      "Everything in Core",
+      "All AI products",
+      "Native Notion",
+      "20+ users",
+      "Dedicated support",
+    ],
+  },
+  enterprise_distribution: {
+    featuresPt: [
+      "Tudo do Ops",
+      "White label completo",
+      "Domínio customizado",
+      "Contrato personalizado",
+      "Revenue share disponível",
+    ],
+    featuresEn: [
+      "Everything in Ops",
+      "Full white label",
+      "Custom domain",
+      "Custom contract",
+      "Revenue share available",
+    ],
+  },
+};
+
+function getEnterpriseCta(tierType: BillingTierType, isBrazil: boolean) {
+  if (tierType === "internal_commercial") {
+    return {
+      label: isBrazil ? "Contato comercial →" : "Commercial inquiry →",
+      href: isBrazil ? "mailto:comercial@sunbeat.com.br" : "mailto:partnerships@sunbeat.pro",
+      subtle: true,
+    };
+  }
+  return {
+    label: isBrazil ? "Falar com vendas →" : "Talk to sales →",
+    href: "/contact",
+    subtle: false,
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   market: Market;
@@ -103,16 +213,6 @@ export default function MarketingHome({ market }: Props) {
   const isBrazil = market === "brazil";
   const marketConfig = billingCatalog[market];
 
-  // Title changes by market: Brazil shows BRL, global shows USD
-  const pricingTitle = isBrazil
-    ? "Simples. Transparente. BRL."
-    : "Simple. Transparent. USD.";
-
-  const pricingSubtitle = isBrazil
-    ? "Comece grátis e faça upgrade quando sua operação crescer. Sem surpresas, sem contratos longos."
-    : "Start free and upgrade as your operation grows. No surprises, no long-term contracts.";
-
-  // Market indicator pill text
   const marketNote = isBrazil
     ? `Preços em BRL · ${marketConfig.domain}`
     : `Prices in USD · ${marketConfig.domain}`;
@@ -314,12 +414,14 @@ export default function MarketingHome({ market }: Props) {
             {isBrazil ? "Planos e preços" : "Pricing"}
           </div>
           <h2 className="mt-5 text-4xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-5xl">
-            {pricingTitle}
+            {isBrazil ? "Simples. Transparente. BRL." : "Simple. Transparent. USD."}
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-8 text-[#5E5A54]">
-            {pricingSubtitle}
+            {isBrazil
+              ? "Comece grátis e faça upgrade quando sua operação crescer. Sem surpresas, sem contratos longos."
+              : "Start free and upgrade as your operation grows. No surprises, no long-term contracts."}
           </p>
-          {/* Market indicator */}
+          {/* Market indicator pill */}
           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-black/8 bg-white px-3 py-1 text-[11px] text-[#8D867B]">
             <span
               className="h-1.5 w-1.5 rounded-full"
@@ -329,9 +431,9 @@ export default function MarketingHome({ market }: Props) {
           </div>
         </div>
 
+        {/* Self-serve plan cards */}
         <div className="grid gap-5 sm:grid-cols-3">
           {plansConfig.map((plan) => {
-            // Price label comes from billingCatalog — never hardcoded
             const priceLabel = formatPrice(market, plan.id);
             const price = marketConfig.displayPrices[plan.id];
 
@@ -348,7 +450,7 @@ export default function MarketingHome({ market }: Props) {
                 }}
               >
                 {/* Badge */}
-                {plan.badge && (
+                {(isBrazil ? plan.badge : plan.badgeEn) && (
                   <div
                     className="mb-4 inline-flex w-fit rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]"
                     style={{
@@ -356,7 +458,7 @@ export default function MarketingHome({ market }: Props) {
                       color: plan.accentColor,
                     }}
                   >
-                    {plan.badge}
+                    {isBrazil ? plan.badge : plan.badgeEn}
                   </div>
                 )}
 
@@ -383,11 +485,13 @@ export default function MarketingHome({ market }: Props) {
                   )}
                 </div>
 
-                <p className="mt-2 text-sm leading-6 text-[#5E5A54]">{plan.description}</p>
+                <p className="mt-2 text-sm leading-6 text-[#5E5A54]">
+                  {isBrazil ? plan.descriptionPt : plan.descriptionEn}
+                </p>
 
                 {/* Features */}
                 <ul className="mt-6 flex-1 space-y-2.5">
-                  {plan.features.map((f) => (
+                  {(isBrazil ? plan.featuresPt : plan.featuresEn).map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm text-[#393733]">
                       <svg
                         className="mt-0.5 h-4 w-4 shrink-0"
@@ -422,41 +526,148 @@ export default function MarketingHome({ market }: Props) {
                         }
                   }
                 >
-                  {plan.cta} →
+                  {isBrazil ? plan.ctaPt : plan.ctaEn} →
                 </Link>
+
+                {/* Self-serve indicator */}
+                <p className="mt-3 text-center text-[10px] text-[#B5B0A8]">
+                  {plan.id !== "free"
+                    ? isBrazil ? "Compra online · sem vendedor" : "Buy online · no sales call"
+                    : ""}
+                </p>
               </div>
             );
           })}
         </div>
 
-        {/* Enterprise row */}
-        <div className="mt-5 rounded-[28px] border border-black/8 bg-[#111111] px-8 py-6">
-          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div
-                className="text-[10px] font-bold uppercase tracking-[0.2em]"
-                style={{ color: "rgba(255,255,255,0.55)" }}
-              >
-                Enterprise
+        {/* Enterprise section — full 3-tier cards, same as /pricing */}
+        <div className="mt-10">
+          <div className="rounded-[32px] border border-black/8 bg-[#111111] p-8">
+            {/* Enterprise header */}
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div
+                  className="text-[10px] font-bold uppercase tracking-[0.2em]"
+                  style={{ color: "rgba(255,255,255,0.45)" }}
+                >
+                  Enterprise
+                </div>
+                <h3 className="mt-1 text-2xl font-semibold" style={{ color: "#ffffff" }}>
+                  {isBrazil ? "Para operações de grande escala" : "For large-scale operations"}
+                </h3>
+                <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.60)" }}>
+                  {isBrazil
+                    ? "Sales-led · Contrato personalizado · Onboarding dedicado"
+                    : "Sales-led · Custom contract · Dedicated onboarding"}
+                </p>
               </div>
-              <h3 className="mt-1 text-lg font-semibold" style={{ color: "#ffffff" }}>
-                {isBrazil
-                  ? "Operação ilimitada com SLA dedicado"
-                  : "Unlimited operation with dedicated SLA"}
-              </h3>
-              <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
-                {isBrazil
-                  ? "Submissões ilimitadas · White label · Notion nativo · Onboarding dedicado · Contrato personalizado"
-                  : "Unlimited submissions · White label · Native Notion · Dedicated onboarding · Custom contract"}
-              </p>
+              <Link
+                href="/contact"
+                className="shrink-0 inline-flex items-center justify-center self-start rounded-2xl border px-6 py-3 text-sm font-semibold"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "#ffffff" }}
+              >
+                {isBrazil ? "Falar com a equipe →" : "Talk to the team →"}
+              </Link>
             </div>
-            <Link
-              href="/contact"
-              className="shrink-0 inline-flex items-center justify-center rounded-2xl border px-6 py-3 text-sm font-semibold transition"
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: "#ffffff" }}
-            >
-              {isBrazil ? "Falar com a equipe →" : "Talk to the team →"}
-            </Link>
+
+            {/* Enterprise sub-tier cards */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              {enterpriseTiers.map((tier) => {
+                const display = enterpriseTierDisplay[tier.id];
+                const cta = getEnterpriseCta(tier.tierType, isBrazil);
+                const isInternal = tier.tierType === "internal_commercial";
+
+                return (
+                  <div
+                    key={tier.id}
+                    className="flex flex-col rounded-2xl p-5"
+                    style={{
+                      border: isInternal
+                        ? "1px solid rgba(255,255,255,0.18)"
+                        : "1px solid rgba(255,255,255,0.10)",
+                      backgroundColor: isInternal
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    {/* Tier type badge */}
+                    <div
+                      className="mb-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em]"
+                      style={{
+                        backgroundColor: isInternal
+                          ? "rgba(255,255,255,0.10)"
+                          : "rgba(255,255,255,0.06)",
+                        color: isInternal
+                          ? "rgba(255,255,255,0.70)"
+                          : "rgba(255,255,255,0.45)",
+                      }}
+                    >
+                      {isInternal
+                        ? isBrazil ? "White-label / Distribuição" : "White-label / Distribution"
+                        : "Sales-led"}
+                    </div>
+
+                    <div className="text-sm font-semibold" style={{ color: "#ffffff" }}>
+                      {isBrazil ? tier.labelPt : tier.labelEn}
+                    </div>
+
+                    {/* Price */}
+                    <div className="mt-1.5 flex items-baseline gap-1">
+                      {tier.showPricePublicly ? (
+                        <>
+                          <span className="text-xl font-semibold tracking-tight" style={{ color: "#ffffff" }}>
+                            {formatPrice(market, tier.logicalKey)}
+                          </span>
+                          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                            {isBrazil ? "/mês" : "/mo"}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.50)" }}>
+                          {isBrazil ? "Consulte" : "Custom pricing"}
+                        </span>
+                      )}
+                    </div>
+
+                    <p
+                      className="mt-2 flex-1 text-xs leading-5"
+                      style={{ color: "rgba(255,255,255,0.58)" }}
+                    >
+                      {isBrazil ? tier.descriptionPt : tier.descriptionEn}
+                    </p>
+
+                    {/* Features */}
+                    {display && (
+                      <ul className="mt-3 space-y-1.5">
+                        {(isBrazil ? display.featuresPt : display.featuresEn).map((f) => (
+                          <li
+                            key={f}
+                            className="flex items-center gap-2 text-xs"
+                            style={{ color: "rgba(255,255,255,0.72)" }}
+                          >
+                            <span style={{ color: "rgba(255,255,255,0.35)" }}>·</span>
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Per-tier CTA */}
+                    <Link
+                      href={cta.href}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-xl py-2 text-xs font-semibold transition"
+                      style={
+                        cta.subtle
+                          ? { border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.65)" }
+                          : { border: "1px solid rgba(255,255,255,0.22)", color: "rgba(255,255,255,0.90)" }
+                      }
+                    >
+                      {cta.label}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
