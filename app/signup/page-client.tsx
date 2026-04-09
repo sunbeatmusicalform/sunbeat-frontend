@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 
@@ -16,8 +17,23 @@ function slugPreview(text: string): string {
     .slice(0, 32);
 }
 
+const SELF_SERVE_PLANS = ["starter", "pro"] as const;
+type SelfServePlan = typeof SELF_SERVE_PLANS[number];
+
+const PLAN_LABELS: Record<SelfServePlan, string> = {
+  starter: "Starter",
+  pro: "Pro",
+};
+
+function isSelfServePlan(val: string | null): val is SelfServePlan {
+  return SELF_SERVE_PLANS.includes(val as SelfServePlan);
+}
+
 export default function SignupPageClient() {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
+  const searchParams = useSearchParams();
+  const rawPlan = searchParams.get("plan");
+  const planIntent: SelfServePlan | null = isSelfServePlan(rawPlan) ? rawPlan : null;
 
   const [step, setStep] = useState<Step>("form");
   const [loading, setLoading] = useState(false);
@@ -87,10 +103,13 @@ export default function SignupPageClient() {
 
       if (sessionData?.session) {
         const { access_token, refresh_token } = sessionData.session;
+        const nextPath = planIntent
+          ? `/app/settings/plan?plan_intent=${planIntent}`
+          : "/app/settings/plan";
         const hash = [
           `at=${encodeURIComponent(access_token)}`,
           `rt=${encodeURIComponent(refresh_token)}`,
-          `next=${encodeURIComponent("/app/settings/plan")}`,
+          `next=${encodeURIComponent(nextPath)}`,
         ].join("&");
         window.location.href = `https://${slug}.sunbeat.pro/auth/session-restore#${hash}`;
         // setLoading stays true intentionally — page will navigate away
@@ -124,7 +143,7 @@ export default function SignupPageClient() {
             Acesse o dashboard para configurar seus formulários.
           </p>
           <a
-            href={`https://${workspaceSlug}.sunbeat.pro/login?next=/app/settings/plan`}
+            href={`https://${workspaceSlug}.sunbeat.pro/login?next=/app/settings/plan${planIntent ? `?plan_intent=${planIntent}` : ""}`}
             className="mt-8 inline-flex w-full items-center justify-center rounded-full py-3.5 text-sm font-semibold"
             style={{ backgroundColor: '#111111', color: '#ffffff' }}
           >
@@ -165,6 +184,24 @@ export default function SignupPageClient() {
           <p className="mt-2 text-sm leading-7 text-[#5E5A54]">
             Crie seu workspace e comece a receber lançamentos de forma organizada.
           </p>
+
+          {planIntent && (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-black/8 bg-[#F9F7F2] px-4 py-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#111111]">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#ffffff" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#111111]">
+                  Plano {PLAN_LABELS[planIntent]} selecionado
+                </p>
+                <p className="text-[11px] leading-5 text-[#6A6660]">
+                  Após criar seu workspace você será direcionado para ativá-lo.
+                </p>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {/* Nome */}

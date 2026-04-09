@@ -265,6 +265,8 @@ const PLANS: PlanConfig[] = [
     featuresEn: ["500 submissions/mo", "2 forms", "Upload: audio 50 MB, cover 20 MB", "Native Airtable (2-way sync)", "Visual field mapping", "Priority email support"],
     badge: "Mais popular", badgeEn: "Most popular",
     accentColor: "#2563EB", bgColor: "#EFF6FF", highlight: false,
+    // plan param passed to signup so intent is preserved through the funnel
+    signupHref: "/signup?plan=starter",
   },
   {
     id: "pro",
@@ -275,6 +277,7 @@ const PLANS: PlanConfig[] = [
     featuresEn: ["2,000 submissions/mo", "5 forms", "Upload: audio 100 MB, cover 50 MB", "AI — Lyric Engine", "Native Google Drive", "Custom branding", "Chat + email support"],
     badge: "Mais recursos", badgeEn: "Most powerful",
     accentColor: "#7C3AED", bgColor: "#F5F3FF", highlight: true,
+    signupHref: "/signup?plan=pro",
   },
 ];
 
@@ -637,7 +640,7 @@ export default function MarketingHome({ market }: Props) {
                 </ul>
 
                 <Link
-                  href="/signup"
+                  href={plan.signupHref ?? "/signup"}
                   className="mt-7 inline-flex w-full items-center justify-center rounded-2xl py-3 text-sm font-semibold transition"
                   style={
                     plan.highlight

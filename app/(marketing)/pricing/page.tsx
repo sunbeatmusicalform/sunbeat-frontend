@@ -124,7 +124,7 @@ const planDisplay: Partial<Record<BillingTier, PlanDisplay>> = {
     ],
     ctaPt: "Criar workspace",
     ctaEn: "Create workspace",
-    href: "/signup",
+    href: "/signup?plan=starter",
   },
   pro: {
     id: "pro",
@@ -157,7 +157,7 @@ const planDisplay: Partial<Record<BillingTier, PlanDisplay>> = {
     ],
     ctaPt: "Criar workspace",
     ctaEn: "Create workspace",
-    href: "/signup",
+    href: "/signup?plan=pro",
   },
   // Enterprise is handled separately via the dark section + enterpriseTiers
   enterprise: {
