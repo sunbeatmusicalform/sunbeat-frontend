@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getTenantFromHost } from "@/lib/tenant";
-import { billingCatalog, resolveMarket, formatPrice, type Market, type BillingTier } from "@/lib/billing/catalog";
+import { billingCatalog, resolveMarket, formatPrice, isSelfServePlan, planDefinitions, type Market, type BillingTier } from "@/lib/billing/catalog";
 import { UpgradeButton, ManageSubscriptionButton } from "./BillingButtons";
 
 type PlanRow = {
@@ -66,16 +66,25 @@ export default async function PlanPage() {
     if (planRows) plans = planRows as PlanRow[];
 
     const current = plans.find((p) => p.id === currentPlanId);
-    if (current) currentPlanName = current.name;
+    if (current) {
+      currentPlanName = current.name;
+    } else {
+      // Fallback for enterprise sub-tiers not in the DB plans table
+      const def = planDefinitions[currentPlanId];
+      if (def) currentPlanName = isBrazil ? def.labelPt : def.labelEn;
+    }
   } catch {
     // graceful fallback
   }
 
   const planColors: Record<string, { bg: string; text: string; badge: string }> = {
-    free:       { bg: "#F3F4F6", text: "#374151", badge: "#6B7280" },
-    starter:    { bg: "#EFF6FF", text: "#1D4ED8", badge: "#2563EB" },
-    pro:        { bg: "#F5F3FF", text: "#6D28D9", badge: "#7C3AED" },
-    enterprise: { bg: "#111111", text: "#FFFFFF", badge: "#111111" },
+    free:                    { bg: "#F3F4F6", text: "#374151",  badge: "#6B7280" },
+    starter:                 { bg: "#EFF6FF", text: "#1D4ED8",  badge: "#2563EB" },
+    pro:                     { bg: "#F5F3FF", text: "#6D28D9",  badge: "#7C3AED" },
+    enterprise:              { bg: "#111111", text: "#FFFFFF",  badge: "#111111" },
+    enterprise_core:         { bg: "#111111", text: "#FFFFFF",  badge: "#111111" },
+    enterprise_ops:          { bg: "#111111", text: "#FFFFFF",  badge: "#111111" },
+    enterprise_distribution: { bg: "#0A0A0A", text: "#FFFFFF",  badge: "#333333" },
   };
 
   function fmt(n: number | null) {
@@ -115,8 +124,8 @@ export default async function PlanPage() {
 
   const colors = planColors[currentPlanId] ?? planColors.pro;
 
-  // Plans eligible for self-serve upgrade
-  const upgradeablePlans = new Set<string>(["starter", "pro"]);
+  // Plans eligible for self-serve upgrade — derived from catalog, not hardcoded
+  // isSelfServePlan returns true for starter + pro; excludes free and all enterprise tiers
 
   // Labels
   const labels = {
@@ -169,7 +178,7 @@ export default async function PlanPage() {
           {plans.map((plan) => {
             const isCurrent = plan.id === currentPlanId;
             const pc = planColors[plan.id] ?? planColors.pro;
-            const canUpgrade = upgradeablePlans.has(plan.id) && !isCurrent;
+            const canUpgrade = isSelfServePlan(plan.id as BillingTier) && !isCurrent;
             const priceLabel = formatPrice(market, plan.id as BillingTier);
 
             return (

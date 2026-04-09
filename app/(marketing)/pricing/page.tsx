@@ -58,7 +58,9 @@ interface PlanDisplay {
   href: string;
 }
 
-const planDisplay: Record<BillingTier, PlanDisplay> = {
+// Only self-serve plans have display entries here; enterprise tiers are
+// rendered separately via the enterpriseTiers array from the catalog.
+const planDisplay: Partial<Record<BillingTier, PlanDisplay>> = {
   free: {
     id: "free",
     accentColor: "#6B7280",
@@ -388,6 +390,7 @@ export default async function PricingPage() {
           {selfServePlans.map((planId) => {
             const def = planDefinitions[planId];
             const display = planDisplay[planId];
+            if (!display) return null; // enterprise tiers are not self-serve
             const priceLabel = formatPrice(market, planId);
             const price = marketConfig.displayPrices[planId];
 
@@ -556,8 +559,27 @@ export default async function PricingPage() {
                     <div className="text-sm font-semibold" style={{ color: "#ffffff" }}>
                       {isBrazil ? tier.labelPt : tier.labelEn}
                     </div>
+
+                    {/* Price — from billingCatalog[market].displayPrices via formatPrice */}
+                    <div className="mt-1.5 flex items-baseline gap-1">
+                      {tier.showPricePublicly ? (
+                        <>
+                          <span className="text-xl font-semibold tracking-tight" style={{ color: "#ffffff" }}>
+                            {formatPrice(market, tier.logicalKey)}
+                          </span>
+                          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                            {isBrazil ? "/mês" : "/mo"}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.50)" }}>
+                          {isBrazil ? "Consulte" : "Custom pricing"}
+                        </span>
+                      )}
+                    </div>
+
                     <p
-                      className="mt-1 flex-1 text-xs leading-5"
+                      className="mt-2 flex-1 text-xs leading-5"
                       style={{ color: "rgba(255,255,255,0.58)" }}
                     >
                       {isBrazil ? tier.descriptionPt : tier.descriptionEn}

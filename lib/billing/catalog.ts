@@ -1,35 +1,77 @@
 /**
  * Sunbeat Billing Catalog
+ * ───────────────────────
+ * Single source of truth for all pricing decisions.
  *
- * Two-market structure:
- *   - "global"  → sunbeat.pro  → USD
- *   - "brazil"  → sunbeat.com.br → BRL
+ * Architecture: hostname → market → logical plan → Stripe price ID
  *
- * Each market maps logical plan keys to Stripe price IDs (env vars),
- * display prices, and locale formatting config.
+ * Two markets, each with separate Stripe products (different tax/commercial rules):
+ *   "global"  → sunbeat.pro      → USD
+ *   "brazil"  → sunbeat.com.br   → BRL
  *
- * New env vars required for BRL market:
- *   STRIPE_PRICE_ID_STARTER_BRL
- *   STRIPE_PRICE_ID_PRO_BRL
+ * Five logical plans (self-serve + sales-led):
+ *   free                 self_serve
+ *   starter              self_serve
+ *   pro                  self_serve
+ *   enterprise_core      sales_led
+ *   enterprise_ops       sales_led
+ *   enterprise_distribution  internal_commercial
  *
- * Existing USD vars (kept for backwards compat):
- *   STRIPE_PRICE_ID_STARTER   (alias for STRIPE_PRICE_ID_STARTER_USD)
- *   STRIPE_PRICE_ID_PRO       (alias for STRIPE_PRICE_ID_PRO_USD)
+ * Note: "enterprise" (no suffix) is kept as a legacy alias so existing
+ * workspace rows with plan_id="enterprise" don't break. It is NOT
+ * shown on public pricing and does NOT have a Stripe price ID.
+ *
+ * ─── Required Vercel env vars ───────────────────────────────────────────────
+ *
+ *  USD / global (sunbeat.pro)
+ *    STRIPE_PRICE_ID_STARTER                  Sunbeat Starter Global
+ *    STRIPE_PRICE_ID_PRO                      Sunbeat Pro Global
+ *    STRIPE_PRICE_ID_ENTERPRISE_CORE          Sunbeat Enterprise Core Global
+ *    STRIPE_PRICE_ID_ENTERPRISE_OPS           Sunbeat Enterprise Ops Global
+ *    STRIPE_PRICE_ID_ENTERPRISE_DISTRIBUTION  Sunbeat Enterprise Distribution Global
+ *
+ *  BRL / brazil (sunbeat.com.br)
+ *    STRIPE_PRICE_ID_STARTER_BRL                  Sunbeat Starter BR
+ *    STRIPE_PRICE_ID_PRO_BRL                      Sunbeat Pro BR
+ *    STRIPE_PRICE_ID_ENTERPRISE_CORE_BRL          Sunbeat Enterprise Core BR
+ *    STRIPE_PRICE_ID_ENTERPRISE_OPS_BRL           Sunbeat Enterprise Ops BR
+ *    STRIPE_PRICE_ID_ENTERPRISE_DISTRIBUTION_BRL  Sunbeat Enterprise Distribution BR
+ *
+ *  Shared
+ *    STRIPE_SECRET_KEY
+ *    STRIPE_WEBHOOK_SECRET
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
+// ─── Core types ──────────────────────────────────────────────────────────────
+
 export type Market = "global" | "brazil";
-export type BillingTier = "free" | "starter" | "pro" | "enterprise";
+
+/**
+ * Stable logical plan keys. Never use display names as plan keys.
+ * "enterprise" (no suffix) is a legacy alias only — kept for DB compatibility.
+ */
+export type BillingTier =
+  | "free"
+  | "starter"
+  | "pro"
+  | "enterprise"               // legacy alias — do NOT use for new subscriptions
+  | "enterprise_core"
+  | "enterprise_ops"
+  | "enterprise_distribution";
 
 export type BillingTierType =
-  | "self_serve"          // user can buy online
-  | "sales_led"           // contact sales
-  | "internal_commercial"; // not shown on public pricing
+  | "self_serve"           // user can buy online without contacting sales
+  | "sales_led"            // requires sales contact; price is shown publicly
+  | "internal_commercial"; // commercial/white-label; price NOT shown publicly
+
+// ─── Plan definitions ────────────────────────────────────────────────────────
 
 export interface PlanDefinition {
   id: BillingTier;
-  logicalKey: string;      // stable key, never changes even if display name does
-  labelPt: string;         // Portuguese display name
-  labelEn: string;         // English display name
+  logicalKey: BillingTier;     // stable billing key (same as id; kept explicit)
+  labelPt: string;
+  labelEn: string;
   tierType: BillingTierType;
   visibleOnPublicPricing: boolean;
   visibleOnDashboard: boolean;
@@ -63,64 +105,115 @@ export const planDefinitions: Record<BillingTier, PlanDefinition> = {
     visibleOnPublicPricing: true,
     visibleOnDashboard: true,
   },
+  // Legacy — kept for DB backwards compat only
   enterprise: {
     id: "enterprise",
     logicalKey: "enterprise",
     labelPt: "Enterprise",
     labelEn: "Enterprise",
     tierType: "sales_led",
+    visibleOnPublicPricing: false, // handled via enterprise_core/ops/distribution
+    visibleOnDashboard: true,
+  },
+  enterprise_core: {
+    id: "enterprise_core",
+    logicalKey: "enterprise_core",
+    labelPt: "Enterprise Core",
+    labelEn: "Enterprise Core",
+    tierType: "sales_led",
     visibleOnPublicPricing: true,
+    visibleOnDashboard: true,
+  },
+  enterprise_ops: {
+    id: "enterprise_ops",
+    logicalKey: "enterprise_ops",
+    labelPt: "Enterprise Ops",
+    labelEn: "Enterprise Ops",
+    tierType: "sales_led",
+    visibleOnPublicPricing: true,
+    visibleOnDashboard: true,
+  },
+  enterprise_distribution: {
+    id: "enterprise_distribution",
+    logicalKey: "enterprise_distribution",
+    labelPt: "Enterprise Distribution",
+    labelEn: "Enterprise Distribution",
+    tierType: "internal_commercial",
+    visibleOnPublicPricing: true,   // shown, but price is "Custom"
     visibleOnDashboard: true,
   },
 };
 
+// ─── Enterprise tier display definitions ─────────────────────────────────────
+
 export interface EnterpriseTierDef {
   id: string;
+  logicalKey: BillingTier;       // maps to planDefinitions key + Stripe price ID
   labelPt: string;
   labelEn: string;
   descriptionPt: string;
   descriptionEn: string;
   tierType: BillingTierType;
+  /**
+   * Whether the price is shown on public pricing pages.
+   * false = "Custom" / "Consulte" is shown instead.
+   */
+  showPricePublicly: boolean;
 }
 
-/** Enterprise sub-tiers — sales-led, shown on public pricing but not in dashboard upgrade flow */
+/** Enterprise sub-tiers displayed in the Enterprise section of public pricing. */
 export const enterpriseTiers: EnterpriseTierDef[] = [
   {
     id: "enterprise_core",
+    logicalKey: "enterprise_core",
     labelPt: "Enterprise Core",
     labelEn: "Enterprise Core",
     descriptionPt: "Para labels com volume alto e times internos dedicados.",
     descriptionEn: "For high-volume labels with dedicated internal teams.",
     tierType: "sales_led",
+    showPricePublicly: true,
   },
   {
     id: "enterprise_ops",
+    logicalKey: "enterprise_ops",
     labelPt: "Enterprise Ops",
     labelEn: "Enterprise Ops",
     descriptionPt: "Operação completa com todos os subprodutos de IA e integrações.",
     descriptionEn: "Full operation with all AI sub-products and integrations.",
     tierType: "sales_led",
+    showPricePublicly: true,
   },
   {
     id: "enterprise_distribution",
+    logicalKey: "enterprise_distribution",
     labelPt: "Enterprise Distribution",
     labelEn: "Enterprise Distribution",
     descriptionPt: "White label completo — sua marca, seu domínio, sua operação.",
     descriptionEn: "Full white label — your brand, your domain, your operation.",
     tierType: "internal_commercial",
+    showPricePublicly: false, // Distribution pricing is commercial-only
   },
 ];
+
+// ─── Market config ────────────────────────────────────────────────────────────
 
 export interface MarketConfig {
   currency: "USD" | "BRL";
   domain: string;
   locale: string;
   symbol: string;
-  /** Stripe price IDs for self-serve plans (resolved at runtime from env) */
+  /**
+   * Stripe price IDs resolved at runtime from env vars.
+   * Keys are logical plan keys. Only self-serve + sales-led plans have IDs here.
+   * "free" and legacy "enterprise" intentionally have no price ID.
+   */
   priceIds: () => Partial<Record<BillingTier, string | undefined>>;
-  /** Display prices for public UI (not from Stripe, purely presentational) */
+  /**
+   * Display prices for public UI — purely presentational, not from Stripe.
+   * 0 = free / not applicable. "enterprise_distribution" uses 0 → shown as "Custom".
+   */
   displayPrices: Record<BillingTier, number>;
-  /** Stripe metadata tag sent on checkout sessions */
+  /** Stripe metadata tag recorded on checkout sessions and subscriptions. */
   marketTag: string;
 }
 
@@ -131,14 +224,22 @@ export const billingCatalog: Record<Market, MarketConfig> = {
     locale: "en-US",
     symbol: "$",
     priceIds: () => ({
-      starter: process.env.STRIPE_PRICE_ID_STARTER_USD ?? process.env.STRIPE_PRICE_ID_STARTER,
-      pro:     process.env.STRIPE_PRICE_ID_PRO_USD     ?? process.env.STRIPE_PRICE_ID_PRO,
+      // Self-serve (STRIPE_PRICE_ID_STARTER also accepted as legacy alias)
+      starter:                process.env.STRIPE_PRICE_ID_STARTER,
+      pro:                    process.env.STRIPE_PRICE_ID_PRO,
+      // Sales-led — price IDs exist for sales team + webhook resolution
+      enterprise_core:        process.env.STRIPE_PRICE_ID_ENTERPRISE_CORE,
+      enterprise_ops:         process.env.STRIPE_PRICE_ID_ENTERPRISE_OPS,
+      enterprise_distribution: process.env.STRIPE_PRICE_ID_ENTERPRISE_DISTRIBUTION,
     }),
     displayPrices: {
-      free:       0,
-      starter:   19,
-      pro:       49,
-      enterprise: 0,
+      free:                    0,
+      starter:                19,
+      pro:                    49,
+      enterprise:              0,   // legacy, not displayed
+      enterprise_core:        199,
+      enterprise_ops:         499,
+      enterprise_distribution: 999, // shown only to sales / not shown publicly
     },
     marketTag: "global_usd",
   },
@@ -146,20 +247,28 @@ export const billingCatalog: Record<Market, MarketConfig> = {
     currency: "BRL",
     domain: "sunbeat.com.br",
     locale: "pt-BR",
-    symbol: "R$",
+    symbol: "R$\u00a0",  // non-breaking space after R$
     priceIds: () => ({
-      starter: process.env.STRIPE_PRICE_ID_STARTER_BRL,
-      pro:     process.env.STRIPE_PRICE_ID_PRO_BRL,
+      starter:                process.env.STRIPE_PRICE_ID_STARTER_BRL,
+      pro:                    process.env.STRIPE_PRICE_ID_PRO_BRL,
+      enterprise_core:        process.env.STRIPE_PRICE_ID_ENTERPRISE_CORE_BRL,
+      enterprise_ops:         process.env.STRIPE_PRICE_ID_ENTERPRISE_OPS_BRL,
+      enterprise_distribution: process.env.STRIPE_PRICE_ID_ENTERPRISE_DISTRIBUTION_BRL,
     }),
     displayPrices: {
-      free:       0,
-      starter:   97,
-      pro:      247,
-      enterprise: 0,
+      free:                    0,
+      starter:                97,
+      pro:                   247,
+      enterprise:              0,   // legacy
+      enterprise_core:        990,
+      enterprise_ops:        2490,
+      enterprise_distribution: 4900,
     },
     marketTag: "brazil_brl",
   },
 };
+
+// ─── Utility functions ────────────────────────────────────────────────────────
 
 /**
  * Resolves the market from a hostname string.
@@ -172,8 +281,12 @@ export function resolveMarket(host: string): Market {
 }
 
 /**
- * Given a Stripe price ID, returns the logical plan key and market.
- * Used in the webhook to map incoming price IDs back to plan_id.
+ * Given a Stripe price ID (from a webhook event), returns the logical plan
+ * key and market. Searches all markets and all tiers.
+ *
+ * Works for both self-serve and sales-led enterprise price IDs.
+ * Returns null if the price ID is not registered in the catalog
+ * (e.g. the env var is missing — log a warning and fallback gracefully).
  */
 export function resolvePlanFromPriceId(
   priceId: string
@@ -190,12 +303,32 @@ export function resolvePlanFromPriceId(
 }
 
 /**
- * Format a display price for the given market.
+ * Format a display price string for the given market + plan.
+ *
+ * Rules:
+ *   - "free" → "Grátis" / "Free"
+ *   - "enterprise_distribution" → "Custom" / "Consulte" (internal_commercial)
+ *   - legacy "enterprise" → "Custom"
+ *   - all others → symbol + price (e.g. "$19" / "R$ 97")
  */
 export function formatPrice(market: Market, planId: BillingTier): string {
   const config = billingCatalog[market];
+  const isBrazil = market === "brazil";
+
+  // Plans that never show a numeric price publicly
+  if (planId === "enterprise" || planId === "enterprise_distribution") {
+    return isBrazil ? "Consulte" : "Custom";
+  }
+
   const price = config.displayPrices[planId] ?? 0;
-  if (planId === "enterprise") return "Custom";
-  if (price === 0) return config.currency === "BRL" ? "Grátis" : "Free";
-  return `${config.symbol}${price}`;
+  if (price === 0) return isBrazil ? "Grátis" : "Free";
+  return `${config.symbol}${price.toLocaleString(config.locale)}`;
+}
+
+/**
+ * Returns true when a plan tier should self-serve through the checkout flow.
+ * Enterprise and free plans are excluded from the upgrade button.
+ */
+export function isSelfServePlan(planId: BillingTier): boolean {
+  return planDefinitions[planId]?.tierType === "self_serve" && planId !== "free";
 }
