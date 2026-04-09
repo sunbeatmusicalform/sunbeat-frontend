@@ -28,6 +28,11 @@ export function createLegacyReleaseIntakeTemplate(args?: {
   const formVersion =
     args?.formVersion ?? LEGACY_RELEASE_INTAKE_FORM_VERSION;
 
+  // Identity guard: Atabaque-specific copy and assets must NOT bleed into other workspaces,
+  // even as loading-state fallbacks. Non-Atabaque workspaces use neutral Sunbeat defaults
+  // until their own branding is loaded from workspace_branding via workflow-config.
+  const isAtabaque = workspaceSlug === ATABAQUE_WORKSPACE_SLUG;
+
   return {
     id: buildWorkflowTemplateId(workspaceSlug, workflowType, formVersion),
     workspaceSlug,
@@ -36,14 +41,16 @@ export function createLegacyReleaseIntakeTemplate(args?: {
     source: buildWorkflowSource(workspaceSlug, workflowType, formVersion),
     version: 11,
     slogan: "",
-    successMessage:
-      "Recebemos seu envio com sucesso. O time da Atabaque dar\u00e1 continuidade ao fluxo operacional.",
+    successMessage: isAtabaque
+      ? "Recebemos seu envio com sucesso. O time da Atabaque dar\u00e1 continuidade ao fluxo operacional."
+      : "Recebemos seu envio com sucesso. Nossa equipe dar\u00e1 continuidade ao fluxo.",
     intro: {
-      clientName: "Atabaque",
+      clientName: isAtabaque ? "Atabaque" : workspaceSlug,
       formTitle: "Formul\u00e1rio de lan\u00e7amento",
-      introText:
-        "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
-      logoUrl: "/atabaque-mark.svg",
+      introText: isAtabaque
+        ? "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado."
+        : "Preencha as informa\u00e7\u00f5es abaixo para iniciar o cadastro do seu lan\u00e7amento.\n\nVoc\u00ea pode salvar rascunho a qualquer momento.",
+      logoUrl: isAtabaque ? "/atabaque-mark.svg" : "",
       bannerUrl: "",
       brandWordmark: "",
       supportLogoUrl: "/favicon.ico",

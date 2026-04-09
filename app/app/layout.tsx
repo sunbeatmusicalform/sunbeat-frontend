@@ -48,7 +48,7 @@ const navSections = [
               d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
           </svg>
         ),
-        description: "Formulário público de lançamento",
+        description: "Preview interno do formulário",
       },
       {
         label: "Rights clearance",
@@ -59,7 +59,7 @@ const navSections = [
               d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
         ),
-        description: "Clearance de direitos autorais",
+        description: "Preview interno — clearance",
       },
     ],
   },
@@ -244,13 +244,16 @@ export default async function AppLayout({
 
             {/* Bottom actions */}
             <div className="flex flex-col gap-2 pt-4 border-t border-black/8">
-              <Link
-                href="/app/release-intake"
+              {/* Links to public intake — opens public URL in new tab */}
+              <a
+                href={`/intake/${workspaceSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex h-11 items-center justify-center rounded-2xl px-4 text-sm font-semibold"
                 style={{ backgroundColor: '#111111', color: '#ffffff' }}
               >
-                Abrir intake
-              </Link>
+                Abrir formulário público
+              </a>
               <div className="flex gap-2">
                 <Link
                   href="/"
