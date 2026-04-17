@@ -117,6 +117,8 @@ function buildApiPayload(
     banking: {
       ...(values.pix_key.trim() ? { pix_key: values.pix_key.trim() } : {}),
       ...(values.bank_name.trim() ? { bank_name: values.bank_name.trim() } : {}),
+      ...(values.bank_agency.trim() ? { bank_agency: values.bank_agency.trim() } : {}),
+      ...(values.account_number.trim() ? { account_number: values.account_number.trim() } : {}),
       ...(values.account_holder_name.trim() ? { account_holder_name: values.account_holder_name.trim() } : {}),
       ...(values.account_holder_document_id.trim()
         ? { account_holder_document_id: values.account_holder_document_id.trim() }

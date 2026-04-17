@@ -78,6 +78,8 @@ export type PeopleRegistryApiPayload = {
   banking: {
     pix_key?: string;
     bank_name?: string;
+    bank_agency?: string;
+    account_number?: string;
     account_holder_name?: string;
     account_holder_document_id?: string;
   };
