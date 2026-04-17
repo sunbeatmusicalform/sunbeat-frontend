@@ -51,6 +51,12 @@ export type PublicExperienceReadModel = {
   successMessage: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
+  /** URL da imagem usada no preview social (WhatsApp/OG). Distinta do logoUrl exibido na UI. */
+  socialImageUrl: string | null;
+  /** Título customizado para o preview social. Se nulo, usa workspaceName. */
+  socialTitle: string | null;
+  /** Descrição customizada para o preview social. Se nulo, usa slogan ou fallback. */
+  socialDescription: string | null;
 };
 
 export type WorkflowSettingsReadModel = {

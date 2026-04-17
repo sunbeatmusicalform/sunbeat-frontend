@@ -37,6 +37,12 @@ type WorkspaceBrandingRow = {
   logo_url?: string | null;
   banner_url?: string | null;
   submission_email_enabled?: boolean | null;
+  /** URL da imagem usada no preview social (OG/WhatsApp). Distinta do logo da UI. */
+  social_image_url?: string | null;
+  /** Título customizado para o card de preview social. */
+  social_title?: string | null;
+  /** Descrição customizada para o card de preview social. */
+  social_description?: string | null;
 };
 
 type WorkspaceFieldOverrideRow = {
@@ -183,6 +189,9 @@ function buildPublicExperience(args: {
     successMessage: normalizeOptionalText(args.branding?.success_message),
     logoUrl: normalizeOptionalText(args.branding?.logo_url),
     bannerUrl: normalizeOptionalText(args.branding?.banner_url),
+    socialImageUrl: normalizeOptionalText(args.branding?.social_image_url),
+    socialTitle: normalizeOptionalText(args.branding?.social_title),
+    socialDescription: normalizeOptionalText(args.branding?.social_description),
   };
 }
 

@@ -13,6 +13,9 @@ type BrandingRow = {
   logo_url: string | null;
   banner_url: string | null;
   submission_email_enabled: boolean | null;
+  social_image_url: string | null;
+  social_title: string | null;
+  social_description: string | null;
 };
 
 export default async function BrandingSettingsPage() {
@@ -26,7 +29,7 @@ export default async function BrandingSettingsPage() {
     const { data } = await admin
       .from("workspace_branding")
       .select(
-        "workspace_name, slogan, form_title, intro_text, success_message, logo_url, banner_url, submission_email_enabled"
+        "workspace_name, slogan, form_title, intro_text, success_message, logo_url, banner_url, submission_email_enabled, social_image_url, social_title, social_description"
       )
       .eq("workspace_slug", workspaceSlug)
       .maybeSingle<BrandingRow>();
@@ -122,6 +125,17 @@ export default async function BrandingSettingsPage() {
           isUrl
         />
         <BrandField
+          label="Imagem social (OG)"
+          value={branding?.social_image_url}
+          note="Preview social no WhatsApp e redes. Distinta do logo da UI."
+          isUrl
+        />
+        <BrandField
+          label="Título social"
+          value={branding?.social_title}
+          note="Título exibido no card de preview social"
+        />
+        <BrandField
           label="E-mail de notificação"
           value={
             branding?.submission_email_enabled === false
@@ -140,6 +154,11 @@ export default async function BrandingSettingsPage() {
           label="Texto de introdução"
           value={branding?.intro_text}
           note="Exibido na tela inicial do formulário, antes do preenchimento"
+        />
+        <BrandTextBlock
+          label="Descrição social"
+          value={branding?.social_description}
+          note="Descrição exibida no card de preview social"
         />
         <BrandTextBlock
           label="Mensagem de sucesso"
