@@ -435,6 +435,7 @@ export function buildReleaseIntakeSubmitPayload(
     },
     tracks: values.tracks.map((track, index) => ({
       local_id: track.local_id,
+      client_track_id: track.client_track_id ?? track.local_id,
       order_number: index + 1,
       title: track.title.trim(),
       is_focus_track: track.is_focus_track,
