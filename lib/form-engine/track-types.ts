@@ -10,6 +10,7 @@ export type TrackStatus = "draft" | "ready";
 
 export type TrackInput = {
   local_id: string;
+  client_track_id?: string;
   order_number: number;
   title: string;
   is_focus_track: boolean;
@@ -38,11 +39,14 @@ export type TrackInput = {
 };
 
 export function createEmptyTrack(orderNumber = 1): TrackInput {
+  const stableTrackId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `track-${Date.now()}-${orderNumber}`;
+
   return {
-    local_id:
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `track-${Date.now()}-${orderNumber}`,
+    local_id: stableTrackId,
+    client_track_id: stableTrackId,
     order_number: orderNumber,
     title: "",
     is_focus_track: orderNumber === 1,
