@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { billingCatalog, resolveMarket, type Market, type BillingTier } from "@/lib/billing/catalog";
+import { authorizeBillingWorkspaceAccess } from "@/lib/billing/auth";
+import {
+  billingCatalog,
+  resolveBillingSettingsUrl,
+  resolveMarket,
+  type BillingTier,
+  type Market,
+} from "@/lib/billing/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -11,55 +18,86 @@ function getStripe() {
   return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
 }
 
+function normalizeMarket(value: unknown): Market | null {
+  return value === "global" || value === "brazil" ? value : null;
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const {
-      plan_id,
-      workspace_slug,
-      market: marketOverride,
-      success_url,
-      cancel_url,
-    } = body as {
-      plan_id: string;
-      workspace_slug: string;
-      market?: Market;
-      success_url?: string;
-      cancel_url?: string;
+    let body: {
+      plan_id?: unknown;
+      workspace_slug?: unknown;
+      market?: unknown;
+      success_url?: unknown;
+      cancel_url?: unknown;
     };
 
-    if (!plan_id || !workspace_slug) {
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { ok: false, error: "plan_id e workspace_slug são obrigatórios." },
+        { ok: false, error: "Payload inválido." },
         { status: 400 }
       );
     }
 
-    // Resolve market: from body override OR from the request's Host header
-    const host = req.headers.get("host") ?? "";
-    const market: Market = marketOverride ?? resolveMarket(host);
-    const marketConfig = billingCatalog[market];
+    const planId = typeof body.plan_id === "string" ? body.plan_id.trim() : "";
+    const requestedMarket = normalizeMarket(body.market);
+    const requestedSuccessUrl =
+      typeof body.success_url === "string" ? body.success_url : null;
+    const requestedCancelUrl =
+      typeof body.cancel_url === "string" ? body.cancel_url : null;
 
-    // Resolve Stripe price ID for this plan + market
+    if (!planId) {
+      return NextResponse.json(
+        { ok: false, error: "plan_id é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    const access = await authorizeBillingWorkspaceAccess(body.workspace_slug);
+    if ("response" in access) {
+      return access.response;
+    }
+
+    if (body.market != null && !requestedMarket) {
+      return NextResponse.json(
+        { ok: false, error: "market inválido." },
+        { status: 400 }
+      );
+    }
+
+    const workspaceSlug = access.workspaceSlug;
+    const host = req.headers.get("host") ?? "";
+    const hostMarket = resolveMarket(host);
+
+    if (requestedMarket && requestedMarket !== hostMarket) {
+      return NextResponse.json(
+        { ok: false, error: "market incompatível com o domínio atual." },
+        { status: 400 }
+      );
+    }
+
+    const market = requestedMarket ?? hostMarket;
+    const marketConfig = billingCatalog[market];
     const priceIds = marketConfig.priceIds();
-    const priceId = priceIds[plan_id as BillingTier];
+    const priceId = priceIds[planId as BillingTier];
 
     if (!priceId) {
       return NextResponse.json(
         {
           ok: false,
-          error: `Plano inválido ou price_id não configurado: ${plan_id} (market: ${market})`,
+          error: `Plano inválido ou price_id não configurado: ${planId} (market: ${market})`,
         },
         { status: 400 }
       );
     }
 
     const supabase = createSupabaseAdmin();
-
     const { data: ws, error: wsError } = await supabase
       .from("workspaces")
       .select("slug, owner_email, stripe_customer_id")
-      .eq("slug", workspace_slug)
+      .eq("slug", workspaceSlug)
       .maybeSingle();
 
     if (wsError || !ws) {
@@ -71,13 +109,12 @@ export async function POST(req: Request) {
 
     const stripe = getStripe();
 
-    // Reutiliza ou cria o customer no Stripe
     let customerId = ws.stripe_customer_id as string | null;
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: ws.owner_email ?? undefined,
         metadata: {
-          workspace_slug,
+          workspace_slug: workspaceSlug,
           market,
           domain: marketConfig.domain,
         },
@@ -87,34 +124,42 @@ export async function POST(req: Request) {
       await supabase
         .from("workspaces")
         .update({ stripe_customer_id: customerId })
-        .eq("slug", workspace_slug);
+        .eq("slug", workspaceSlug);
     }
 
-    // Build return URLs — prefer the subdomain app URL
-    const baseUrl = `https://${workspace_slug}.sunbeat.pro`;
+    const successUrl = resolveBillingSettingsUrl({
+      workspaceSlug,
+      market,
+      requestedUrl: requestedSuccessUrl,
+      checkoutStatus: "success",
+      includeSessionId: true,
+    });
+    const cancelUrl = resolveBillingSettingsUrl({
+      workspaceSlug,
+      market,
+      requestedUrl: requestedCancelUrl,
+      checkoutStatus: "cancelled",
+    });
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url:
-        success_url ??
-        `${baseUrl}/app/settings/plan?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:
-        cancel_url ?? `${baseUrl}/app/settings/plan?checkout=cancelled`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
-        workspace_slug,
-        plan_id,
+        workspace_slug: workspaceSlug,
+        plan_id: planId,
         market,
-        logical_plan: plan_id,
+        logical_plan: planId,
         billing_tier_type: "self_serve",
       },
       subscription_data: {
         metadata: {
-          workspace_slug,
-          plan_id,
+          workspace_slug: workspaceSlug,
+          plan_id: planId,
           market,
-          logical_plan: plan_id,
+          logical_plan: planId,
           domain: marketConfig.domain,
         },
       },
@@ -127,7 +172,10 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: err instanceof Error ? err.message : "Erro interno ao criar sessão de checkout.",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro interno ao criar sessão de checkout.",
       },
       { status: 500 }
     );

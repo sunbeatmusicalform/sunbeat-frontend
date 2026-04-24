@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getTenantFromHost } from "@/lib/tenant";
 import { billingCatalog, resolveMarket, formatPrice, isSelfServePlan, planDefinitions, type Market, type BillingTier } from "@/lib/billing/catalog";
@@ -33,9 +34,12 @@ export default async function PlanPage({
   const { plan_intent: rawPlanIntent } = await searchParams;
 
   // Resolve workspace slug from subdomain
-  const tenantRaw = getTenantFromHost(host);
-  const workspaceSlug: string =
-    (typeof tenantRaw === "string" ? tenantRaw : tenantRaw?.value) ?? "atabaque";
+  const tenant = getTenantFromHost(host);
+  const workspaceSlug = tenant?.type === "subdomain" ? tenant.value : null;
+
+  if (!workspaceSlug) {
+    redirect("/auth/select-workspace?next=/app/settings/plan");
+  }
 
   // Resolve market (USD vs BRL) from hostname
   const market: Market = resolveMarket(host);
