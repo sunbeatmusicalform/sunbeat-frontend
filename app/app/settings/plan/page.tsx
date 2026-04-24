@@ -100,20 +100,6 @@ export default async function PlanPage({
     enterprise_distribution: { bg: "#0A0A0A", text: "#FFFFFF",  badge: "#333333" },
   };
 
-  /**
-   * Tier ordering for upgrade/downgrade detection.
-   * Higher number = higher tier.
-   */
-  const TIER_ORDER: Partial<Record<BillingTier, number>> = {
-    free: 0,
-    starter: 1,
-    pro: 2,
-    enterprise: 3,         // legacy alias — same level as enterprise_core
-    enterprise_core: 3,
-    enterprise_ops: 4,
-    enterprise_distribution: 5,
-  };
-
   function fmt(n: number | null) {
     if (n === null || n === 0) return isBrazil ? "Ilimitado" : "Unlimited";
     return n.toLocaleString(marketConfig.locale);
@@ -159,8 +145,8 @@ export default async function PlanPage({
     currentPlan: isBrazil ? "Plano atual" : "Current plan",
     yourPlan: isBrazil ? "Seu plano Sunbeat" : "Your Sunbeat plan",
     subtitle: isBrazil
-      ? "Veja os recursos do seu plano atual e compare as opções disponíveis. Upgrade é imediato via checkout. Para reduzir o plano, use o portal de assinatura."
-      : "Review your current plan features and compare available options. Upgrades are immediate via checkout. To downgrade, use the subscription portal.",
+      ? "Veja os recursos do seu plano atual e compare as opções disponíveis. Faça upgrade quando quiser — mudanças entram em vigor imediatamente."
+      : "Review your current plan features and compare available options. Upgrade anytime — changes take effect immediately.",
     fullComparison: isBrazil ? "Comparação completa" : "Full comparison",
     feature: isBrazil ? "Recurso" : "Feature",
     current: isBrazil ? "atual" : "current",
@@ -229,11 +215,7 @@ export default async function PlanPage({
             const isCurrent = plan.id === currentPlanId;
             const isIntent = planIntent === plan.id;
             const pc = planColors[plan.id] ?? planColors.pro;
-            const currentTierLevel = TIER_ORDER[currentPlanId] ?? 0;
-            const thisTierLevel = TIER_ORDER[plan.id as BillingTier] ?? 0;
-            const isUpgrade = thisTierLevel > currentTierLevel;
-            const isDowngrade = isSelfServePlan(plan.id as BillingTier) && !isCurrent && !isUpgrade;
-            const canUpgrade = isSelfServePlan(plan.id as BillingTier) && !isCurrent && isUpgrade;
+            const canUpgrade = isSelfServePlan(plan.id as BillingTier) && !isCurrent;
             const priceLabel = formatPrice(market, plan.id as BillingTier);
 
             return (
@@ -304,17 +286,6 @@ export default async function PlanPage({
                     </UpgradeButton>
                   );
                 })()}
-
-                {/* Downgrade — redirect to portal, not checkout */}
-                {isDowngrade && hasSubscription && (
-                  <ManageSubscriptionButton
-                    workspaceSlug={workspaceSlug}
-                    className="mt-5 w-full rounded-2xl border border-black/10 py-2 text-sm font-medium text-[#5F5A53] transition hover:bg-[#F8F5EF]"
-                  >
-                    {isBrazil ? `Reduzir para ${plan.name} (via portal)` : `Downgrade to ${plan.name} (via portal)`}
-                  </ManageSubscriptionButton>
-                )}
-                {isDowngrade && !hasSubscription && null}
 
                 {/* Enterprise contact */}
                 {plan.id === "enterprise" && !isCurrent && (

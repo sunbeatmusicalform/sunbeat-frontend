@@ -111,11 +111,7 @@ export default function SignupPageClient() {
           `rt=${encodeURIComponent(refresh_token)}`,
           `next=${encodeURIComponent(nextPath)}`,
         ].join("&");
-        // Preserve the market domain the user signed up from (sunbeat.pro or sunbeat.com.br)
-        const signupDomain = window.location.hostname.endsWith(".sunbeat.com.br")
-          ? "sunbeat.com.br"
-          : "sunbeat.pro";
-        window.location.href = `https://${slug}.${signupDomain}/auth/session-restore#${hash}`;
+        window.location.href = `https://${slug}.sunbeat.pro/auth/session-restore#${hash}`;
         // setLoading stays true intentionally — page will navigate away
         return;
       }

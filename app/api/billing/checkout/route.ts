@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     // Build return URLs — prefer the subdomain app URL
-    const baseUrl = `https://${workspace_slug}.${marketConfig.domain}`;
+    const baseUrl = `https://${workspace_slug}.sunbeat.pro`;
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
