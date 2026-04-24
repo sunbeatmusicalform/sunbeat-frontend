@@ -51,6 +51,9 @@ export type PublicExperienceReadModel = {
   successMessage: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
+  socialImageUrl: string | null;
+  socialTitle: string | null;
+  socialDescription: string | null;
 };
 
 export type WorkflowSettingsReadModel = {
