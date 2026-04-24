@@ -419,4 +419,6 @@ export async function loadWorkspaceConfigReadModel(args: {
     formVersion: args.formVersion,
     branding: branding ?? null,
     fieldOverrides: (fieldOverrides ?? []) as WorkspaceFieldOverrideRow[],
-    airtableMappings: (airtabl
+    airtableMappings: (airtableMappings ?? []) as WorkspaceAirtableMappingRow[],
+  });
+}
