@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/app/app/logout-button";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
+import { resolveMarket } from "@/lib/billing/catalog";
 
 // ─── Nav structure ───────────────────────────────────────────────────────────
 
@@ -120,6 +122,11 @@ export default async function AppLayout({
 
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
 
+  // Resolve display domain for sidebar — sunbeat.pro or sunbeat.com.br
+  const headerStore = await headers();
+  const hostHeader = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
+  const displayDomain = resolveMarket(hostHeader) === "brazil" ? "sunbeat.com.br" : "sunbeat.pro";
+
   // Fetch workspace + plan info
   let workspaceName = workspaceSlug;
   let planName = "Pro";
@@ -178,7 +185,7 @@ export default async function AppLayout({
                     {workspaceName}
                   </div>
                   <div className="text-[11px] uppercase tracking-[0.2em] text-[#7A746A]">
-                    {workspaceSlug}.sunbeat.pro
+                    {workspaceSlug}.{displayDomain}
                   </div>
                 </div>
               </div>
