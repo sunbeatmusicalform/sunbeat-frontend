@@ -25,8 +25,6 @@ export const WORKSPACE_RESERVED_STEP_KEYS = [
   WORKSPACE_SECURITY_STEP_KEY,
 ] as const;
 
-const PUBLIC_EDIT_WORKSPACES = new Set(["atabaque"]);
-
 type WorkspaceBrandingRow = {
   workspace_slug: string;
   workspace_name?: string | null;
@@ -37,6 +35,14 @@ type WorkspaceBrandingRow = {
   logo_url?: string | null;
   banner_url?: string | null;
   submission_email_enabled?: boolean | null;
+  /** Permite edição pública do formulário (substitui hardcode "atabaque"). */
+  public_edit_allowed?: boolean | null;
+  /** URL da imagem usada no preview social (OG/WhatsApp). Distinta do logo da UI. */
+  social_image_url?: string | null;
+  /** Título customizado para o card de preview social. */
+  social_title?: string | null;
+  /** Descrição customizada para o card de preview social. */
+  social_description?: string | null;
 };
 
 type WorkspaceFieldOverrideRow = {
@@ -101,11 +107,7 @@ function parseStoredEmailList(value: unknown) {
   }
 }
 
-function getDefaultNotificationEmails(workspaceSlug: string) {
-  if (workspaceSlug === "atabaque") {
-    return ["labels@atabaque.biz"];
-  }
-
+function getDefaultNotificationEmails(_workspaceSlug: string) {
   return [];
 }
 
@@ -183,6 +185,9 @@ function buildPublicExperience(args: {
     successMessage: normalizeOptionalText(args.branding?.success_message),
     logoUrl: normalizeOptionalText(args.branding?.logo_url),
     bannerUrl: normalizeOptionalText(args.branding?.banner_url),
+    socialImageUrl: normalizeOptionalText(args.branding?.social_image_url),
+    socialTitle: normalizeOptionalText(args.branding?.social_title),
+    socialDescription: normalizeOptionalText(args.branding?.social_description),
   };
 }
 
@@ -271,6 +276,7 @@ function buildIntegrationSettings(args: {
 
 function buildAccessAndGovernance(args: {
   workspaceSlug: string;
+  branding: WorkspaceBrandingRow | null;
   fieldOverrides: WorkspaceFieldOverrideRow[];
 }): AccessAndGovernanceReadModel {
   const passwordProtected = args.fieldOverrides.some(
@@ -282,7 +288,7 @@ function buildAccessAndGovernance(args: {
   );
 
   return {
-    publicEditWorkspaceAllowed: PUBLIC_EDIT_WORKSPACES.has(args.workspaceSlug),
+    publicEditWorkspaceAllowed: args.branding?.public_edit_allowed === true,
     editPasswordProtected: passwordProtected,
     settingsStorageMode: "workspace_field_overrides_legacy",
     reservedStepKeys: [...WORKSPACE_RESERVED_STEP_KEYS],
@@ -354,6 +360,7 @@ export function buildWorkspaceConfigReadModel(args: {
     integrationSettings,
     accessAndGovernance: buildAccessAndGovernance({
       workspaceSlug: args.workspaceSlug,
+      branding: args.branding,
       fieldOverrides: args.fieldOverrides,
     }),
     billingAndEntitlements: buildBillingAndEntitlements(),
@@ -412,6 +419,4 @@ export async function loadWorkspaceConfigReadModel(args: {
     formVersion: args.formVersion,
     branding: branding ?? null,
     fieldOverrides: (fieldOverrides ?? []) as WorkspaceFieldOverrideRow[],
-    airtableMappings: (airtableMappings ?? []) as WorkspaceAirtableMappingRow[],
-  });
-}
+    airtableMappings: (airtabl

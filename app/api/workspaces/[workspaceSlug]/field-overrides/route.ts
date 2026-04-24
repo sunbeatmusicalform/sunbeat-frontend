@@ -25,11 +25,7 @@ const FIELD_OVERRIDE_SETTINGS_SELECT_WITH_SCOPE =
 const FIELD_OVERRIDE_SETTINGS_SELECT_LEGACY =
   "workspace_slug, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order";
 
-function getDefaultNotificationEmails(workspaceSlug: string) {
-  if (workspaceSlug === "atabaque") {
-    return ["labels@atabaque.biz"];
-  }
-
+function getDefaultNotificationEmails(_workspaceSlug: string) {
   return [];
 }
 
@@ -681,3 +677,4 @@ export async function PUT(
     },
   });
 }
+     
