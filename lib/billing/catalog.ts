@@ -45,8 +45,6 @@
 
 // ─── Core types ──────────────────────────────────────────────────────────────
 
-import { buildWorkspaceUrl, type WorkspaceBaseDomain } from "@/lib/tenant";
-
 export type Market = "global" | "brazil";
 
 /**
@@ -66,8 +64,6 @@ export type BillingTierType =
   | "self_serve"           // user can buy online without contacting sales
   | "sales_led"            // requires sales contact; price is shown publicly
   | "internal_commercial"; // commercial/white-label; price NOT shown publicly
-
-export type BillingCheckoutStatus = "success" | "cancelled";
 
 // ─── Plan definitions ────────────────────────────────────────────────────────
 
@@ -203,7 +199,7 @@ export const enterpriseTiers: EnterpriseTierDef[] = [
 
 export interface MarketConfig {
   currency: "USD" | "BRL";
-  domain: WorkspaceBaseDomain;
+  domain: string;
   locale: string;
   symbol: string;
   /**
@@ -255,11 +251,11 @@ export const billingCatalog: Record<Market, MarketConfig> = {
     priceIds: () => ({
       // Env vars take precedence; fallbacks are the known live BRL price IDs.
       // Price IDs are not secrets — they are visible in Stripe checkout URLs.
-      starter:                process.env.STRIPE_PRICE_ID_STARTER_BRL                  ?? "price_1TK69w837oCj1xtD9EpC8HNc",
-      pro:                    process.env.STRIPE_PRICE_ID_PRO_BRL                      ?? "price_1TK6EX837oCj1xtDsLvTjfMV",
-      enterprise_core:        process.env.STRIPE_PRICE_ID_ENTERPRISE_CORE_BRL          ?? "price_1TK6FN837oCj1xtD0WFtuoLY",
-      enterprise_ops:         process.env.STRIPE_PRICE_ID_ENTERPRISE_OPS_BRL           ?? "price_1TK6Gg837oCj1xtDAmJe8wIX",
-      enterprise_distribution: process.env.STRIPE_PRICE_ID_ENTERPRISE_DISTRIBUTION_BRL ?? "price_1TK6IK837oCj1xtDy1HDzeuM",
+      starter:                process.env.STRIPE_PRICE_ID_STARTER_BRL                   ?? "price_1TK69w837oCj1xtD9EpC8HNc",
+      pro:                    process.env.STRIPE_PRICE_ID_PRO_BRL                       ?? "price_1TK6EX837oCj1xtDsLvTjfMV",
+      enterprise_core:        process.env.STRIPE_PRICE_ID_ENTERPRISE_CORE_BRL           ?? "price_1TK6FN837oCj1xtD0WFtuoLY",
+      enterprise_ops:         process.env.STRIPE_PRICE_ID_ENTERPRISE_OPS_BRL            ?? "price_1TK6Gg837oCj1xtDAmJe8wIX",
+      enterprise_distribution: process.env.STRIPE_PRICE_ID_ENTERPRISE_DISTRIBUTION_BRL  ?? "price_1TK6IK837oCj1xtDy1HDzeuM",
     }),
     displayPrices: {
       free:                    0,
@@ -308,24 +304,33 @@ export function resolvePlanFromPriceId(
   return null;
 }
 
-type BuildBillingSettingsUrlArgs = {
-  workspaceSlug: string;
-  market: Market;
-  checkoutStatus?: BillingCheckoutStatus;
-  includeSessionId?: boolean;
-};
+/**
+ * Format a display price string for the given market + plan.
+ *
+ * Rules:
+ *   - "free" → "Grátis" / "Free"
+ *   - "enterprise_distribution" → "Custom" / "Consulte" (internal_commercial)
+ *   - legacy "enterprise" → "Custom"
+ *   - all others → symbol + price (e.g. "$19" / "R$ 97")
+ */
+export function formatPrice(market: Market, planId: BillingTier): string {
+  const config = billingCatalog[market];
+  const isBrazil = market === "brazil";
 
-export function buildBillingSettingsUrl(
-  args: BuildBillingSettingsUrlArgs
-): string {
-  const domain = billingCatalog[args.market].domain;
-  const url = new URL(
-    buildWorkspaceUrl(args.workspaceSlug, "/app/settings/plan", { domain })
-  );
-
-  if (args.checkoutStatus) {
-    url.searchParams.set("checkout", args.checkoutStatus);
+  // Plans that never show a numeric price publicly
+  if (planId === "enterprise" || planId === "enterprise_distribution") {
+    return isBrazil ? "Consulte" : "Custom";
   }
 
-  if (args.includeSessionId) {
-    url.searchParams.set("session_id
+  const price = config.displayPrices[planId] ?? 0;
+  if (price === 0) return isBrazil ? "Grátis" : "Free";
+  return `${config.symbol}${price.toLocaleString(config.locale)}`;
+}
+
+/**
+ * Returns true when a plan tier should self-serve through the checkout flow.
+ * Enterprise and free plans are excluded from the upgrade button.
+ */
+export function isSelfServePlan(planId: BillingTier): boolean {
+  return planDefinitions[planId]?.tierType === "self_serve" && planId !== "free";
+}
