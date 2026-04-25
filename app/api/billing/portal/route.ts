@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { billingCatalog, resolveMarket } from "@/lib/billing/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +49,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const stripe = getStripe();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sunbeat.pro";
+    // Resolve market from the Host header so the return URL uses the correct domain
+    const host = req.headers.get("host") ?? "";
+    const market = resolveMarket(host);
+    const { domain } = billingCatalog[market];
+    const defaultReturnUrl = `https://${workspace_slug}.${domain}/app/settings/plan`;
 
+    const stripe = getStripe();
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: return_url ?? `${appUrl}/app/settings/plan`,
+      return_url: return_url ?? defaultReturnUrl,
     });
 
     return NextResponse.json({ ok: true, url: portalSession.url });
