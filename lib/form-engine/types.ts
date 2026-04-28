@@ -4,6 +4,7 @@ export type ReleaseType = "single" | "ep" | "album";
 export const DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE = "release_intake" as const;
 export const RIGHTS_CLEARANCE_WORKFLOW_TYPE = "rights_clearance" as const;
 export const PEOPLE_REGISTRY_WORKFLOW_TYPE = "people_registry" as const;
+export const COMPANY_REGISTRY_WORKFLOW_TYPE = "company_registry" as const;
 export const LEGACY_RELEASE_INTAKE_FORM_VERSION = "legacy_v1" as const;
 export const ACTIVE_WORKFLOW_FORM_VERSION = "v1" as const;
 export const PLANNED_WORKFLOW_FORM_VERSION = "draft_v1" as const;
@@ -11,7 +12,8 @@ export const PLANNED_WORKFLOW_FORM_VERSION = "draft_v1" as const;
 export type KnownWorkflowType =
   | typeof DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE
   | typeof RIGHTS_CLEARANCE_WORKFLOW_TYPE
-  | typeof PEOPLE_REGISTRY_WORKFLOW_TYPE;
+  | typeof PEOPLE_REGISTRY_WORKFLOW_TYPE
+  | typeof COMPANY_REGISTRY_WORKFLOW_TYPE;
 
 export type WorkflowType = KnownWorkflowType | (string & {});
 export type FormVersion = string;
@@ -19,14 +21,17 @@ export type WorkflowStatus = "active" | "planned" | "custom";
 export type WorkflowRenderer =
   | "release_intake"
   | "rights_clearance"
+  | "company_registry"
   | "external";
 export type WorkflowTemplateFactoryKey =
   | "release_intake"
   | "rights_clearance"
+  | "company_registry"
   | "external";
 export type WorkflowPayloadBuilderKey =
   | "release_intake"
   | "rights_clearance"
+  | "company_registry"
   | "external";
 
 export function buildWorkflowSource(
@@ -133,6 +138,20 @@ export type FormStepKey =
   | "project_context"
   | "clearance_scope"
   | "assets_references"
+  | "company_data"
+  | "legal_representative"
+  | "contract_representative"
+  | "financial_representative"
+  | "banking_data"
+  | "review_submit";
+
+export type CompanyRegistryStepKey =
+  | "intro"
+  | "company_data"
+  | "legal_representative"
+  | "contract_representative"
+  | "financial_representative"
+  | "banking_data"
   | "review_submit";
 
 export type RightsClearanceStepKey =
@@ -281,6 +300,115 @@ export type RightsClearanceFormValues = {
   tracks: RightsClearanceTrackValues[];
   clearance_scope: RightsClearanceScopeValues;
   assets_references: RightsClearanceAssetsValues;
+};
+
+export type CompanyDataValues = {
+  document_type: "cpf" | "cnpj" | "";
+  document_number: string;
+  fantasy_name: string;
+  legal_name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+};
+
+export type LegalRepresentativeValues = {
+  name: string;
+  phone: string;
+  email: string;
+};
+
+export type ContractRepresentativeValues = {
+  same_as_legal: YesNo | "";
+  name: string;
+  phone: string;
+  email: string;
+};
+
+export type FinancialRepresentativeValues = {
+  same_as_legal: YesNo | "";
+  same_as_contract: YesNo | "";
+  name: string;
+  phone: string;
+  email: string;
+};
+
+export type BankingDataValues = {
+  bank_name: string;
+  agency: string;
+  account: string;
+  account_type: "corrente" | "poupanca" | "";
+  pix_key: string;
+};
+
+export type CompanyRegistryFormValues = {
+  company_data: CompanyDataValues;
+  legal_representative: LegalRepresentativeValues;
+  contract_representative: ContractRepresentativeValues;
+  financial_representative: FinancialRepresentativeValues;
+  banking_data: BankingDataValues;
+};
+
+export type CompanyRegistryDraftPayload = {
+  draft_token?: string | null;
+  workspace_slug: string;
+  workflow_type: WorkflowType;
+  current_step: CompanyRegistryStepKey;
+  progress_percent: number;
+  values: CompanyRegistryFormValues;
+  meta: {
+    form_version: FormVersion;
+    source: string;
+    updated_at?: string;
+  };
+};
+
+export type CompanyRegistrySubmitPayload = {
+  draft_token?: string | null;
+  workspace_slug: string;
+  workflow_type: WorkflowType;
+  edit_token?: string;
+  company_data: {
+    document_type: "cpf" | "cnpj";
+    document_number: string;
+    fantasy_name: string;
+    legal_name: string;
+    address: string;
+    city: string;
+    state: string;
+    zip_code: string;
+  };
+  legal_representative: {
+    name: string;
+    phone: string;
+    email: string;
+  };
+  contract_representative: {
+    same_as_legal?: YesNo;
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
+  financial_representative: {
+    same_as_legal?: YesNo;
+    same_as_contract?: YesNo;
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
+  banking_data: {
+    bank_name: string;
+    agency: string;
+    account: string;
+    account_type: "corrente" | "poupanca";
+    pix_key?: string;
+  };
+  meta: {
+    form_version: FormVersion;
+    source: string;
+    submitted_at?: string;
+  };
 };
 
 export type ReleaseIntakeDraftPayload = {

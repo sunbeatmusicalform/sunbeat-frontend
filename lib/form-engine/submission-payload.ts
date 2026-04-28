@@ -1,4 +1,7 @@
 import type {
+  CompanyRegistryDraftPayload,
+  CompanyRegistryFormValues,
+  CompanyRegistrySubmitPayload,
   FormField,
   FormStepKey,
   FormVersion,
@@ -12,6 +15,7 @@ import type {
   WorkflowType,
 } from "./types";
 import {
+  COMPANY_REGISTRY_WORKFLOW_TYPE,
   DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE,
   RIGHTS_CLEARANCE_WORKFLOW_TYPE,
   buildWorkflowSource,
@@ -28,13 +32,16 @@ type TrackRequiredError = {
 
 export type WorkflowDraftPayload =
   | ReleaseIntakeDraftPayload
-  | RightsClearanceDraftPayload;
+  | RightsClearanceDraftPayload
+  | CompanyRegistryDraftPayload;
 export type WorkflowSubmitPayload =
   | ReleaseIntakeSubmitPayload
-  | RightsClearanceSubmitPayload;
+  | RightsClearanceSubmitPayload
+  | CompanyRegistrySubmitPayload;
 export type WorkflowFormValues =
   | ReleaseIntakeFormValues
-  | RightsClearanceFormValues;
+  | RightsClearanceFormValues
+  | CompanyRegistryFormValues;
 
 export type WorkflowDraftPayloadBuilderArgs = {
   draftToken: string;
@@ -435,7 +442,6 @@ export function buildReleaseIntakeSubmitPayload(
     },
     tracks: values.tracks.map((track, index) => ({
       local_id: track.local_id,
-      client_track_id: track.client_track_id ?? track.local_id,
       order_number: index + 1,
       title: track.title.trim(),
       is_focus_track: track.is_focus_track,
@@ -607,6 +613,143 @@ export function buildRightsClearanceSubmitPayload(
   };
 }
 
+
+export function buildCompanyRegistryDraftPayload(
+  args: WorkflowDraftPayloadBuilderArgs
+): CompanyRegistryDraftPayload {
+  const values = args.values as CompanyRegistryFormValues;
+  const checks = [
+    !!values.company_data.document_type,
+    !!values.company_data.document_number.trim(),
+    !!values.company_data.fantasy_name.trim(),
+    !!values.company_data.legal_name.trim(),
+    !!values.company_data.address.trim(),
+    !!values.company_data.city.trim(),
+    !!values.company_data.state.trim(),
+    !!values.company_data.zip_code.trim(),
+    !!values.legal_representative.name.trim(),
+    !!values.legal_representative.phone.trim(),
+    !!values.legal_representative.email.trim(),
+    !!values.banking_data.bank_name.trim(),
+    !!values.banking_data.account_type,
+  ];
+  const passed = checks.filter(Boolean).length;
+  const progressPercent = Math.round((passed / checks.length) * 100);
+
+  return {
+    draft_token: args.draftToken,
+    workspace_slug: args.workspaceSlug,
+    workflow_type: args.workflowType,
+    current_step: args.currentStep as CompanyRegistryDraftPayload["current_step"],
+    progress_percent: progressPercent,
+    values,
+    meta: {
+      form_version: args.formVersion,
+      source: buildWorkflowSource(
+        args.workspaceSlug,
+        args.workflowType,
+        args.formVersion
+      ),
+      updated_at: new Date().toISOString(),
+    },
+  };
+}
+
+function cleanCompanyRegistryString(value: string) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function cleanCompanyYesNo(value: string | null | undefined) {
+  return value === "yes" || value === "no" ? value : undefined;
+}
+
+export function buildCompanyRegistrySubmitPayload(
+  args: WorkflowSubmitPayloadBuilderArgs
+): CompanyRegistrySubmitPayload {
+  const values = args.values as CompanyRegistryFormValues;
+
+  const sameAsLegalContract =
+    values.contract_representative.same_as_legal === "yes";
+  const sameAsLegalFinancial =
+    values.financial_representative.same_as_legal === "yes";
+  const sameAsContractFinancial =
+    values.financial_representative.same_as_contract === "yes";
+
+  const contractRep = sameAsLegalContract
+    ? {
+        same_as_legal: "yes" as const,
+        name: values.legal_representative.name,
+        phone: values.legal_representative.phone,
+        email: values.legal_representative.email,
+      }
+    : {
+        same_as_legal: "no" as const,
+        name: cleanCompanyRegistryString(values.contract_representative.name),
+        phone: cleanCompanyRegistryString(values.contract_representative.phone),
+        email: cleanCompanyRegistryString(values.contract_representative.email),
+      };
+
+  let financialName = cleanCompanyRegistryString(values.financial_representative.name);
+  let financialPhone = cleanCompanyRegistryString(values.financial_representative.phone);
+  let financialEmail = cleanCompanyRegistryString(values.financial_representative.email);
+
+  if (sameAsLegalFinancial) {
+    financialName = values.legal_representative.name;
+    financialPhone = values.legal_representative.phone;
+    financialEmail = values.legal_representative.email;
+  } else if (sameAsContractFinancial) {
+    financialName = contractRep.name || undefined;
+    financialPhone = contractRep.phone || undefined;
+    financialEmail = contractRep.email || undefined;
+  }
+
+  return {
+    draft_token: args.draftToken,
+    workspace_slug: args.workspaceSlug,
+    workflow_type: args.workflowType,
+    company_data: {
+      document_type: values.company_data.document_type as "cpf" | "cnpj",
+      document_number: values.company_data.document_number.trim(),
+      fantasy_name: values.company_data.fantasy_name.trim(),
+      legal_name: values.company_data.legal_name.trim(),
+      address: values.company_data.address.trim(),
+      city: values.company_data.city.trim(),
+      state: values.company_data.state.trim().toUpperCase(),
+      zip_code: values.company_data.zip_code.trim(),
+    },
+    legal_representative: {
+      name: values.legal_representative.name.trim(),
+      phone: values.legal_representative.phone.trim(),
+      email: values.legal_representative.email.trim().toLowerCase(),
+    },
+    contract_representative: contractRep,
+    financial_representative: {
+      same_as_legal: cleanCompanyYesNo(values.financial_representative.same_as_legal),
+      same_as_contract: cleanCompanyYesNo(values.financial_representative.same_as_contract),
+      name: financialName,
+      phone: financialPhone,
+      email: financialEmail,
+    },
+    banking_data: {
+      bank_name: values.banking_data.bank_name.trim(),
+      agency: values.banking_data.agency.trim(),
+      account: values.banking_data.account.trim(),
+      account_type: values.banking_data.account_type as "corrente" | "poupanca",
+      pix_key: cleanCompanyRegistryString(values.banking_data.pix_key),
+    },
+    meta: {
+      form_version: args.formVersion,
+      source: buildWorkflowSource(
+        args.workspaceSlug,
+        args.workflowType,
+        args.formVersion
+      ),
+      submitted_at: new Date().toISOString(),
+    },
+  };
+}
+
 function buildUnsupportedWorkflowPayloadError(workflowType: WorkflowType) {
   return new Error(
     `Workflow ${workflowType} ainda nao possui payload builder conectado no frontend.`
@@ -639,6 +782,12 @@ const RIGHTS_CLEARANCE_PAYLOAD_BUILDERS: WorkflowPayloadBuilderSet = {
   buildSubmitPayload: buildRightsClearanceSubmitPayload,
 };
 
+const COMPANY_REGISTRY_PAYLOAD_BUILDERS: WorkflowPayloadBuilderSet = {
+  workflowType: COMPANY_REGISTRY_WORKFLOW_TYPE,
+  buildDraftPayload: buildCompanyRegistryDraftPayload,
+  buildSubmitPayload: buildCompanyRegistrySubmitPayload,
+};
+
 export function getWorkflowPayloadBuilders(
   workflowType?: WorkflowType | null
 ): WorkflowPayloadBuilderSet {
@@ -649,6 +798,8 @@ export function getWorkflowPayloadBuilders(
       return RELEASE_INTAKE_PAYLOAD_BUILDERS;
     case "rights_clearance":
       return RIGHTS_CLEARANCE_PAYLOAD_BUILDERS;
+    case "company_registry":
+      return COMPANY_REGISTRY_PAYLOAD_BUILDERS;
     default:
       return createUnsupportedWorkflowPayloadBuilders(registryEntry.workflowType);
   }

@@ -1,9 +1,11 @@
 import { createLegacyReleaseIntakeTemplate } from "./atabaque-template";
 import { createRightsClearanceTemplate } from "./rights-clearance-template";
+import { createCompanyRegistryTemplate } from "./company-registry-template";
 import {
   ACTIVE_WORKFLOW_FORM_VERSION,
   buildWorkflowSource,
   buildWorkflowTemplateId,
+  COMPANY_REGISTRY_WORKFLOW_TYPE,
   DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE,
   LEGACY_RELEASE_INTAKE_FORM_VERSION,
   PEOPLE_REGISTRY_WORKFLOW_TYPE,
@@ -52,6 +54,18 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
     templateFactory: "external",
     payloadBuilder: "external",
     publicPathPrefix: "/people",
+  },
+  [COMPANY_REGISTRY_WORKFLOW_TYPE]: {
+    workflowType: COMPANY_REGISTRY_WORKFLOW_TYPE,
+    label: "Cadastro de empresa",
+    description:
+      "Cadastro de clientes efetivos da Atabaque — dados contratuais, financeiros e operacionais.",
+    defaultFormVersion: ACTIVE_WORKFLOW_FORM_VERSION,
+    status: "active",
+    renderer: "company_registry",
+    templateFactory: "company_registry",
+    payloadBuilder: "company_registry",
+    publicPathPrefix: "/company",
   },
 };
 
@@ -133,6 +147,8 @@ export function resolveWorkflowTemplateFactory(identity: WorkflowIdentity) {
       return createLegacyReleaseIntakeTemplate;
     case "rights_clearance":
       return createRightsClearanceTemplate;
+    case "company_registry":
+      return createCompanyRegistryTemplate;
     default:
       throw new Error(
         `Workflow ${identity.workflowType} ainda nao esta ligado a uma factory de template local.`
