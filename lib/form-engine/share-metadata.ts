@@ -93,7 +93,11 @@ function buildShareTitle(args: {
   branding: WorkspaceShareBranding | null;
   workflowLabel: string;
 }) {
-  const formShareTitle = pickText(args.template, ["shareTitle", "share_title"]);
+  const formShareTitle =
+    pickText(args.template, ["shareTitle", "share_title"]) ||
+    // Current schema keeps preview copy in workspace_branding. Treat it as the
+    // form-level share title until share fields become workflow-scoped.
+    pickText(args.branding, ["socialTitle", "social_title"]);
   if (formShareTitle) return formShareTitle;
 
   const formTitle =
@@ -112,10 +116,11 @@ function buildShareDescription(args: {
   branding: WorkspaceShareBranding | null;
   workflowType: WorkflowType;
 }) {
-  const formShareDescription = pickText(args.template, [
-    "shareDescription",
-    "share_description",
-  ]);
+  const formShareDescription =
+    pickText(args.template, ["shareDescription", "share_description"]) ||
+    // Current schema keeps preview copy in workspace_branding. Treat it as the
+    // form-level share description until share fields become workflow-scoped.
+    pickText(args.branding, ["socialDescription", "social_description"]);
   if (formShareDescription) return formShareDescription;
 
   const formDescription = pickText(args.template, ["description"]);
@@ -138,7 +143,12 @@ function buildShareImage(args: {
   origin: string;
 }) {
   const tenantImage =
-    pickText(args.branding, ["shareImageUrl", "share_image_url"]) ||
+    pickText(args.branding, [
+      "shareImageUrl",
+      "share_image_url",
+      "socialImageUrl",
+      "social_image_url",
+    ]) ||
     pickText(args.branding, ["badgeUrl", "badge_url"]) ||
     pickText(args.branding, ["logoUrl", "logo_url"]);
 
@@ -194,7 +204,16 @@ export async function buildWorkflowShareMetadata(args: {
       description,
       url: canonicalUrl,
       type: "website",
-      images: imageUrl ? [{ url: imageUrl }] : undefined,
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 1200,
+              alt: title,
+            },
+          ]
+        : undefined,
     },
     twitter: {
       card: "summary_large_image",
