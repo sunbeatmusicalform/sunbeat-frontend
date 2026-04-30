@@ -37,17 +37,14 @@ function buildMetadata(args: {
  * Shared metadata generator for all public workflow form routes.
  *
  * Resolution order:
- *   title:       socialTitle (branding) → "{workspaceName} — {workflowLabel}" → defaultTitle
- *   description: socialDescription (branding) → slogan → defaultDescription
- *   image:       socialImageUrl → logoUrl → /logo.png
+ *   title:       socialTitle -> "{workspaceName} — {workflowLabel}" -> defaultTitle
+ *   description: socialDescription -> slogan -> defaultDescription
+ *   image:       socialImageUrl -> logoUrl -> /logo.png
  */
 export async function generateWorkflowMetadata(args: {
   workspaceSlug: string;
-  /** Label shown in title fallback, e.g. "Cadastro de empresa" */
   workflowLabel: string;
-  /** Last-resort title if workspace name is also unavailable */
   defaultTitle: string;
-  /** Last-resort description */
   defaultDescription: string;
 }): Promise<Metadata> {
   let pe: Awaited<
