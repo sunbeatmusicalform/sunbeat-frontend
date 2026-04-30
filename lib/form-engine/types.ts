@@ -114,6 +114,29 @@ export type FormField = {
   options?: FieldOption[];
 };
 
+export type FormTheme = {
+  /** CSS color for the page background (e.g. "#ebdbba"). */
+  formBg: string;
+  /** CSS color for primary action elements (buttons, active stepper). */
+  primary: string;
+  /** CSS color for primary hover state. */
+  primaryHover: string;
+};
+
+export type FormBranding = {
+  logoUrl?: string | null;
+  /** Small badge/icon shown in chips and header. Distinct from logoUrl. */
+  badgeUrl?: string | null;
+  socialImageUrl?: string | null;
+};
+
+/** Platform-wide defaults for the Sunbeat form theme (Atabaque palette). */
+export const DEFAULT_FORM_THEME: FormTheme = {
+  formBg: "#ebdbba",
+  primary: "#0f172a",
+  primaryHover: "#1e293b",
+};
+
 export type IntroConfig = {
   clientName: string;
   formTitle: string;
@@ -182,6 +205,10 @@ export type WorkflowTemplate = {
   successMessage: string;
   intro: IntroConfig;
   steps: FormStep[];
+  /** Theme tokens for the form UI. Falls back to DEFAULT_FORM_THEME when absent. */
+  formTheme?: FormTheme;
+  /** Branding assets (logo, badge, social image). */
+  formBranding?: FormBranding;
 };
 
 export type ReleaseIntakeTemplate = WorkflowTemplate;

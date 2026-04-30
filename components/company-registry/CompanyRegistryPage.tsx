@@ -687,7 +687,7 @@ export default function CompanyRegistryPage({
 
   if (isLoadingTemplate || isHydratingDraft) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "#ebdbba" }}>
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
           Carregando...
@@ -698,7 +698,7 @@ export default function CompanyRegistryPage({
 
   if (isSubmissionComplete) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-16">
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16" style={{ background: "#ebdbba" }}>
         <div
           ref={successCardRef}
           className="w-full max-w-lg rounded-3xl border border-green-200 bg-white p-10 text-center shadow-sm"
@@ -718,7 +718,7 @@ export default function CompanyRegistryPage({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ background: template.formTheme?.formBg ?? "#ebdbba" }}>
       {/* Sticky header */}
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
@@ -750,7 +750,7 @@ export default function CompanyRegistryPage({
         {/* Progress bar */}
         <div className="h-0.5 bg-slate-100">
           <div
-            className="h-full bg-slate-900 transition-all duration-500"
+            className="h-full transition-all duration-500" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -844,7 +844,7 @@ export default function CompanyRegistryPage({
 
             <button
               onClick={goNext}
-              className="w-full rounded-2xl bg-slate-900 px-6 py-4 text-[15px] font-semibold text-white transition hover:bg-slate-700 active:scale-[0.99]"
+              className="w-full rounded-2xl px-6 py-4 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
             >
               Comecar cadastro
             </button>
@@ -1317,7 +1317,7 @@ export default function CompanyRegistryPage({
             {currentStep !== "review_submit" ? (
               <button
                 onClick={goNext}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-slate-700 active:scale-[0.99]"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
               >
                 Continuar
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1328,7 +1328,7 @@ export default function CompanyRegistryPage({
               <button
                 onClick={handleSubmit}
                 disabled={loadingSubmit}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60 active:scale-[0.99]"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[15px] font-semibold text-white transition disabled:opacity-60 active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
               >
                 {loadingSubmit ? (
                   <>

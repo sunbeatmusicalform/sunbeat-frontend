@@ -188,6 +188,9 @@ function buildPublicExperience(args: {
     socialImageUrl: normalizeOptionalText(args.branding?.social_image_url),
     socialTitle: normalizeOptionalText(args.branding?.social_title),
     socialDescription: normalizeOptionalText(args.branding?.social_description),
+    formBgColor: normalizeOptionalText(args.branding?.form_bg_color),
+    primaryColor: normalizeOptionalText(args.branding?.primary_color),
+    badgeUrl: normalizeOptionalText(args.branding?.badge_url),
   };
 }
 

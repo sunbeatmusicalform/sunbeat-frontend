@@ -3,6 +3,7 @@ import {
   type ReleaseIntakeTemplate,
   type WorkflowType,
   type WorkflowRegistryEntry,
+  DEFAULT_FORM_THEME,
 } from "./types";
 import {
   createWorkflowTemplate,
@@ -19,6 +20,9 @@ type BrandingConfig = {
   form_title?: string | null;
   intro_text?: string | null;
   success_message?: string | null;
+  form_bg_color?: string | null;
+  primary_color?: string | null;
+  badge_url?: string | null;
 };
 
 type FieldOverride = {
@@ -154,6 +158,9 @@ export async function getWorkflowTemplate(
       ),
     })) ?? [];
 
+  const formBg = branding?.form_bg_color || baseTemplate.formTheme?.formBg || DEFAULT_FORM_THEME.formBg;
+  const primary = branding?.primary_color || baseTemplate.formTheme?.primary || DEFAULT_FORM_THEME.primary;
+
   const nextTemplate: ReleaseIntakeTemplate = {
       ...baseTemplate,
     slogan: branding?.slogan || baseTemplate.slogan,
@@ -212,7 +219,23 @@ export async function getWorkflowTemplate(
     }),
   };
 
-  return nextTemplate;
+  const withTheme: ReleaseIntakeTemplate = {
+    ...nextTemplate,
+    formTheme: {
+      formBg: formBg,
+      primary: primary,
+      primaryHover: primary === DEFAULT_FORM_THEME.primary
+        ? DEFAULT_FORM_THEME.primaryHover
+        : primary,
+    },
+    formBranding: {
+      logoUrl: branding?.logo_url || null,
+      badgeUrl: branding?.badge_url || null,
+      socialImageUrl: null,
+    },
+  };
+
+  return withTheme;
 }
 
 export const getReleaseTemplate = getWorkflowTemplate;

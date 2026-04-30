@@ -129,6 +129,9 @@ export async function PATCH(
       false
     );
   }
+  if ("form_bg_color" in body) patch.form_bg_color = normalizeText(body.form_bg_color);
+  if ("primary_color" in body) patch.primary_color = normalizeText(body.primary_color);
+  if ("badge_url" in body) patch.badge_url = normalizeText(body.badge_url);
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json(
