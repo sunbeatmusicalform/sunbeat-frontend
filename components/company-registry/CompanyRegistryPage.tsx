@@ -68,6 +68,10 @@ function getApiMessage(
   return text;
 }
 
+// ---------------------------------------------------------------------------
+// UI primitives
+// ---------------------------------------------------------------------------
+
 function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -133,6 +137,99 @@ function FormInput({
   );
 }
 
+/** Elegant Yes/No toggle replacing the plain <select> for same-as questions. */
+function SameAsToggle({
+  label,
+  value,
+  required,
+  error,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  required?: boolean;
+  error?: string;
+  onChange: (value: "yes" | "no" | "") => void;
+}) {
+  return (
+    <div>
+      <FieldLabel label={label} required={required} />
+      <div className="mt-3 flex gap-3">
+        {(["yes", "no"] as const).map((opt) => {
+          const isActive = value === opt;
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(isActive ? "" : opt)}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-5 py-3 text-[15px] font-semibold transition ${
+                isActive
+                  ? opt === "yes"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                    : "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              {isActive && opt === "yes" ? (
+                <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : null}
+              {opt === "yes" ? "Sim" : "Nao"}
+            </button>
+          );
+        })}
+      </div>
+      {error ? (
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Preview card shown when a representative is inherited from another role. */
+function InheritedPersonCard({
+  sourceLabel,
+  name,
+  phone,
+  email,
+}: {
+  sourceLabel: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+      <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-emerald-700">
+        {sourceLabel}
+      </p>
+      <div className="space-y-1.5">
+        {name && (
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <span className="w-20 shrink-0 text-slate-400">Nome</span>
+            <span className="font-medium">{name}</span>
+          </div>
+        )}
+        {phone && (
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <span className="w-20 shrink-0 text-slate-400">Telefone</span>
+            <span className="font-medium">{phone}</span>
+          </div>
+        )}
+        {email && (
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <span className="w-20 shrink-0 text-slate-400">E-mail</span>
+            <span className="font-medium">{email}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ReviewRow({ label, value }: { label: string; value?: string }) {
   const display = value?.trim() || "-";
   const isYesNo = value === "yes" ? "Sim" : value === "no" ? "Nao" : display;
@@ -156,6 +253,67 @@ function ReviewSection({ title, children }: { title: string; children: React.Rea
     </div>
   );
 }
+
+/** Autosave status dot + label */
+function AutosaveBadge({ state }: { state: AutosaveState }) {
+  if (state === "idle") return null;
+  const config = {
+    saving: { dot: "bg-amber-400 animate-pulse", text: "Salvando...", textColor: "text-slate-400" },
+    saved: { dot: "bg-emerald-500", text: "Salvo", textColor: "text-slate-400" },
+    error: { dot: "bg-red-500", text: "Erro ao salvar", textColor: "text-red-500" },
+  }[state];
+  return (
+    <span className={`flex items-center gap-1.5 text-xs ${config.textColor}`}>
+      <span className={`inline-block h-1.5 w-1.5 rounded-full ${config.dot}`} />
+      {config.text}
+    </span>
+  );
+}
+
+/** Step pill for the stepper navigation. */
+function StepChip({
+  label,
+  index,
+  isActive,
+  isDone,
+  onClick,
+}: {
+  label: string;
+  index: number;
+  isActive: boolean;
+  isDone: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!isDone && !isActive}
+      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+        isActive
+          ? "bg-slate-900 text-white shadow-sm"
+          : isDone
+          ? "bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
+          : "bg-slate-50 text-slate-300 cursor-not-allowed"
+      }`}
+    >
+      {isDone ? (
+        <svg className="h-3 w-3 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <span className={`h-4 w-4 flex items-center justify-center rounded-full text-[10px] font-bold ${isActive ? "bg-white text-slate-900" : "bg-slate-200 text-slate-500"}`}>
+          {index + 1}
+        </span>
+      )}
+      {label}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export default function CompanyRegistryPage({
   workspaceSlug = companyRegistryTemplate.workspaceSlug,
@@ -511,15 +669,6 @@ export default function CompanyRegistryPage({
     }
   }
 
-  const autosaveLabel =
-    autosaveState === "saving"
-      ? "Salvando..."
-      : autosaveState === "saved"
-      ? "Rascunho salvo"
-      : autosaveState === "error"
-      ? "Erro ao salvar"
-      : null;
-
   const progressPercent = Math.round(
     (currentStepIndex / (STEP_ORDER.length - 1)) * 100
   );
@@ -539,7 +688,10 @@ export default function CompanyRegistryPage({
   if (isLoadingTemplate || isHydratingDraft) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-sm text-slate-500">Carregando...</div>
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+          Carregando...
+        </div>
       </div>
     );
   }
@@ -567,22 +719,19 @@ export default function CompanyRegistryPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <span className="text-sm font-semibold text-slate-900">
-            {template.intro.clientName}
-          </span>
           <div className="flex items-center gap-3">
-            {autosaveLabel ? (
-              <span
-                className={`text-xs ${
-                  autosaveState === "error" ? "text-red-500" : "text-slate-400"
-                }`}
-              >
-                {autosaveLabel}
-              </span>
-            ) : null}
+            <span className="text-sm font-bold text-slate-900">
+              {template.intro.clientName}
+            </span>
+            <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 sm:inline">
+              Cadastro de empresa
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <AutosaveBadge state={autosaveState} />
             {editToken && (
               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
                 Modo edicao
@@ -591,13 +740,28 @@ export default function CompanyRegistryPage({
           </div>
         </div>
         {/* Progress bar */}
-        <div className="h-1 bg-slate-100">
+        <div className="h-0.5 bg-slate-100">
           <div
             className="h-full bg-slate-900 transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </header>
+
+      {/* Edit mode banner */}
+      {editToken && currentStep !== "intro" && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
+            <svg className="h-4 w-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <p className="text-xs text-amber-800">
+              Voce esta <strong>editando</strong> um cadastro ja enviado. As alteracoes serao salvas ao clicar em{" "}
+              <strong>Enviar cadastro</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-2xl px-4 py-10">
         {/* Step nav */}
@@ -607,23 +771,16 @@ export default function CompanyRegistryPage({
               const stepIdx = STEP_ORDER.indexOf(step);
               const isActive = step === currentStep;
               const isDone = stepIdx < currentStepIndex;
+              const stepMeta = template.steps.find((s) => s.key === step);
               return (
-                <button
+                <StepChip
                   key={step}
-                  onClick={() => {
-                    if (isDone) setCurrentStep(step);
-                  }}
-                  disabled={!isDone && !isActive}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    isActive
-                      ? "bg-slate-900 text-white"
-                      : isDone
-                      ? "bg-slate-200 text-slate-700 hover:bg-slate-300 cursor-pointer"
-                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  }`}
-                >
-                  {i + 1}. {template.steps.find((s) => s.key === step)?.title ?? step}
-                </button>
+                  label={stepMeta?.title ?? step}
+                  index={i}
+                  isActive={isActive}
+                  isDone={isDone}
+                  onClick={isDone ? () => setCurrentStep(step) : undefined}
+                />
               );
             })}
           </div>
@@ -632,27 +789,46 @@ export default function CompanyRegistryPage({
         {/* ===== INTRO ===== */}
         {currentStep === "intro" && (
           <div className="space-y-8">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">{template.intro.formTitle}</h1>
-              <p className="mt-4 text-[15px] leading-7 text-slate-600 whitespace-pre-line">
+            {/* Branding card */}
+            <div className="rounded-3xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900">
+                <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <div className="mb-1 inline-block rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                {template.intro.clientName}
+              </div>
+              <h1 className="mt-3 text-2xl font-bold text-slate-900">{template.intro.formTitle}</h1>
+              <p className="mt-3 text-[15px] leading-7 text-slate-500 whitespace-pre-line">
                 {template.intro.introText}
               </p>
             </div>
-            {template.intro.highlights && (
-              <ul className="space-y-2">
-                {template.intro.highlights.map((h) => (
-                  <li key={h} className="flex items-center gap-3 text-sm text-slate-700">
-                    <span className="h-2 w-2 rounded-full bg-slate-900 shrink-0" />
-                    {h}
-                  </li>
-                ))}
-              </ul>
+
+            {/* Highlights */}
+            {template.intro.highlights && template.intro.highlights.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                <p className="mb-4 text-[13px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                  O que sera preenchido
+                </p>
+                <ul className="space-y-3">
+                  {template.intro.highlights.map((h) => (
+                    <li key={h} className="flex items-start gap-3 text-[14px] text-slate-700">
+                      <svg className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      {h}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
+
             <button
               onClick={goNext}
-              className="w-full rounded-2xl bg-slate-900 px-6 py-4 text-[15px] font-semibold text-white transition hover:bg-slate-700"
+              className="w-full rounded-2xl bg-slate-900 px-6 py-4 text-[15px] font-semibold text-white transition hover:bg-slate-700 active:scale-[0.99]"
             >
-              Comecar
+              Comecar cadastro
             </button>
           </div>
         )}
@@ -819,22 +995,24 @@ export default function CompanyRegistryPage({
                 <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <FormInput
-              label="Mesmo que o responsavel legal?"
-              type="select"
+            <SameAsToggle
+              label="E a mesma pessoa que o responsavel legal?"
               value={values.contract_representative.same_as_legal}
               required
-              options={[
-                { label: "Selecione", value: "" },
-                { label: "Sim", value: "yes" },
-                { label: "Nao", value: "no" },
-              ]}
               error={errors["contract_representative.same_as_legal"]}
               onChange={(v) => {
                 setSectionField("contract_representative", "same_as_legal", v);
                 clearFieldError("contract_representative.same_as_legal");
               }}
             />
+            {values.contract_representative.same_as_legal === "yes" && (
+              <InheritedPersonCard
+                sourceLabel="Dados herdados do responsavel legal"
+                name={values.legal_representative.name}
+                phone={values.legal_representative.phone}
+                email={values.legal_representative.email}
+              />
+            )}
             {values.contract_representative.same_as_legal === "no" && (
               <>
                 <FormInput
@@ -873,14 +1051,6 @@ export default function CompanyRegistryPage({
                 />
               </>
             )}
-            {values.contract_representative.same_as_legal === "yes" && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-500 mb-3 font-medium">Dados do responsavel legal</p>
-                <ReviewRow label="Nome" value={values.legal_representative.name} />
-                <ReviewRow label="Telefone" value={values.legal_representative.phone} />
-                <ReviewRow label="E-mail" value={values.legal_representative.email} />
-              </div>
-            )}
           </div>
         )}
 
@@ -893,80 +1063,84 @@ export default function CompanyRegistryPage({
                 <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <FormInput
-              label="Mesmo que o responsavel legal?"
-              type="select"
+            <SameAsToggle
+              label="E a mesma pessoa que o responsavel legal?"
               value={values.financial_representative.same_as_legal}
               required
-              options={[
-                { label: "Selecione", value: "" },
-                { label: "Sim", value: "yes" },
-                { label: "Nao", value: "no" },
-              ]}
               error={errors["financial_representative.same_as_legal"]}
               onChange={(v) => {
                 setSectionField("financial_representative", "same_as_legal", v);
                 clearFieldError("financial_representative.same_as_legal");
               }}
             />
-            {values.financial_representative.same_as_legal === "no" && (
-              <>
-                <FormInput
-                  label="Mesmo que o responsavel pelo contrato?"
-                  type="select"
-                  value={values.financial_representative.same_as_contract}
-                  required
-                  options={[
-                    { label: "Selecione", value: "" },
-                    { label: "Sim", value: "yes" },
-                    { label: "Nao", value: "no" },
-                  ]}
-                  error={errors["financial_representative.same_as_contract"]}
-                  onChange={(v) => {
-                    setSectionField("financial_representative", "same_as_contract", v);
-                    clearFieldError("financial_representative.same_as_contract");
-                  }}
-                />
-                {values.financial_representative.same_as_contract === "no" && (
-                  <>
-                    <FormInput
-                      label="Nome completo"
-                      value={values.financial_representative.name}
-                      required
-                      placeholder="Nome do responsavel financeiro"
-                      error={errors["financial_representative.name"]}
-                      onChange={(v) => {
-                        setSectionField("financial_representative", "name", v);
-                        clearFieldError("financial_representative.name");
-                      }}
-                    />
-                    <FormInput
-                      label="Telefone / WhatsApp"
-                      value={values.financial_representative.phone}
-                      required
-                      placeholder="+55 11 99999-9999"
-                      error={errors["financial_representative.phone"]}
-                      onChange={(v) => {
-                        setSectionField("financial_representative", "phone", v);
-                        clearFieldError("financial_representative.phone");
-                      }}
-                    />
-                    <FormInput
-                      label="E-mail"
-                      type="email"
-                      value={values.financial_representative.email}
-                      required
-                      placeholder="email@empresa.com"
-                      error={errors["financial_representative.email"]}
-                      onChange={(v) => {
-                        setSectionField("financial_representative", "email", v);
-                        clearFieldError("financial_representative.email");
-                      }}
-                    />
-                  </>
-                )}
-              </>
+            {values.financial_representative.same_as_legal === "yes" && (
+              <InheritedPersonCard
+                sourceLabel="Dados herdados do responsavel legal"
+                name={values.legal_representative.name}
+                phone={values.legal_representative.phone}
+                email={values.legal_representative.email}
+              />
             )}
+            {values.financial_representative.same_as_legal === "no" && (
+              <SameAsToggle
+                label="E a mesma pessoa que o responsavel pelo contrato?"
+                value={values.financial_representative.same_as_contract}
+                required
+                error={errors["financial_representative.same_as_contract"]}
+                onChange={(v) => {
+                  setSectionField("financial_representative", "same_as_contract", v);
+                  clearFieldError("financial_representative.same_as_contract");
+                }}
+              />
+            )}
+            {values.financial_representative.same_as_legal === "no" &&
+              values.financial_representative.same_as_contract === "yes" && (
+                <InheritedPersonCard
+                  sourceLabel="Dados herdados do responsavel pelo contrato"
+                  name={resolvedContract.name}
+                  phone={resolvedContract.phone}
+                  email={resolvedContract.email}
+                />
+              )}
+            {values.financial_representative.same_as_legal === "no" &&
+              values.financial_representative.same_as_contract === "no" && (
+                <>
+                  <FormInput
+                    label="Nome completo"
+                    value={values.financial_representative.name}
+                    required
+                    placeholder="Nome do responsavel financeiro"
+                    error={errors["financial_representative.name"]}
+                    onChange={(v) => {
+                      setSectionField("financial_representative", "name", v);
+                      clearFieldError("financial_representative.name");
+                    }}
+                  />
+                  <FormInput
+                    label="Telefone / WhatsApp"
+                    value={values.financial_representative.phone}
+                    required
+                    placeholder="+55 11 99999-9999"
+                    error={errors["financial_representative.phone"]}
+                    onChange={(v) => {
+                      setSectionField("financial_representative", "phone", v);
+                      clearFieldError("financial_representative.phone");
+                    }}
+                  />
+                  <FormInput
+                    label="E-mail"
+                    type="email"
+                    value={values.financial_representative.email}
+                    required
+                    placeholder="email@empresa.com"
+                    error={errors["financial_representative.email"]}
+                    onChange={(v) => {
+                      setSectionField("financial_representative", "email", v);
+                      clearFieldError("financial_representative.email");
+                    }}
+                  />
+                </>
+              )}
           </div>
         )}
 
@@ -1084,9 +1258,9 @@ export default function CompanyRegistryPage({
                 <ReviewRow label="Mesmo que o contrato" value="Sim" />
               ) : (
                 <>
-                  <ReviewRow label="Nome" value={values.financial_representative.name} />
-                  <ReviewRow label="Telefone" value={values.financial_representative.phone} />
-                  <ReviewRow label="E-mail" value={values.financial_representative.email} />
+                  <ReviewRow label="Nome" value={(resolvedFinancial as typeof values.legal_representative).name} />
+                  <ReviewRow label="Telefone" value={(resolvedFinancial as typeof values.legal_representative).phone} />
+                  <ReviewRow label="E-mail" value={(resolvedFinancial as typeof values.legal_representative).email} />
                 </>
               )}
             </ReviewSection>
@@ -1116,23 +1290,36 @@ export default function CompanyRegistryPage({
               onClick={goBack}
               className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
               Voltar
             </button>
 
             {currentStep !== "review_submit" ? (
               <button
                 onClick={goNext}
-                className="flex-1 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-slate-700"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-slate-700 active:scale-[0.99]"
               >
                 Continuar
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
                 disabled={loadingSubmit}
-                className="flex-1 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60 active:scale-[0.99]"
               >
-                {loadingSubmit ? "Enviando..." : "Enviar cadastro"}
+                {loadingSubmit ? (
+                  <>
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white/60" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Enviar cadastro"
+                )}
               </button>
             )}
           </div>
