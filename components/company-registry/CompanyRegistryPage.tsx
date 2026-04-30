@@ -495,7 +495,7 @@ export default function CompanyRegistryPage({
         });
         if (!response.ok) return;
         const data = await response.json() as Record<string, unknown>;
-        const payload = (data.payload ?? data) as Record<string, unknown>;
+        const payload = (data.data ?? data.payload ?? data) as Record<string, unknown>;
         if (payload.draft_token && typeof payload.draft_token === "string") {
           setDraftToken(payload.draft_token);
         }
@@ -723,9 +723,17 @@ export default function CompanyRegistryPage({
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-slate-900">
-              {template.intro.clientName}
-            </span>
+            {template.intro.logoUrl ? (
+              <img
+                src={template.intro.logoUrl}
+                alt={template.intro.clientName}
+                className="h-7 max-w-[140px] object-contain"
+              />
+            ) : (
+              <span className="text-sm font-bold text-slate-900">
+                {template.intro.clientName}
+              </span>
+            )}
             <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 sm:inline">
               Cadastro de empresa
             </span>
@@ -791,11 +799,21 @@ export default function CompanyRegistryPage({
           <div className="space-y-8">
             {/* Branding card */}
             <div className="rounded-3xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900">
-                <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
+              {template.intro.logoUrl ? (
+                <div className="mb-4">
+                  <img
+                    src={template.intro.logoUrl}
+                    alt={template.intro.clientName}
+                    className="mx-auto h-16 max-w-[200px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900">
+                  <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+              )}
               <div className="mb-1 inline-block rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-slate-500">
                 {template.intro.clientName}
               </div>
