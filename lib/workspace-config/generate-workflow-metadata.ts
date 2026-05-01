@@ -66,4 +66,19 @@ export async function generateWorkflowMetadata(args: {
     // workspace not found — use pure defaults
   }
 
-  // Title is always workflow-spe
+  // Title is always workflow-specific: "{WorkspaceName} — {workflowLabel}".
+  // socialTitle is a single workspace-level value — reusing it across workflows
+  // would show "Formulário de Lançamento" on company/clearance/people routes.
+  const title = pe?.workspaceName
+    ? `${pe.workspaceName} — ${args.workflowLabel}`
+    : args.defaultTitle;
+
+  // Description: slogan is workspace-level and workflow-agnostic — safe to reuse.
+  // socialDescription contains intake-specific copy and must not contaminate other workflows.
+  const description = pe?.slogan || args.defaultDescription;
+
+  // Image: workspace badge/logo is appropriate for all workflows of a tenant.
+  const ogImage = resolveImageUrl(pe?.socialImageUrl || pe?.logoUrl);
+
+  return buildMetadata({ title, description, ogImage });
+}

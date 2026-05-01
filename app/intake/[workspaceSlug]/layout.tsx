@@ -21,4 +21,5 @@ export default function IntakeLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{childre
+  return <>{children}</>;
+}
