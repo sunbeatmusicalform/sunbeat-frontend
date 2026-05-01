@@ -4,6 +4,7 @@ import {
   type WorkflowType,
   type WorkflowRegistryEntry,
   DEFAULT_FORM_THEME,
+  DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE,
 } from "./types";
 import {
   createWorkflowTemplate,
@@ -161,15 +162,26 @@ export async function getWorkflowTemplate(
   const formBg = branding?.form_bg_color || baseTemplate.formTheme?.formBg || DEFAULT_FORM_THEME.formBg;
   const primary = branding?.primary_color || baseTemplate.formTheme?.primary || DEFAULT_FORM_THEME.primary;
 
+  // form_title, intro_text and success_message are release-intake-specific branding fields.
+  // For other workflow types (company_registry, rights_clearance, etc.) the template's
+  // own copy must take precedence — do NOT let a release intake form_title contaminate them.
+  const isReleaseIntake = resolvedIdentity.workflowType === DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE;
+
   const nextTemplate: ReleaseIntakeTemplate = {
       ...baseTemplate,
     slogan: branding?.slogan || baseTemplate.slogan,
-    successMessage: branding?.success_message || baseTemplate.successMessage,
+    successMessage: isReleaseIntake
+      ? (branding?.success_message || baseTemplate.successMessage)
+      : baseTemplate.successMessage,
     intro: {
       ...baseTemplate.intro,
       clientName: branding?.workspace_name || baseTemplate.intro.clientName,
-      formTitle: branding?.form_title || baseTemplate.intro.formTitle,
-      introText: branding?.intro_text || baseTemplate.intro.introText,
+      formTitle: isReleaseIntake
+        ? (branding?.form_title || baseTemplate.intro.formTitle)
+        : baseTemplate.intro.formTitle,
+      introText: isReleaseIntake
+        ? (branding?.intro_text || baseTemplate.intro.introText)
+        : baseTemplate.intro.introText,
       logoUrl: branding?.logo_url || baseTemplate.intro.logoUrl,
       bannerUrl: branding?.banner_url || baseTemplate.intro.bannerUrl,
       brandWordmark:

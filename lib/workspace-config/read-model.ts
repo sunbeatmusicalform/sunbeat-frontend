@@ -43,6 +43,12 @@ type WorkspaceBrandingRow = {
   social_title?: string | null;
   /** Descrição customizada para o card de preview social. */
   social_description?: string | null;
+  /** CSS color for form page background. */
+  form_bg_color?: string | null;
+  /** CSS color for primary action elements. */
+  primary_color?: string | null;
+  /** URL for small badge/icon shown in form chips. */
+  badge_url?: string | null;
 };
 
 type WorkspaceFieldOverrideRow = {

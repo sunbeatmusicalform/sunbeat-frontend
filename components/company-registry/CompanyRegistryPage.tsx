@@ -750,8 +750,8 @@ export default function CompanyRegistryPage({
         {/* Progress bar */}
         <div className="h-0.5 bg-slate-100">
           <div
-            className="h-full transition-all duration-500" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
-            style={{ width: `${progressPercent}%` }}
+            className="h-full transition-all duration-500"
+            style={{ background: template.formTheme?.primary ?? "#0f172a", width: `${progressPercent}%` }}
           />
         </div>
       </header>
