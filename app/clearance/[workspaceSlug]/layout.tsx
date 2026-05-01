@@ -22,3 +22,4 @@ export default function ClearanceLayout({
   children: React.ReactNode;
 }) {
   return <>{children}</>;
+}
