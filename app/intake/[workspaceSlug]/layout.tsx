@@ -9,10 +9,10 @@ export async function generateMetadata({
   const { workspaceSlug } = await params;
   return generateWorkflowMetadata({
     workspaceSlug,
-    workflowLabel: "Formulario de lancamento",
-    defaultTitle: "Formulario de lancamento",
+    workflowLabel: "Formulário de lançamento",
+    defaultTitle: "Formulário de lançamento",
     defaultDescription:
-      "Preencha o formulario para iniciar o processo de lancamento musical.",
+      "Preencha o formulário para compartilhar os dados do lançamento musical.",
   });
 }
 
@@ -21,5 +21,4 @@ export default function IntakeLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
-}
+  return <>{childre

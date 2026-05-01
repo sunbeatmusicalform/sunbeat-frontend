@@ -12,7 +12,7 @@ export async function generateMetadata({
     workflowLabel: "Cadastro de pessoa",
     defaultTitle: "Cadastro de pessoa",
     defaultDescription:
-      "Preencha o formulario para cadastrar artistas, produtores e colaboradores musicais.",
+      "Preencha o formulário para cadastrar artistas, produtores e colaboradores musicais.",
   });
 }
 

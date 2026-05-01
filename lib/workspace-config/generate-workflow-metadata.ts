@@ -37,9 +37,15 @@ function buildMetadata(args: {
  * Shared metadata generator for all public workflow form routes.
  *
  * Resolution order:
- *   title:       socialTitle -> "{workspaceName} — {workflowLabel}" -> defaultTitle
- *   description: socialDescription -> slogan -> defaultDescription
+ *   title:       "{workspaceName} — {workflowLabel}" -> defaultTitle
+ *   description: slogan -> defaultDescription
  *   image:       socialImageUrl -> logoUrl -> /logo.png
+ *
+ * NOTE: socialTitle and socialDescription are intentionally NOT used here.
+ * Both are single workspace-level fields (not per-workflow), so applying them
+ * here would cause the intake copy to contaminate clearance, company and people
+ * routes. Image fields remain workspace-level — the tenant badge/logo is
+ * appropriate for all workflows of the same workspace.
  */
 export async function generateWorkflowMetadata(args: {
   workspaceSlug: string;
@@ -60,16 +66,4 @@ export async function generateWorkflowMetadata(args: {
     // workspace not found — use pure defaults
   }
 
-  const title =
-    pe?.socialTitle ||
-    (pe?.workspaceName
-      ? `${pe.workspaceName} — ${args.workflowLabel}`
-      : args.defaultTitle);
-
-  const description =
-    pe?.socialDescription || pe?.slogan || args.defaultDescription;
-
-  const ogImage = resolveImageUrl(pe?.socialImageUrl || pe?.logoUrl);
-
-  return buildMetadata({ title, description, ogImage });
-}
+  // Title is always workflow-spe

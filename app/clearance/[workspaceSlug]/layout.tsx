@@ -10,9 +10,9 @@ export async function generateMetadata({
   return generateWorkflowMetadata({
     workspaceSlug,
     workflowLabel: "Clearance de direitos",
-    defaultTitle: "Formulario de clearance",
+    defaultTitle: "Clearance de direitos",
     defaultDescription:
-      "Preencha o formulario para iniciar o processo de clearance de direitos musicais.",
+      "Preencha o formulário para solicitar clearance e licenciamento de direitos musicais.",
   });
 }
 
@@ -22,4 +22,3 @@ export default function ClearanceLayout({
   children: React.ReactNode;
 }) {
   return <>{children}</>;
-}
