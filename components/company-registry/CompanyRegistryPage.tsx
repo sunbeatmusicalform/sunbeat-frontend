@@ -111,7 +111,7 @@ function FormInput({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="mt-3 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-[15px] text-slate-900 outline-none transition focus:border-slate-900"
+          className="mt-3 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-[15px] text-slate-900 outline-none transition focus:[border-color:var(--form-primary)]"
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -125,7 +125,7 @@ function FormInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="mt-3 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-[15px] text-slate-900 outline-none transition focus:border-slate-900"
+          className="mt-3 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-[15px] text-slate-900 outline-none transition focus:[border-color:var(--form-primary)]"
         />
       )}
       {error ? (
@@ -166,9 +166,10 @@ function SameAsToggle({
                 isActive
                   ? opt === "yes"
                     ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                    : "border-slate-900 bg-slate-900 text-white"
+                    : "text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
               }`}
+              style={isActive && opt === "no" ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
             >
               {isActive && opt === "yes" ? (
                 <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,11 +292,12 @@ function StepChip({
       disabled={!isDone && !isActive}
       className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
         isActive
-          ? "bg-slate-900 text-white shadow-sm"
+          ? "text-white shadow-sm"
           : isDone
           ? "bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
           : "bg-slate-50 text-slate-300 cursor-not-allowed"
       }`}
+      style={isActive ? { background: "var(--form-primary)" } : undefined}
     >
       {isDone ? (
         <svg className="h-3 w-3 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -687,7 +689,7 @@ export default function CompanyRegistryPage({
 
   if (isLoadingTemplate || isHydratingDraft) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "#ebdbba" }}>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "#ebdbba", "--form-primary": "#512314" } as React.CSSProperties}>
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
           Carregando...
@@ -698,7 +700,7 @@ export default function CompanyRegistryPage({
 
   if (isSubmissionComplete) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16" style={{ background: "#ebdbba" }}>
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16" style={{ background: "#ebdbba", "--form-primary": "#512314" } as React.CSSProperties}>
         <div
           ref={successCardRef}
           className="w-full max-w-lg rounded-3xl border border-green-200 bg-white p-10 text-center shadow-sm"
@@ -718,7 +720,7 @@ export default function CompanyRegistryPage({
   }
 
   return (
-    <div className="min-h-screen" style={{ background: template.formTheme?.formBg ?? "#ebdbba" }}>
+    <div className="min-h-screen" style={{ background: template.formTheme?.formBg ?? "#ebdbba", "--form-primary": template.formTheme?.primary ?? "#512314" } as React.CSSProperties}>
       {/* Sticky header */}
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
@@ -808,7 +810,7 @@ export default function CompanyRegistryPage({
                   />
                 </div>
               ) : (
-                <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900">
+                <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "var(--form-primary)" }}>
                   <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
