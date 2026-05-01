@@ -78,6 +78,8 @@ export type PeopleRegistryApiPayload = {
   banking: {
     pix_key?: string;
     bank_name?: string;
+    bank_agency?: string;
+    account_number?: string;
     account_holder_name?: string;
     account_holder_document_id?: string;
   };
@@ -132,6 +134,12 @@ export type PeopleRegistryProfileConfig = {
     address: boolean;
     banking: boolean;
     additionalInfo: boolean;
+  };
+  /** Tokens de tema visual. Se omitido, usa paleta neutra padrão. */
+  theme?: {
+    formBg: string;
+    primary: string;
+    primaryHover?: string;
   };
   /**
    * Ponto de extensão para futura integração Airtable por workflow.

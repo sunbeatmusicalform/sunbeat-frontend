@@ -4,7 +4,8 @@
 // Formulário multi-step de cadastro de pessoas — PF/PJ, profile-driven
 // Visual alinhado ao design system dos forms existentes (tema claro, #ebdbba, slate)
 
-import { Fragment, useState, useCallback, type ChangeEvent } from "react";
+import { Fragment, useState, useCallback, useMemo, useEffect, type ChangeEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import type {
   PeopleRegistryProfileConfig,
   PeopleRegistryFormValues,
@@ -33,6 +34,14 @@ const STEP_ORDER: StepKey[] = [
   "additional_info",
   "review_submit",
 ];
+
+// Mapeamento showSections → StepKey (para steps opcionais)
+const SECTION_STEP_MAP = {
+  contact:       "contact"        as StepKey,
+  address:       "address"        as StepKey,
+  banking:       "banking"        as StepKey,
+  additionalInfo:"additional_info" as StepKey,
+} as const;
 
 const STEP_LABELS: Record<Exclude<StepKey, "intro">, string> = {
   identification: "Identificação",
@@ -83,11 +92,6 @@ function buildApiPayload(
 ): PeopleRegistryApiPayload {
   const isPF = values.party_kind === "pf";
 
-  // agência e número vão em external_refs — backend ignora campos extras em banking
-  const externalRefs: Record<string, string> = {};
-  if (values.bank_agency.trim()) externalRefs.bank_agency = values.bank_agency.trim();
-  if (values.account_number.trim()) externalRefs.account_number = values.account_number.trim();
-
   return {
     workspace_slug: profile.workspaceSlug,
     workflow_type: "people_registry",
@@ -117,6 +121,8 @@ function buildApiPayload(
     banking: {
       ...(values.pix_key.trim() ? { pix_key: values.pix_key.trim() } : {}),
       ...(values.bank_name.trim() ? { bank_name: values.bank_name.trim() } : {}),
+      ...(values.bank_agency.trim() ? { bank_agency: values.bank_agency.trim() } : {}),
+      ...(values.account_number.trim() ? { account_number: values.account_number.trim() } : {}),
       ...(values.account_holder_name.trim() ? { account_holder_name: values.account_holder_name.trim() } : {}),
       ...(values.account_holder_document_id.trim()
         ? { account_holder_document_id: values.account_holder_document_id.trim() }
@@ -126,7 +132,7 @@ function buildApiPayload(
       ...(values.manager_name.trim() ? { manager_name: values.manager_name.trim() } : {}),
       ...(values.label_name.trim() ? { label_name: values.label_name.trim() } : {}),
       ...(values.notes_internal.trim() ? { notes_internal: values.notes_internal.trim() } : {}),
-      external_refs: externalRefs,
+      external_refs: {},
     },
     meta: {
       form_version: profile.formVersion,
@@ -134,6 +140,27 @@ function buildApiPayload(
       submitted_at: new Date().toISOString(),
     },
   };
+}
+
+// ─── Localização de mensagens do backend ──────────────────────────────────────
+// O backend retorna mensagens em inglês. Mapeamos as conhecidas para português.
+
+const BACKEND_MESSAGES_PT: Record<string, string> = {
+  "A matching people registry record already exists in this workspace.":
+    "Já existe um cadastro com este documento ou e-mail neste workspace.",
+  "People registry payload validation failed.":
+    "Alguns campos precisam ser corrigidos antes de continuar.",
+  "Could not check people registry duplicates":
+    "Não foi possível verificar duplicatas. Tente novamente.",
+  "Could not persist people registry record":
+    "Erro ao salvar o cadastro. Tente novamente ou contate o suporte.",
+};
+
+function localizarMensagem(msg: string): string {
+  // Busca match exato primeiro, depois partial (para mensagens com detalhes dinâmicos)
+  if (BACKEND_MESSAGES_PT[msg]) return BACKEND_MESSAGES_PT[msg];
+  const partial = Object.keys(BACKEND_MESSAGES_PT).find((k) => msg.startsWith(k));
+  return partial ? BACKEND_MESSAGES_PT[partial] : msg;
 }
 
 // ─── API call ─────────────────────────────────────────────────────────────────
@@ -171,18 +198,18 @@ async function submitPeopleRegistry(
 
   if (res.status === 409) {
     const error = data.error as Record<string, unknown> | undefined;
+    const raw = typeof error?.message === "string" ? error.message : "";
     return {
       ok: false,
       status: "conflict",
-      message: typeof error?.message === "string"
-        ? error.message
-        : "Já existe um cadastro com o mesmo documento ou e-mail neste workspace.",
+      message: localizarMensagem(raw) || "Já existe um cadastro com este documento ou e-mail neste workspace.",
     };
   }
 
   if (res.status === 422) {
     const error = data.error as Record<string, unknown> | undefined;
     const rawIssues = Array.isArray(error?.issues) ? error.issues : [];
+    const rawMsg = typeof error?.message === "string" ? error.message : "";
     return {
       ok: false,
       status: "invalid",
@@ -190,9 +217,63 @@ async function submitPeopleRegistry(
         const issue = i as Record<string, unknown>;
         return { field: String(issue?.field ?? ""), message: String(issue?.message ?? "") };
       }),
-      message: typeof error?.message === "string"
-        ? error.message
-        : "Verifique os campos obrigatórios e tente novamente.",
+      message: localizarMensagem(rawMsg) || "Verifique os campos obrigatórios e tente novamente.",
+    };
+  }
+
+  return { ok: false, status: "error", message: `Erro inesperado (HTTP ${res.status}). Contate o suporte.` };
+}
+
+// ─── API call — edit mode ─────────────────────────────────────────────────────
+
+async function patchPeopleRegistry(
+  editToken: string,
+  payload: PeopleRegistryApiPayload
+): Promise<PeopleRegistrySubmitResult> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/people-registry/records/edit/${encodeURIComponent(editToken)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, status: "error", message: "Não foi possível conectar ao servidor. Tente novamente." };
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, status: "error", message: `Resposta inesperada do servidor (HTTP ${res.status}).` };
+  }
+
+  if (res.ok) {
+    const record = data.record as Record<string, unknown> | undefined;
+    return {
+      ok: true,
+      status: "created",
+      record_id: String(record?.record_id ?? ""),
+      created_at: String(record?.created_at ?? ""),
+    };
+  }
+
+  if (res.status === 404) {
+    return { ok: false, status: "error", message: "Token de edição não encontrado. O link pode ter expirado." };
+  }
+
+  if (res.status === 422) {
+    const error = data.error as Record<string, unknown> | undefined;
+    const rawIssues = Array.isArray(error?.issues) ? error.issues : [];
+    const rawMsg = typeof error?.message === "string" ? error.message : "";
+    return {
+      ok: false,
+      status: "invalid",
+      issues: rawIssues.map((i: unknown) => {
+        const issue = i as Record<string, unknown>;
+        return { field: String(issue?.field ?? ""), message: String(issue?.message ?? "") };
+      }),
+      message: localizarMensagem(rawMsg) || "Verifique os campos obrigatórios e tente novamente.",
     };
   }
 
@@ -294,9 +375,10 @@ function RoleChips({
             disabled={disabled}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
               active
-                ? "border-slate-900 bg-slate-900 text-white"
+                ? "text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
             }`}
+            style={active ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
           >
             {role.label}
           </button>
@@ -311,13 +393,15 @@ function RoleChips({
 function StepBar({
   currentStep,
   currentStepIndex,
+  activeStepOrder,
 }: {
   currentStep: StepKey;
   currentStepIndex: number;
+  activeStepOrder: StepKey[];
 }) {
   if (currentStep === "intro") return null;
 
-  const visibleSteps = STEP_ORDER.filter((s) => s !== "intro");
+  const visibleSteps = activeStepOrder.filter((s) => s !== "intro");
 
   return (
     <div className="mb-6 overflow-x-auto">
@@ -333,11 +417,12 @@ function StepBar({
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition ${
                     active
-                      ? "border-slate-900 bg-slate-900 text-white"
+                      ? "text-white"
                       : completed
                       ? "border-slate-300 bg-white text-slate-900"
                       : "border-slate-200 bg-white text-slate-400"
                   }`}
+                  style={active ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
                 >
                   {completed ? "✓" : idx + 1}
                 </div>
@@ -352,8 +437,9 @@ function StepBar({
               {idx < visibleSteps.length - 1 && (
                 <div
                   className={`h-px min-w-[24px] flex-1 ${
-                    completed ? "bg-slate-900" : "bg-slate-200"
+                    completed ? "" : "bg-slate-200"
                   }`}
+                  style={completed ? { background: "var(--form-primary)" } : undefined}
                 />
               )}
             </Fragment>
@@ -398,7 +484,8 @@ function NavButtons({
           type="button"
           onClick={onNext}
           disabled={isLoading}
-          className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60 hover:bg-slate-800 transition"
+          className="rounded-xl px-6 py-3 text-sm font-semibold text-white disabled:opacity-60 transition"
+          style={{ background: "var(--form-primary)" }}
         >
           {isLoading ? "Enviando..." : nextLabel}
         </button>
@@ -450,14 +537,90 @@ export default function PeopleRegistryForm({
 }: {
   profile: PeopleRegistryProfileConfig;
 }) {
+  const searchParams = useSearchParams();
+  const editToken = searchParams.get("edit_token");
+  const isEditMode = Boolean(editToken);
+
   const [currentStep, setCurrentStep] = useState<StepKey>("intro");
   const [values, setValues] = useState<PeopleRegistryFormValues>(createInitialFormValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ type: "idle" });
+  const [hydrateState, setHydrateState] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
-  const currentStepIndex = STEP_ORDER.indexOf(currentStep);
+  // Ordem ativa de steps — guiada pelo profile.showSections
+  const activeStepOrder = useMemo<StepKey[]>(() => {
+    const steps: StepKey[] = ["intro", "identification"];
+    (Object.keys(SECTION_STEP_MAP) as Array<keyof typeof SECTION_STEP_MAP>).forEach((key) => {
+      if (profile.showSections[key]) steps.push(SECTION_STEP_MAP[key]);
+    });
+    steps.push("review_submit");
+    return steps;
+  }, [profile.showSections]);
+
+  const currentStepIndex = activeStepOrder.indexOf(currentStep);
   const isPF = values.party_kind === "pf";
   const isLoading = submitState.type === "loading";
+
+  // Se o step atual não está na ordem ativa (ex: profile mudou), volta ao início
+  useEffect(() => {
+    if (!activeStepOrder.includes(currentStep)) {
+      setCurrentStep(activeStepOrder[0] ?? "intro");
+    }
+  }, [activeStepOrder, currentStep]);
+
+  // Hydrate edit mode — fetch existing record by edit_token, pre-fill form
+  useEffect(() => {
+    if (!editToken || hydrateState !== "idle") return;
+    setHydrateState("loading");
+
+    fetch(`/api/people-registry/records/edit/${encodeURIComponent(editToken)}`)
+      .then((r) => r.json())
+      .then((data: Record<string, unknown>) => {
+        if (!data.ok) {
+          setHydrateState("error");
+          return;
+        }
+        const d = data.data as Record<string, unknown> | undefined;
+        if (!d) { setHydrateState("error"); return; }
+
+        const party = (d.party ?? {}) as Record<string, unknown>;
+        const contact = (d.contact ?? {}) as Record<string, unknown>;
+        const address = (d.address ?? {}) as Record<string, unknown>;
+        const banking = (d.banking ?? {}) as Record<string, unknown>;
+        const info = (d.additional_info ?? {}) as Record<string, unknown>;
+
+        setValues({
+          party_kind: (party.party_kind as "pf" | "pj") ?? "pf",
+          display_name: String(party.display_name ?? ""),
+          legal_name: String(party.legal_name ?? ""),
+          document_id: String(party.document_id ?? ""),
+          roles: Array.isArray(party.roles) ? party.roles.map(String) : [],
+          stage_name: String(party.stage_name ?? ""),
+          trade_name: String(party.trade_name ?? ""),
+          email_primary: String(contact.email_primary ?? ""),
+          phone_primary: String(contact.phone_primary ?? ""),
+          website: String(contact.website ?? ""),
+          instagram: String(contact.instagram ?? ""),
+          country: String(address.country ?? "Brasil"),
+          state_region: String(address.state_region ?? ""),
+          city: String(address.city ?? ""),
+          postal_code: String(address.postal_code ?? ""),
+          address_line_1: String(address.address_line_1 ?? ""),
+          pix_key: String(banking.pix_key ?? ""),
+          bank_name: String(banking.bank_name ?? ""),
+          bank_agency: String(banking.bank_agency ?? ""),
+          account_number: String(banking.account_number ?? ""),
+          account_holder_name: String(banking.account_holder_name ?? ""),
+          account_holder_document_id: String(banking.account_holder_document_id ?? ""),
+          manager_name: String(info.manager_name ?? ""),
+          label_name: String(info.label_name ?? ""),
+          notes_internal: String(info.notes_internal ?? ""),
+        });
+        setHydrateState("ready");
+        setCurrentStep("identification");
+      })
+      .catch(() => setHydrateState("error"));
+  }, [editToken, hydrateState]);
 
   const set = useCallback(<K extends keyof PeopleRegistryFormValues>(
     key: K,
@@ -512,14 +675,14 @@ export default function PeopleRegistryForm({
       return;
     }
 
-    const nextIndex = Math.min(currentStepIndex + 1, STEP_ORDER.length - 1);
-    setCurrentStep(STEP_ORDER[nextIndex]);
+    const nextIndex = Math.min(currentStepIndex + 1, activeStepOrder.length - 1);
+    setCurrentStep(activeStepOrder[nextIndex]);
     setSubmitState({ type: "idle" });
   }
 
   function goBack() {
     const prevIndex = Math.max(currentStepIndex - 1, 0);
-    setCurrentStep(STEP_ORDER[prevIndex]);
+    setCurrentStep(activeStepOrder[prevIndex]);
     setSubmitState({ type: "idle" });
   }
 
@@ -543,7 +706,10 @@ export default function PeopleRegistryForm({
 
     setSubmitState({ type: "loading" });
     const payload = buildApiPayload(values, profile);
-    const result = await submitPeopleRegistry(payload);
+
+    const result = isEditMode && editToken
+      ? await patchPeopleRegistry(editToken, payload)
+      : await submitPeopleRegistry(payload);
 
     if (result.ok) { setSubmitState({ type: "success", result }); return; }
     if (result.status === "conflict") { setSubmitState({ type: "conflict", result }); return; }
@@ -569,8 +735,28 @@ export default function PeopleRegistryForm({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#ebdbba] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: profile.theme?.formBg ?? "#ebdbba", "--form-primary": profile.theme?.primary ?? "#512314", "--form-primary-hover": profile.theme?.primaryHover ?? "#6b3a1f" } as React.CSSProperties}>
       <div className="mx-auto max-w-3xl">
+
+        {/* Edit mode — hydration loading / error */}
+        {isEditMode && hydrateState === "loading" && (
+          <div className="mb-6 rounded-2xl border border-slate-200 bg-white/70 px-6 py-5 text-center text-sm text-slate-600">
+            Carregando dados para edição…
+          </div>
+        )}
+        {isEditMode && hydrateState === "error" && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700">
+            Não foi possível carregar os dados para edição. Verifique o link e tente novamente.
+          </div>
+        )}
+
+        {/* Edit mode banner */}
+        {isEditMode && hydrateState === "ready" && (
+          <div className="mb-5 rounded-2xl border px-5 py-3 text-sm font-medium" style={{ borderColor: "var(--form-primary)", background: "color-mix(in srgb, var(--form-primary) 8%, white)" }}>
+            <span style={{ color: "var(--form-primary)" }}>Modo edição</span>
+            <span className="ml-2 font-normal text-slate-600">— os dados foram pré-preenchidos. Revise e confirme as alterações.</span>
+          </div>
+        )}
 
         {/* Header */}
         <header className="mb-6">
@@ -585,7 +771,7 @@ export default function PeopleRegistryForm({
         </header>
 
         {/* Step bar */}
-        <StepBar currentStep={currentStep} currentStepIndex={currentStepIndex} />
+        <StepBar currentStep={currentStep} currentStepIndex={currentStepIndex} activeStepOrder={activeStepOrder} />
 
         {/* Card */}
         <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-8">
@@ -606,9 +792,10 @@ export default function PeopleRegistryForm({
               <button
                 type="button"
                 onClick={goNext}
-                className="mt-8 rounded-xl bg-slate-900 px-8 py-3.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
+                className="mt-8 rounded-xl px-8 py-3.5 text-sm font-semibold text-white transition"
+                style={{ background: "var(--form-primary)" }}
               >
-                Começar cadastro
+                {isEditMode ? "Editar cadastro" : "Começar cadastro"}
               </button>
             </div>
           )}
@@ -631,9 +818,10 @@ export default function PeopleRegistryForm({
                         onClick={() => set("party_kind", kind)}
                         className={`flex-1 rounded-xl border py-3 text-sm font-semibold transition ${
                           active
-                            ? "border-slate-900 bg-slate-900 text-white"
+                            ? "text-white"
                             : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
                         }`}
+                        style={active ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
                       >
                         {kind === "pf" ? "Pessoa Física" : "Pessoa Jurídica"}
                       </button>
@@ -921,35 +1109,43 @@ export default function PeopleRegistryForm({
                     <ReviewRow label="Funções" value={values.roles} />
                   </ReviewSection>
 
-                  <ReviewSection title="Contato">
-                    <ReviewRow label="E-mail" value={values.email_primary} />
-                    <ReviewRow label="Telefone" value={values.phone_primary} />
-                    <ReviewRow label="Site" value={values.website} />
-                    <ReviewRow label="Instagram" value={values.instagram} />
-                  </ReviewSection>
+                  {profile.showSections.contact && (
+                    <ReviewSection title="Contato">
+                      <ReviewRow label="E-mail" value={values.email_primary} />
+                      <ReviewRow label="Telefone" value={values.phone_primary} />
+                      <ReviewRow label="Site" value={values.website} />
+                      <ReviewRow label="Instagram" value={values.instagram} />
+                    </ReviewSection>
+                  )}
 
-                  <ReviewSection title="Endereço">
-                    <ReviewRow label="País" value={values.country} />
-                    <ReviewRow label="Estado" value={values.state_region} />
-                    <ReviewRow label="Cidade" value={values.city} />
-                    <ReviewRow label="CEP" value={values.postal_code} />
-                    <ReviewRow label="Endereço" value={values.address_line_1} />
-                  </ReviewSection>
+                  {profile.showSections.address && (
+                    <ReviewSection title="Endereço">
+                      <ReviewRow label="País" value={values.country} />
+                      <ReviewRow label="Estado" value={values.state_region} />
+                      <ReviewRow label="Cidade" value={values.city} />
+                      <ReviewRow label="CEP" value={values.postal_code} />
+                      <ReviewRow label="Endereço" value={values.address_line_1} />
+                    </ReviewSection>
+                  )}
 
-                  <ReviewSection title="Dados bancários">
-                    <ReviewRow label="Chave PIX" value={values.pix_key} />
-                    <ReviewRow label="Banco" value={values.bank_name} />
-                    <ReviewRow label="Agência" value={values.bank_agency} />
-                    <ReviewRow label="Número da conta" value={values.account_number} />
-                    <ReviewRow label="Titular" value={values.account_holder_name} />
-                    <ReviewRow label="CPF/CNPJ titular" value={values.account_holder_document_id} />
-                  </ReviewSection>
+                  {profile.showSections.banking && (
+                    <ReviewSection title="Dados bancários">
+                      <ReviewRow label="Chave PIX" value={values.pix_key} />
+                      <ReviewRow label="Banco" value={values.bank_name} />
+                      <ReviewRow label="Agência" value={values.bank_agency} />
+                      <ReviewRow label="Número da conta" value={values.account_number} />
+                      <ReviewRow label="Titular" value={values.account_holder_name} />
+                      <ReviewRow label="CPF/CNPJ titular" value={values.account_holder_document_id} />
+                    </ReviewSection>
+                  )}
 
-                  <ReviewSection title="Informações adicionais">
-                    <ReviewRow label="Assessor / Manager" value={values.manager_name} />
-                    <ReviewRow label="Gravadora / Editora" value={values.label_name} />
-                    <ReviewRow label="Observações" value={values.notes_internal} />
-                  </ReviewSection>
+                  {profile.showSections.additionalInfo && (
+                    <ReviewSection title="Informações adicionais">
+                      <ReviewRow label="Assessor / Manager" value={values.manager_name} />
+                      <ReviewRow label="Gravadora / Editora" value={values.label_name} />
+                      <ReviewRow label="Observações" value={values.notes_internal} />
+                    </ReviewSection>
+                  )}
                 </>
               )}
 
@@ -969,13 +1165,16 @@ export default function PeopleRegistryForm({
                     </code>
                   </p>
                   <div className="mt-6 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition"
-                    >
-                      Cadastrar outra pessoa
-                    </button>
+                    {!isEditMode && (
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="rounded-xl px-6 py-3 text-sm font-semibold text-white transition"
+                        style={{ background: "var(--form-primary)" }}
+                      >
+                        Cadastrar outra pessoa
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1033,9 +1232,10 @@ export default function PeopleRegistryForm({
                     type="button"
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="rounded-xl bg-slate-900 px-8 py-3 text-sm font-semibold text-white disabled:opacity-60 hover:bg-slate-800 transition"
+                    className="rounded-xl px-8 py-3 text-sm font-semibold text-white disabled:opacity-60 transition"
+                    style={{ background: "var(--form-primary)" }}
                   >
-                    {isLoading ? "Enviando..." : "Confirmar cadastro"}
+                    {isLoading ? "Salvando..." : isEditMode ? "Salvar alterações" : "Confirmar cadastro"}
                   </button>
                 </div>
               )}

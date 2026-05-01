@@ -1725,7 +1725,7 @@ export default function ReleaseIntakePage({
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? "#ebdbba" }}>
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? "#ebdbba", "--form-primary": template.formTheme?.primary ?? "#512314" } as React.CSSProperties}>
       <div className="mx-auto max-w-4xl">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -1778,11 +1778,12 @@ export default function ReleaseIntakePage({
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
                         active
-                          ? "border-slate-900 bg-slate-900 text-white"
+                          ? "text-white"
                           : completed
                           ? "border-slate-300 bg-white text-slate-900"
                           : "border-slate-200 bg-white text-slate-400"
                       }`}
+                      style={active ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
                     >
                       {completed ? "✓" : index + 1}
                     </div>
@@ -1803,8 +1804,9 @@ export default function ReleaseIntakePage({
                   {index < stepLabels.length - 1 ? (
                     <div
                       className={`h-px min-w-[36px] flex-1 ${
-                        completed ? "bg-slate-900" : "bg-slate-200"
+                        completed ? "" : "bg-slate-200"
                       }`}
+                      style={completed ? { background: "var(--form-primary)" } : undefined}
                     />
                   ) : null}
                 </Fragment>
@@ -1931,7 +1933,7 @@ export default function ReleaseIntakePage({
                       onClick={() => setActiveTrackId(track.local_id)}
                       className={`rounded-xl border p-4 text-left transition ${
                         activeTrack?.local_id === track.local_id
-                          ? "border-slate-900 bg-slate-50"
+                          ? "bg-slate-50"
                           : "border-slate-200 bg-white hover:bg-slate-50"
                       }`}
                     >
@@ -2134,7 +2136,8 @@ export default function ReleaseIntakePage({
                       <button
                         type="button"
                         onClick={handleContinue}
-                        className="w-full rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+                        className="w-full rounded-xl border px-5 py-3 text-sm font-medium text-white"
+                        style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
                       >
                         {currentStep === "intro" ? "Começar" : "Próximo"}
                       </button>
@@ -2143,7 +2146,8 @@ export default function ReleaseIntakePage({
                         type="button"
                         onClick={handleSubmit}
                         disabled={loadingSubmit}
-                        className="w-full rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        className="w-full rounded-xl border px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
                       >
                         {loadingSubmit
                           ? "Enviando..."
@@ -3168,7 +3172,8 @@ function SubmissionCompleteStep({
             <button
               type="button"
               onClick={onRestart}
-              className="rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+              className="rounded-xl border px-5 py-3 text-sm font-medium text-white"
+              style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
             >
               Preencher novamente
             </button>

@@ -838,7 +838,8 @@ function SubmissionCompleteStep({
             <button
               type="button"
               onClick={onRestart}
-              className="rounded-xl border border-slate-900 bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+              className="rounded-xl border px-5 py-3 text-sm font-medium text-white"
+              style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
             >
               Preencher novamente
             </button>
@@ -2126,7 +2127,7 @@ export default function RightsClearancePage({
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? "#ebdbba" }}>
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? "#ebdbba", "--form-primary": template.formTheme?.primary ?? "#512314" } as React.CSSProperties}>
       <div className="mx-auto max-w-4xl">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -2180,11 +2181,12 @@ export default function RightsClearancePage({
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
                         active
-                          ? "border-slate-900 bg-slate-900 text-white"
+                          ? "text-white"
                           : completed
                           ? "border-slate-300 bg-white text-slate-900"
                           : "border-slate-200 bg-white text-slate-400"
                       }`}
+                      style={active ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
                     >
                       {completed ? "✓" : index + 1}
                     </div>
@@ -2205,8 +2207,9 @@ export default function RightsClearancePage({
                   {index < stepLabels.length - 1 ? (
                     <div
                       className={`h-px min-w-[36px] flex-1 ${
-                        completed ? "bg-slate-900" : "bg-slate-200"
+                        completed ? "" : "bg-slate-200"
                       }`}
+                      style={completed ? { background: "var(--form-primary)" } : undefined}
                     />
                   ) : null}
                 </Fragment>
@@ -2823,7 +2826,8 @@ export default function RightsClearancePage({
                   type="button"
                   onClick={handleSubmit}
                   disabled={loadingSubmit}
-                  className="rounded-xl border border-slate-900 bg-slate-900 px-6 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border px-6 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
                 >
                   {loadingSubmit ? "Enviando..." : "Concluir envio"}
                 </button>
@@ -2831,7 +2835,8 @@ export default function RightsClearancePage({
                 <button
                   type="button"
                   onClick={handleContinue}
-                  className="rounded-xl border border-slate-900 bg-slate-900 px-6 py-3 text-sm font-medium text-white"
+                  className="rounded-xl border px-6 py-3 text-sm font-medium text-white"
+                  style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
                 >
                   {currentStep === "intro" ? "Comecar" : "Continuar"}
                 </button>

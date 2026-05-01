@@ -77,9 +77,7 @@ function FieldLabel({ label, required = false }: { label: string; required?: boo
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-[15px] font-medium text-slate-900">{label}</span>
       {required ? (
-        <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-red-700">
-          Obrigatorio
-        </span>
+        <span className="text-[13px] font-semibold text-[#9a7c5a]" aria-label="Obrigatório">*</span>
       ) : null}
     </div>
   );
@@ -855,11 +853,11 @@ export default function CompanyRegistryPage({
 
         {/* ===== COMPANY DATA ===== */}
         {currentStep === "company_data" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
+          <div className="space-y-8">
+            <div className="pb-4 border-b border-[#d4c4a8]/40">
+              <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
-                <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
+                <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
             <FormInput
@@ -922,51 +920,57 @@ export default function CompanyRegistryPage({
                 clearFieldError("company_data.address");
               }}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label="Cidade"
-                value={values.company_data.city}
-                required
-                placeholder="Cidade"
-                error={errors["company_data.city"]}
-                onChange={(v) => {
-                  setSectionField("company_data", "city", v);
-                  clearFieldError("company_data.city");
-                }}
-              />
-              <FormInput
-                label="Estado (UF)"
-                value={values.company_data.state}
-                required
-                placeholder="SP"
-                error={errors["company_data.state"]}
-                onChange={(v) => {
-                  setSectionField("company_data", "state", v.toUpperCase());
-                  clearFieldError("company_data.state");
-                }}
-              />
+            <div className="grid grid-cols-6 gap-4">
+              <div className="col-span-3">
+                <FormInput
+                  label="Cidade"
+                  value={values.company_data.city}
+                  required
+                  placeholder="São Paulo"
+                  error={errors["company_data.city"]}
+                  onChange={(v) => {
+                    setSectionField("company_data", "city", v);
+                    clearFieldError("company_data.city");
+                  }}
+                />
+              </div>
+              <div className="col-span-1">
+                <FormInput
+                  label="UF"
+                  value={values.company_data.state}
+                  required
+                  placeholder="SP"
+                  error={errors["company_data.state"]}
+                  onChange={(v) => {
+                    setSectionField("company_data", "state", v.toUpperCase());
+                    clearFieldError("company_data.state");
+                  }}
+                />
+              </div>
+              <div className="col-span-2">
+                <FormInput
+                  label="CEP"
+                  value={values.company_data.zip_code}
+                  required
+                  placeholder="00000-000"
+                  error={errors["company_data.zip_code"]}
+                  onChange={(v) => {
+                    setSectionField("company_data", "zip_code", v);
+                    clearFieldError("company_data.zip_code");
+                  }}
+                />
+              </div>
             </div>
-            <FormInput
-              label="CEP"
-              value={values.company_data.zip_code}
-              required
-              placeholder="00000-000"
-              error={errors["company_data.zip_code"]}
-              onChange={(v) => {
-                setSectionField("company_data", "zip_code", v);
-                clearFieldError("company_data.zip_code");
-              }}
-            />
           </div>
         )}
 
         {/* ===== LEGAL REPRESENTATIVE ===== */}
         {currentStep === "legal_representative" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
+          <div className="space-y-8">
+            <div className="pb-4 border-b border-[#d4c4a8]/40">
+              <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
-                <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
+                <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
             <FormInput
@@ -1008,11 +1012,11 @@ export default function CompanyRegistryPage({
 
         {/* ===== CONTRACT REPRESENTATIVE ===== */}
         {currentStep === "contract_representative" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
+          <div className="space-y-8">
+            <div className="pb-4 border-b border-[#d4c4a8]/40">
+              <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
-                <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
+                <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
             <SameAsToggle
@@ -1076,11 +1080,11 @@ export default function CompanyRegistryPage({
 
         {/* ===== FINANCIAL REPRESENTATIVE ===== */}
         {currentStep === "financial_representative" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
+          <div className="space-y-8">
+            <div className="pb-4 border-b border-[#d4c4a8]/40">
+              <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
-                <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
+                <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
             <SameAsToggle
@@ -1166,11 +1170,11 @@ export default function CompanyRegistryPage({
 
         {/* ===== BANKING DATA ===== */}
         {currentStep === "banking_data" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
+          <div className="space-y-8">
+            <div className="pb-4 border-b border-[#d4c4a8]/40">
+              <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
-                <p className="mt-2 text-sm text-slate-500">{currentStepMeta.description}</p>
+                <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
             <FormInput
@@ -1235,11 +1239,11 @@ export default function CompanyRegistryPage({
 
         {/* ===== REVIEW & SUBMIT ===== */}
         {currentStep === "review_submit" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Revise as informacoes antes de enviar.
+          <div className="space-y-8">
+            <div className="pb-4 border-b border-[#d4c4a8]/40">
+              <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
+              <p className="mt-1.5 text-sm text-slate-500">
+                Revise as informações antes de enviar.
               </p>
             </div>
 

@@ -36,6 +36,11 @@ export const atabaqueRegistryProfile: PeopleRegistryProfileConfig = {
     additionalInfo: true,
   },
 
+  theme: {
+    formBg: "#ebdbba",
+    primary: "#512314",
+  },
+
   // TODO: Airtable sync — quando o sync for ativado, preencher com:
   // { baseId: "<AIRTABLE_BASE_ID>", tableId: "<AIRTABLE_TABLE_ID>" }
   // O trigger deve ser disparado por workflow_type = "people_registry" e profile = "atabaque_people_v1"
