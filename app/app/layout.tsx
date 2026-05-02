@@ -66,6 +66,17 @@ const navSections = [
     section: "Configurações",
     items: [
       {
+        label: "Workflows",
+        href: "/app/settings/workflows",
+        icon: (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M4 6h16M4 10h16M4 14h8m-8 4h5" />
+          </svg>
+        ),
+        description: "Capability matrix dos formulários",
+      },
+      {
         label: "Editar campos",
         href: "/app/settings/fields",
         icon: (
