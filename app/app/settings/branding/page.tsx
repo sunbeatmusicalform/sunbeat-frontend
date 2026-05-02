@@ -77,3 +77,9 @@ export default async function BrandingSettingsPage() {
         </div>
       </section>
 
+      {/* Interactive branding form */}
+      <BrandingClient workspaceSlug={workspaceSlug} initial={branding} />
+
+    </div>
+  );
+}
