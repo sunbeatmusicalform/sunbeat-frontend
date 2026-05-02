@@ -94,7 +94,6 @@ export async function PATCH(
 
   const supabase = createSupabaseAdmin();
 
-  // Build a selective patch — only include fields that are explicitly present in the body
   const patch: Record<string, unknown> = {};
 
   if ("workspace_name" in body) {
@@ -133,7 +132,6 @@ export async function PATCH(
   if ("primary_color" in body) patch.primary_color = normalizeText(body.primary_color);
   if ("badge_url" in body) patch.badge_url = normalizeText(body.badge_url);
   if ("enabled_workflows" in body) {
-    // null → todos habilitados; string[] válido → lista explícita
     const val = body.enabled_workflows;
     if (val === null) {
       patch.enabled_workflows = null;
@@ -149,4 +147,18 @@ export async function PATCH(
     );
   }
 
-  const { data, error
+  const { data, error } = await supabase
+    .from("workspace_branding")
+    .upsert(
+      { workspace_slug: workspaceSlug, ...patch },
+      { onConflict: "workspace_slug" }
+    )
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, branding: data });
+}
