@@ -24,6 +24,7 @@ type BrandingConfig = {
   form_bg_color?: string | null;
   primary_color?: string | null;
   badge_url?: string | null;
+  social_image_url?: string | null;
 };
 
 type FieldOverride = {
