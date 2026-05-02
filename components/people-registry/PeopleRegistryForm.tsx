@@ -6,6 +6,7 @@
 
 import { Fragment, useState, useCallback, useMemo, useEffect, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { DEFAULT_FORM_THEME } from "@/lib/form-engine/types";
 import type {
   PeopleRegistryProfileConfig,
   PeopleRegistryFormValues,
@@ -735,7 +736,7 @@ export default function PeopleRegistryForm({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: profile.theme?.formBg ?? "#ebdbba", "--form-primary": profile.theme?.primary ?? "#512314", "--form-primary-hover": profile.theme?.primaryHover ?? "#6b3a1f" } as React.CSSProperties}>
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: profile.theme?.formBg ?? DEFAULT_FORM_THEME.formBg, "--form-primary": profile.theme?.primary ?? DEFAULT_FORM_THEME.primary, "--form-primary-hover": profile.theme?.primaryHover ?? DEFAULT_FORM_THEME.primaryHover } as React.CSSProperties}>
       <div className="mx-auto max-w-3xl">
 
         {/* Edit mode — hydration loading / error */}
@@ -760,8 +761,18 @@ export default function PeopleRegistryForm({
 
         {/* Header */}
         <header className="mb-6">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
-            {profile.clientLabel}
+          <div className="flex items-center gap-3">
+            {profile.logoUrl && (
+              <img
+                src={profile.logoUrl}
+                alt={profile.clientLabel}
+                className="h-8 max-w-[120px] object-contain"
+              />
+            )}
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
+              {profile.badgeUrl && <img src={profile.badgeUrl} alt="" className="h-4 w-4 object-contain" />}
+              {profile.clientLabel}
+            </div>
           </div>
           {currentStep !== "intro" && (
             <p className="mt-1 text-sm text-slate-600">

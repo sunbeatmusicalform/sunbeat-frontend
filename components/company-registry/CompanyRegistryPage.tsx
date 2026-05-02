@@ -753,7 +753,7 @@ export default function CompanyRegistryPage({
         <div className="h-0.5 bg-slate-100">
           <div
             className="h-full transition-all duration-500"
-            style={{ background: template.formTheme?.primary ?? "#0f172a", width: `${progressPercent}%` }}
+            style={{ background: template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary, width: `${progressPercent}%` }}
           />
         </div>
       </header>
@@ -846,7 +846,7 @@ export default function CompanyRegistryPage({
 
             <button
               onClick={goNext}
-              className="w-full rounded-2xl px-6 py-4 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
+              className="w-full rounded-2xl px-6 py-4 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary }}
             >
               Comecar cadastro
             </button>
@@ -1325,7 +1325,7 @@ export default function CompanyRegistryPage({
             {currentStep !== "review_submit" ? (
               <button
                 onClick={goNext}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary }}
               >
                 Continuar
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1336,7 +1336,7 @@ export default function CompanyRegistryPage({
               <button
                 onClick={handleSubmit}
                 disabled={loadingSubmit}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[15px] font-semibold text-white transition disabled:opacity-60 active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? "#0f172a" }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[15px] font-semibold text-white transition disabled:opacity-60 active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary }}
               >
                 {loadingSubmit ? (
                   <>

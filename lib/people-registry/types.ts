@@ -135,6 +135,10 @@ export type PeopleRegistryProfileConfig = {
     banking: boolean;
     additionalInfo: boolean;
   };
+  /** URL do logo do workspace — exibido no header do formulário. */
+  logoUrl?: string | null;
+  /** URL do badge/ícone pequeno — exibido ao lado do clientLabel. */
+  badgeUrl?: string | null;
   /** Tokens de tema visual. Se omitido, usa paleta neutra padrão. */
   theme?: {
     formBg: string;

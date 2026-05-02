@@ -36,6 +36,8 @@ export const atabaqueRegistryProfile: PeopleRegistryProfileConfig = {
     additionalInfo: true,
   },
 
+  logoUrl: null,   // preencher com URL do logo quando disponível
+  badgeUrl: null,  // preencher com URL do badge quando disponível
   theme: {
     formBg: "#ebdbba",
     primary: "#512314",
