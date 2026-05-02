@@ -142,4 +142,7 @@ export type WorkspaceConfigReadModel = {
   publicExperience: PublicExperienceReadModel;
   workflowSettings: WorkflowSettingsReadModel;
   integrationSettings: IntegrationSettingsReadModel;
-  access
+  accessAndGovernance: AccessAndGovernanceReadModel;
+  billingAndEntitlements: BillingAndEntitlementsReadModel;
+  diagnostics: WorkspaceConfigDiagnostics;
+};
