@@ -46,8 +46,8 @@ const WORKFLOW_DRIVE_NOTE: Record<string, string> = {
 const WORKFLOW_PREVIEW_PATH: Record<string, string | null> = {
   release_intake: "/app/release-intake",
   rights_clearance: "/app/rights-clearance",
-  company_registry: null,
-  people_registry: null,
+  company_registry: "/app/company-registry",
+  people_registry: "/app/people-registry",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
