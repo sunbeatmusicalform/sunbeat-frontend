@@ -32,8 +32,8 @@ import type {
   RightsClearanceTrackValues,
   UploadedFileRef,
   WorkflowType,
-  DEFAULT_FORM_THEME,
 } from "@/lib/form-engine/types";
+import { DEFAULT_FORM_THEME } from "@/lib/form-engine/types";
 
 const STEP_ORDER: RightsClearanceStepKey[] = [
   "intro",

@@ -32,8 +32,8 @@ import type {
   ReleaseIntakeFormValues,
   UploadedFileRef,
   WorkflowType,
-  DEFAULT_FORM_THEME,
 } from "@/lib/form-engine/types";
+import { DEFAULT_FORM_THEME } from "@/lib/form-engine/types";
 import type { TrackInput } from "@/lib/form-engine/track-types";
 
 const STEP_ORDER: FormStepKey[] = [

@@ -22,8 +22,8 @@ import type {
   CompanyRegistryStepKey,
   FormVersion,
   WorkflowType,
-  DEFAULT_FORM_THEME,
 } from "@/lib/form-engine/types";
+import { DEFAULT_FORM_THEME } from "@/lib/form-engine/types";
 
 const STEP_ORDER: CompanyRegistryStepKey[] = [
   "intro",
