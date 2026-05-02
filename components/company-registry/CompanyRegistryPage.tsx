@@ -776,7 +776,7 @@ export default function CompanyRegistryPage({
       <main className="mx-auto max-w-2xl px-4 py-10">
         {/* Step nav */}
         {currentStep !== "intro" && (
-          <div className="mb-8 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap gap-2">
             {STEP_ORDER.filter((s) => s !== "intro").map((step, i) => {
               const stepIdx = STEP_ORDER.indexOf(step);
               const isActive = step === currentStep;
@@ -853,10 +853,13 @@ export default function CompanyRegistryPage({
           </div>
         )}
 
+        {currentStep !== "intro" && (
+          <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-8">
+
         {/* ===== COMPANY DATA ===== */}
         {currentStep === "company_data" && (
           <div className="space-y-8">
-            <div className="pb-4 border-b border-[#d4c4a8]/40">
+            <div className="pb-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
@@ -969,7 +972,7 @@ export default function CompanyRegistryPage({
         {/* ===== LEGAL REPRESENTATIVE ===== */}
         {currentStep === "legal_representative" && (
           <div className="space-y-8">
-            <div className="pb-4 border-b border-[#d4c4a8]/40">
+            <div className="pb-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
@@ -1015,7 +1018,7 @@ export default function CompanyRegistryPage({
         {/* ===== CONTRACT REPRESENTATIVE ===== */}
         {currentStep === "contract_representative" && (
           <div className="space-y-8">
-            <div className="pb-4 border-b border-[#d4c4a8]/40">
+            <div className="pb-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
@@ -1083,7 +1086,7 @@ export default function CompanyRegistryPage({
         {/* ===== FINANCIAL REPRESENTATIVE ===== */}
         {currentStep === "financial_representative" && (
           <div className="space-y-8">
-            <div className="pb-4 border-b border-[#d4c4a8]/40">
+            <div className="pb-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
@@ -1173,7 +1176,7 @@ export default function CompanyRegistryPage({
         {/* ===== BANKING DATA ===== */}
         {currentStep === "banking_data" && (
           <div className="space-y-8">
-            <div className="pb-4 border-b border-[#d4c4a8]/40">
+            <div className="pb-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               {currentStepMeta?.description && (
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
@@ -1242,7 +1245,7 @@ export default function CompanyRegistryPage({
         {/* ===== REVIEW & SUBMIT ===== */}
         {currentStep === "review_submit" && (
           <div className="space-y-8">
-            <div className="pb-4 border-b border-[#d4c4a8]/40">
+            <div className="pb-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">{currentStepMeta?.title}</h2>
               <p className="mt-1.5 text-sm text-slate-500">
                 Revise as informações antes de enviar.
@@ -1310,8 +1313,7 @@ export default function CompanyRegistryPage({
         )}
 
         {/* Navigation buttons */}
-        {currentStep !== "intro" && (
-          <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
             <button
               onClick={goBack}
               className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -1349,6 +1351,7 @@ export default function CompanyRegistryPage({
               </button>
             )}
           </div>
+          </section>
         )}
       </main>
     </div>

@@ -762,12 +762,19 @@ export default function PeopleRegistryForm({
         {/* Header */}
         <header className="mb-6">
           <div className="flex items-center gap-3">
-            {profile.logoUrl && (
+            {profile.logoUrl ? (
               <img
                 src={profile.logoUrl}
                 alt={profile.clientLabel}
                 className="h-8 max-w-[120px] object-contain"
               />
+            ) : (
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[15px] font-bold text-white"
+                style={{ background: "var(--form-primary)" }}
+              >
+                {profile.clientLabel.charAt(0).toUpperCase()}
+              </div>
             )}
             <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
               {profile.badgeUrl && <img src={profile.badgeUrl} alt="" className="h-4 w-4 object-contain" />}
