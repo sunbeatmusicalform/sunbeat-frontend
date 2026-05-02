@@ -22,6 +22,7 @@ import type {
   CompanyRegistryStepKey,
   FormVersion,
   WorkflowType,
+  DEFAULT_FORM_THEME,
 } from "@/lib/form-engine/types";
 
 const STEP_ORDER: CompanyRegistryStepKey[] = [
@@ -687,7 +688,7 @@ export default function CompanyRegistryPage({
 
   if (isLoadingTemplate || isHydratingDraft) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "#ebdbba", "--form-primary": "#512314" } as React.CSSProperties}>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: DEFAULT_FORM_THEME.formBg, "--form-primary": DEFAULT_FORM_THEME.primary } as React.CSSProperties}>
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
           Carregando...
@@ -698,7 +699,7 @@ export default function CompanyRegistryPage({
 
   if (isSubmissionComplete) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16" style={{ background: "#ebdbba", "--form-primary": "#512314" } as React.CSSProperties}>
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16" style={{ background: DEFAULT_FORM_THEME.formBg, "--form-primary": DEFAULT_FORM_THEME.primary } as React.CSSProperties}>
         <div
           ref={successCardRef}
           className="w-full max-w-lg rounded-3xl border border-green-200 bg-white p-10 text-center shadow-sm"
@@ -718,7 +719,7 @@ export default function CompanyRegistryPage({
   }
 
   return (
-    <div className="min-h-screen" style={{ background: template.formTheme?.formBg ?? "#ebdbba", "--form-primary": template.formTheme?.primary ?? "#512314" } as React.CSSProperties}>
+    <div className="min-h-screen" style={{ background: template.formTheme?.formBg ?? DEFAULT_FORM_THEME.formBg, "--form-primary": template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary } as React.CSSProperties}>
       {/* Sticky header */}
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
@@ -734,7 +735,8 @@ export default function CompanyRegistryPage({
                 {template.intro.clientName}
               </span>
             )}
-            <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 sm:inline">
+            <span className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 sm:inline-flex">
+              {template.formBranding?.badgeUrl && <img src={template.formBranding.badgeUrl} alt="" className="h-3.5 w-3.5 object-contain" />}
               Cadastro de empresa
             </span>
           </div>

@@ -32,6 +32,7 @@ import type {
   ReleaseIntakeFormValues,
   UploadedFileRef,
   WorkflowType,
+  DEFAULT_FORM_THEME,
 } from "@/lib/form-engine/types";
 import type { TrackInput } from "@/lib/form-engine/track-types";
 
@@ -1695,7 +1696,7 @@ export default function ReleaseIntakePage({
 
   if (isLoadingTemplate) {
     return (
-      <div className="min-h-screen px-4 py-16" style={{ background: template?.formTheme?.formBg ?? "#ebdbba" }}>
+      <div className="min-h-screen px-4 py-16" style={{ background: template?.formTheme?.formBg ?? DEFAULT_FORM_THEME.formBg }}>
         <div className="mx-auto max-w-2xl text-center text-sm text-slate-500">
           Carregando formulário...
         </div>
@@ -1705,7 +1706,7 @@ export default function ReleaseIntakePage({
 
   if (requestedRenderer !== "release_intake") {
     return (
-      <div className="min-h-screen px-4 py-16" style={{ background: template?.formTheme?.formBg ?? "#ebdbba" }}>
+      <div className="min-h-screen px-4 py-16" style={{ background: template?.formTheme?.formBg ?? DEFAULT_FORM_THEME.formBg }}>
         <div className="mx-auto max-w-2xl rounded-[28px] border border-slate-200 bg-white px-6 py-7 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-8">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
             {workspaceSlug}
@@ -1725,7 +1726,7 @@ export default function ReleaseIntakePage({
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? "#ebdbba", "--form-primary": template.formTheme?.primary ?? "#512314" } as React.CSSProperties}>
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? DEFAULT_FORM_THEME.formBg, "--form-primary": template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary } as React.CSSProperties}>
       <div className="mx-auto max-w-4xl">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -1740,7 +1741,8 @@ export default function ReleaseIntakePage({
             ) : null}
 
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                {template.formBranding?.badgeUrl && <img src={template.formBranding.badgeUrl} alt="" className="h-4 w-4 object-contain" />}
                 {template.intro.clientName}
               </div>
               {currentStep !== "intro" ? (
