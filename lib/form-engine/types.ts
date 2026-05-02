@@ -533,3 +533,14 @@ export type RightsClearanceSubmitPayload = {
     sync_duration?: string;
     media_channels?: string;
   };
+  assets_references?: {
+    supporting_files?: UploadedFileRef[];
+    reference_links?: string;
+    additional_notes?: string;
+  };
+  meta: {
+    form_version: FormVersion;
+    source: string;
+    submitted_at?: string;
+  };
+};
