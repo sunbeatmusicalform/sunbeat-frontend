@@ -63,6 +63,8 @@ export type PublicExperienceReadModel = {
   primaryColor: string | null;
   /** URL for the small badge/icon shown in form chips. Null = not configured. */
   badgeUrl: string | null;
+  /** NULL = all workflows enabled. Explicit string[] = only those workflow types are active for this tenant. */
+  enabledWorkflows: string[] | null;
 };
 
 export type WorkflowSettingsReadModel = {
@@ -140,7 +142,4 @@ export type WorkspaceConfigReadModel = {
   publicExperience: PublicExperienceReadModel;
   workflowSettings: WorkflowSettingsReadModel;
   integrationSettings: IntegrationSettingsReadModel;
-  accessAndGovernance: AccessAndGovernanceReadModel;
-  billingAndEntitlements: BillingAndEntitlementsReadModel;
-  diagnostics: WorkspaceConfigDiagnostics;
-};
+  access

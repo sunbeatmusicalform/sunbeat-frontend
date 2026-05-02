@@ -132,6 +132,15 @@ export async function PATCH(
   if ("form_bg_color" in body) patch.form_bg_color = normalizeText(body.form_bg_color);
   if ("primary_color" in body) patch.primary_color = normalizeText(body.primary_color);
   if ("badge_url" in body) patch.badge_url = normalizeText(body.badge_url);
+  if ("enabled_workflows" in body) {
+    // null → todos habilitados; string[] válido → lista explícita
+    const val = body.enabled_workflows;
+    if (val === null) {
+      patch.enabled_workflows = null;
+    } else if (Array.isArray(val) && val.every((v) => typeof v === "string")) {
+      patch.enabled_workflows = val.length > 0 ? val : null;
+    }
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json(
@@ -140,18 +149,4 @@ export async function PATCH(
     );
   }
 
-  const { data, error } = await supabase
-    .from("workspace_branding")
-    .upsert(
-      { workspace_slug: workspaceSlug, ...patch },
-      { onConflict: "workspace_slug" }
-    )
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true, branding: data });
-}
+  const { data, error

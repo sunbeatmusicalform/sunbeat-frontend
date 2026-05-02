@@ -49,6 +49,8 @@ type WorkspaceBrandingRow = {
   primary_color?: string | null;
   /** URL for small badge/icon shown in form chips. */
   badge_url?: string | null;
+  /** NULL = all workflows enabled; explicit string[] = only those workflows active for this tenant. */
+  enabled_workflows?: string[] | null;
 };
 
 type WorkspaceFieldOverrideRow = {
@@ -197,6 +199,9 @@ function buildPublicExperience(args: {
     formBgColor: normalizeOptionalText(args.branding?.form_bg_color),
     primaryColor: normalizeOptionalText(args.branding?.primary_color),
     badgeUrl: normalizeOptionalText(args.branding?.badge_url),
+    enabledWorkflows: Array.isArray(args.branding?.enabled_workflows)
+      ? (args.branding.enabled_workflows as string[])
+      : null,
   };
 }
 

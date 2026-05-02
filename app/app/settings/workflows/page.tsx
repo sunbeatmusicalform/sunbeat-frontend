@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 import { listRegisteredWorkflows, buildWorkflowPublicPath } from "@/lib/form-engine/workflow-registry";
+import { WorkflowTogglesClient } from "./WorkflowTogglesClient";
 
 export const metadata = { title: "Workflows — Sunbeat" };
 
@@ -59,6 +60,7 @@ type BrandingRow = {
   logo_url: string | null;
   badge_url: string | null;
   social_image_url: string | null;
+  enabled_workflows: string[] | null;
 };
 
 type AirtableMappingRow = { workflow_type: string | null; is_enabled: boolean | null };
@@ -77,7 +79,7 @@ export default async function WorkflowsSettingsPage() {
     const [{ data: b }, { data: a }] = await Promise.all([
       admin
         .from("workspace_branding")
-        .select("public_edit_allowed, submission_email_enabled, primary_color, form_bg_color, logo_url, badge_url, social_image_url")
+        .select("public_edit_allowed, submission_email_enabled, primary_color, form_bg_color, logo_url, badge_url, social_image_url, enabled_workflows")
         .eq("workspace_slug", workspaceSlug)
         .maybeSingle<BrandingRow>(),
       admin
@@ -159,6 +161,13 @@ export default async function WorkflowsSettingsPage() {
           />
         </div>
       </section>
+
+      {/* Workflow visibility toggles */}
+      <WorkflowTogglesClient
+        workspaceSlug={workspaceSlug}
+        workflows={workflows}
+        initialEnabled={branding?.enabled_workflows ?? null}
+      />
 
       {/* Workflow cards grid */}
       <div className="grid gap-5 lg:grid-cols-2">
