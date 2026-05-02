@@ -130,9 +130,14 @@ export type FormBranding = {
   socialImageUrl?: string | null;
 };
 
-/** Platform-wide defaults for the Sunbeat form theme (Atabaque palette). */
+/**
+ * Platform-wide defaults for the Sunbeat form theme.
+ * These are neutral values used only when a workspace has no branding in the DB.
+ * Tenant-specific colors (e.g. Atabaque's #ebdbba / #512314) are always stored
+ * in workspace_branding and override these defaults via get-release-template.ts.
+ */
 export const DEFAULT_FORM_THEME: FormTheme = {
-  formBg: "#ebdbba",
+  formBg: "#f5f3ef",
   primary: "#0f172a",
   primaryHover: "#1e293b",
 };
@@ -528,14 +533,3 @@ export type RightsClearanceSubmitPayload = {
     sync_duration?: string;
     media_channels?: string;
   };
-  assets_references?: {
-    supporting_files?: UploadedFileRef[];
-    reference_links?: string;
-    additional_notes?: string;
-  };
-  meta: {
-    form_version: FormVersion;
-    source: string;
-    submitted_at?: string;
-  };
-};

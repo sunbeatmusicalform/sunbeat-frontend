@@ -243,7 +243,7 @@ export async function getWorkflowTemplate(
     formBranding: {
       logoUrl: branding?.logo_url || null,
       badgeUrl: branding?.badge_url || null,
-      socialImageUrl: null,
+      socialImageUrl: branding?.social_image_url || null,
     },
   };
 

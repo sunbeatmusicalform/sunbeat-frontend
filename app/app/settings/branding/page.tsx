@@ -12,12 +12,15 @@ type BrandingRow = {
   intro_text: string | null;
   success_message: string | null;
   logo_url: string | null;
+  badge_url: string | null;
   banner_url: string | null;
   submission_email_enabled: boolean | null;
   public_edit_allowed: boolean | null;
   social_image_url: string | null;
   social_title: string | null;
   social_description: string | null;
+  primary_color: string | null;
+  form_bg_color: string | null;
 };
 
 export default async function BrandingSettingsPage() {
@@ -30,7 +33,7 @@ export default async function BrandingSettingsPage() {
     const { data } = await admin
       .from("workspace_branding")
       .select(
-        "workspace_name, slogan, form_title, intro_text, success_message, logo_url, banner_url, submission_email_enabled, public_edit_allowed, social_image_url, social_title, social_description"
+        "workspace_name, slogan, form_title, intro_text, success_message, logo_url, badge_url, banner_url, submission_email_enabled, public_edit_allowed, social_image_url, social_title, social_description, primary_color, form_bg_color"
       )
       .eq("workspace_slug", workspaceSlug)
       .maybeSingle<BrandingRow>();
@@ -74,9 +77,3 @@ export default async function BrandingSettingsPage() {
         </div>
       </section>
 
-      {/* Interactive branding form */}
-      <BrandingClient workspaceSlug={workspaceSlug} initial={branding} />
-
-    </div>
-  );
-}
