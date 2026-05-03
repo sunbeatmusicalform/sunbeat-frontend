@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
+import SetupCopilotWidget from "@/components/admin/SetupCopilotWidget";
 
 const guidePrinciples = [
   {
@@ -53,9 +55,40 @@ const responseModes = [
   },
 ];
 
-export default function AIGuideSettingsPage() {
+export default async function AIGuideSettingsPage() {
+  const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+
   return (
     <div className="grid gap-6">
+      {/* ── Setup Copilot ──────────────────────────────────────── */}
+      <section className="glass-panel-strong premium-border rounded-[32px] p-7 md:p-8">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="sunbeat-badge">
+            <span className="sunbeat-dot" />
+            Setup Copilot
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/50">
+            Workspace configuration assistant · read-only
+          </span>
+        </div>
+
+        <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-white md:text-4xl">
+          Pergunte sobre a configuração
+          <span className="block text-white/60">do seu workspace.</span>
+        </h1>
+
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55">
+          O Setup Copilot lê a configuração atual do workspace e responde perguntas
+          sobre workflows, branding, integrações e campos do formulário. Ele não
+          modifica dados — apenas orienta.
+        </p>
+
+        <div className="mt-7">
+          <SetupCopilotWidget workspaceSlug={workspaceSlug} />
+        </div>
+      </section>
+
+      {/* ── AI Guide reference ────────────────────────────────── */}
       <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <div className="glass-panel-strong premium-border rounded-[32px] p-7 md:p-8">
           <div className="flex flex-wrap items-center gap-3">
@@ -231,41 +264,6 @@ export default function AIGuideSettingsPage() {
                 {item}
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="glass-panel rounded-[32px] p-7 md:p-8">
-          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
-                Next implementation layer
-              </div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                Bind the AI guide to the real form state.
-              </h2>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/60">
-                The frontend direction is now defined. The next step is connecting the assistant
-                to field metadata, current step context and workspace-level prompt settings so the
-                guidance can be generated reliably during completion.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-              <Link
-                href="/app/settings/branding"
-                className="sunbeat-button sunbeat-button-primary"
-              >
-                Open branding
-              </Link>
-              <Link
-                href="/app/settings/fields"
-                className="sunbeat-button sunbeat-button-secondary"
-              >
-                Back to fields
-              </Link>
-            </div>
           </div>
         </div>
       </section>
