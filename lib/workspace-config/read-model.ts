@@ -74,6 +74,49 @@ type WorkspaceAirtableMappingRow = Record<string, unknown> & {
   is_enabled?: boolean | null;
 };
 
+type WorkspacePlanRow = {
+  plan_id: string;
+  plan_name: string;
+  plan_is_public: boolean;
+  plan_ai_enabled: boolean;
+  plan_audio_upload_mb: number | null;
+  plan_cover_upload_mb: number | null;
+  plan_submissions_month: number | null;
+  plan_airtable_enabled: boolean;
+  plan_gdrive_enabled: boolean;
+  plan_support_level: string;
+};
+
+type WorkspacePlanOverrideRow = {
+  ai_enabled: boolean | null;
+  ai_monthly_budget_brl: number | null;
+  ai_overage_policy: string | null;
+  ai_gemini_reserve_brl: number | null;
+  audio_upload_mb: number | null;
+  cover_upload_mb: number | null;
+  max_submissions_month: number | null;
+  airtable_enabled: boolean | null;
+  gdrive_enabled: boolean | null;
+  support_tier: string | null;
+  sla_response_hours: number | null;
+  enabled_workflow_types: string[] | null;
+  monthly_value_brl: number | null;
+  setup_fee_paid_brl: number | null;
+  contract_start_date: string | null;
+  contract_end_date: string | null;
+  billing_cycle: string | null;
+  configured_by: string | null;
+};
+
+/** Orçamento de IA por plan_id (fallback quando não há override). Espelho do backend. */
+const AI_BUDGET_BY_PLAN: Record<string, number> = {
+  free: 2.0,
+  starter: 10.0,
+  pro: 30.0,
+  enterprise: 120.0,
+  consulting: 30.0, // base do plano consulting; override tem prioridade
+};
+
 function normalizeOptionalText(value: unknown) {
   return typeof value === "string" ? value : null;
 }
@@ -310,11 +353,76 @@ function buildAccessAndGovernance(args: {
   };
 }
 
-function buildBillingAndEntitlements(): BillingAndEntitlementsReadModel {
+function buildBillingAndEntitlements(args: {
+  plan: WorkspacePlanRow | null;
+  override: WorkspacePlanOverrideRow | null;
+}): BillingAndEntitlementsReadModel {
+  if (!args.plan) {
+    return { state: "deferred", source: "not_loaded", note: "Workspace plan not found." };
+  }
+
+  const p = args.plan;
+  const o = args.override;
+  const hasOverride = o !== null;
+
+  // Resolver entitlement: override (quando não-nulo) > plano base > fallback
+  const aiEnabled = o?.ai_enabled ?? p.plan_ai_enabled;
+  const aiMonthlyBudgetBrl =
+    o?.ai_monthly_budget_brl != null
+      ? Number(o.ai_monthly_budget_brl)
+      : (AI_BUDGET_BY_PLAN[p.plan_id] ?? AI_BUDGET_BY_PLAN["starter"]);
+  const aiOveragePolicy = (o?.ai_overage_policy ?? "block") as
+    | "block"
+    | "notify"
+    | "allow";
+  const aiGeminiReserveBrl =
+    o?.ai_gemini_reserve_brl != null ? Number(o.ai_gemini_reserve_brl) : 0;
+  const maxSubmissionsMonth =
+    o?.max_submissions_month !== undefined
+      ? o.max_submissions_month
+      : p.plan_submissions_month;
+  const audioUploadMb =
+    o?.audio_upload_mb ?? p.plan_audio_upload_mb ?? 10;
+  const coverUploadMb =
+    o?.cover_upload_mb ?? p.plan_cover_upload_mb ?? 5;
+  const airtableEnabled = o?.airtable_enabled ?? p.plan_airtable_enabled;
+  const gdriveEnabled = o?.gdrive_enabled ?? p.plan_gdrive_enabled;
+  const supportTier = (o?.support_tier ?? p.plan_support_level ?? "community") as
+    | "community"
+    | "email"
+    | "priority"
+    | "dedicated";
+  const slaResponseHours = o?.sla_response_hours ?? null;
+  const enabledWorkflowTypes = o?.enabled_workflow_types ?? null;
+
   return {
-    state: "deferred",
-    source: "not_loaded",
-    note: "Billing read state is intentionally deferred so this foundation stays isolated from signup, pricing, checkout and webhook work in flight.",
+    state: "loaded",
+    source: hasOverride ? "plan_with_override" : "plan_only",
+    planId: p.plan_id,
+    planName: p.plan_name,
+    isConsultingPlan: !p.plan_is_public,
+    entitlements: {
+      aiEnabled,
+      aiMonthlyBudgetBrl,
+      aiOveragePolicy,
+      aiGeminiReserveBrl,
+      maxSubmissionsMonth,
+      audioUploadMb,
+      coverUploadMb,
+      airtableEnabled,
+      gdriveEnabled,
+      supportTier,
+      slaResponseHours,
+      enabledWorkflowTypes,
+    },
+    contractInfo: {
+      monthlyValueBrl: o?.monthly_value_brl != null ? Number(o.monthly_value_brl) : null,
+      setupFeePaidBrl: o?.setup_fee_paid_brl != null ? Number(o.setup_fee_paid_brl) : null,
+      contractStartDate: o?.contract_start_date ?? null,
+      contractEndDate: o?.contract_end_date ?? null,
+      billingCycle: o?.billing_cycle ?? "monthly",
+      configuredBy: o?.configured_by ?? null,
+    },
   };
 }
 
@@ -325,6 +433,8 @@ export function buildWorkspaceConfigReadModel(args: {
   branding: WorkspaceBrandingRow | null;
   fieldOverrides: WorkspaceFieldOverrideRow[];
   airtableMappings: WorkspaceAirtableMappingRow[];
+  plan?: WorkspacePlanRow | null;
+  planOverride?: WorkspacePlanOverrideRow | null;
 }): WorkspaceConfigReadModel {
   const workflowIdentity = resolveWorkflowIdentity({
     workspaceSlug: args.workspaceSlug,
@@ -377,7 +487,7 @@ export function buildWorkspaceConfigReadModel(args: {
       branding: args.branding,
       fieldOverrides: args.fieldOverrides,
     }),
-    billingAndEntitlements: buildBillingAndEntitlements(),
+    billingAndEntitlements: buildBillingAndEntitlements({ plan: args.plan ?? null, override: args.planOverride ?? null }),
     diagnostics: {
       brandingConfigured: Boolean(args.branding),
       scopedFieldOverrideCount: workflowSettings.overrideCount,
@@ -394,37 +504,67 @@ export async function loadWorkspaceConfigReadModel(args: {
 }) {
   const supabase = createSupabaseAdmin();
 
-  const [{ data: branding, error: brandingError }, { data: fieldOverrides, error: fieldOverridesError }, { data: airtableMappings, error: airtableError }] =
-    await Promise.all([
-      supabase
-        .from("workspace_branding")
-        .select("*")
-        .eq("workspace_slug", args.workspaceSlug)
-        .maybeSingle<WorkspaceBrandingRow>(),
-      supabase
-        .from("workspace_field_overrides")
-        .select("*")
-        .eq("workspace_slug", args.workspaceSlug)
-        .order("step_key", { ascending: true })
-        .order("sort_order", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("workspace_airtable_mapping")
-        .select("*")
-        .eq("workspace_slug", args.workspaceSlug)
-        .eq("is_enabled", true),
-    ]);
+  const [
+    { data: branding, error: brandingError },
+    { data: fieldOverrides, error: fieldOverridesError },
+    { data: airtableMappings, error: airtableError },
+    { data: workspaceRow },
+    { data: planOverrideRow },
+  ] = await Promise.all([
+    supabase
+      .from("workspace_branding")
+      .select("*")
+      .eq("workspace_slug", args.workspaceSlug)
+      .maybeSingle<WorkspaceBrandingRow>(),
+    supabase
+      .from("workspace_field_overrides")
+      .select("*")
+      .eq("workspace_slug", args.workspaceSlug)
+      .order("step_key", { ascending: true })
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("workspace_airtable_mapping")
+      .select("*")
+      .eq("workspace_slug", args.workspaceSlug)
+      .eq("is_enabled", true),
+    // Plano base do workspace (fail-open: null se não encontrado)
+    supabase
+      .from("workspaces")
+      .select("plan_id, plans!inner(id, name, is_public, ai_enabled, audio_upload_mb, cover_upload_mb, submissions_month, airtable_enabled, gdrive_enabled, support_level)")
+      .eq("slug", args.workspaceSlug)
+      .maybeSingle(),
+    // Override por workspace (fail-open: null se não houver override)
+    supabase
+      .from("workspace_plan_overrides")
+      .select("ai_enabled, ai_monthly_budget_brl, ai_overage_policy, ai_gemini_reserve_brl, audio_upload_mb, cover_upload_mb, max_submissions_month, airtable_enabled, gdrive_enabled, support_tier, sla_response_hours, enabled_workflow_types, monthly_value_brl, setup_fee_paid_brl, contract_start_date, contract_end_date, billing_cycle, configured_by")
+      .eq("workspace_slug", args.workspaceSlug)
+      .maybeSingle(),
+  ]);
 
-  if (brandingError) {
-    throw new Error(brandingError.message);
-  }
+  if (brandingError) throw new Error(brandingError.message);
+  if (fieldOverridesError) throw new Error(fieldOverridesError.message);
+  if (airtableError) throw new Error(airtableError.message);
 
-  if (fieldOverridesError) {
-    throw new Error(fieldOverridesError.message);
-  }
-
-  if (airtableError) {
-    throw new Error(airtableError.message);
+  // Resolver plan row — normalizar join aninhado do Supabase
+  let planRow: WorkspacePlanRow | null = null;
+  if (workspaceRow) {
+    const raw = workspaceRow as Record<string, unknown>;
+    const plans = raw["plans"] as Record<string, unknown> | null;
+    if (plans) {
+      planRow = {
+        plan_id: String(raw["plan_id"] ?? "starter"),
+        plan_name: String(plans["name"] ?? ""),
+        plan_is_public: Boolean(plans["is_public"] ?? true),
+        plan_ai_enabled: Boolean(plans["ai_enabled"] ?? false),
+        plan_audio_upload_mb: (plans["audio_upload_mb"] as number | null) ?? null,
+        plan_cover_upload_mb: (plans["cover_upload_mb"] as number | null) ?? null,
+        plan_submissions_month: (plans["submissions_month"] as number | null) ?? null,
+        plan_airtable_enabled: Boolean(plans["airtable_enabled"] ?? false),
+        plan_gdrive_enabled: Boolean(plans["gdrive_enabled"] ?? false),
+        plan_support_level: String(plans["support_level"] ?? "community"),
+      };
+    }
   }
 
   return buildWorkspaceConfigReadModel({
@@ -434,5 +574,7 @@ export async function loadWorkspaceConfigReadModel(args: {
     branding: branding ?? null,
     fieldOverrides: (fieldOverrides ?? []) as WorkspaceFieldOverrideRow[],
     airtableMappings: (airtableMappings ?? []) as WorkspaceAirtableMappingRow[],
+    plan: planRow,
+    planOverride: (planOverrideRow as WorkspacePlanOverrideRow | null) ?? null,
   });
 }

@@ -23,7 +23,17 @@ function buildWorkspaceContextString(config: unknown): string {
       })(),
       workflowSettings: c.workflowSettings,
       accessAndGovernance: c.accessAndGovernance,
-      billingAndEntitlements: c.billingAndEntitlements,
+      // billingAndEntitlements: expor apenas entitlements, nunca contractInfo (sensível)
+      billingAndEntitlements: (() => {
+        const be = c.billingAndEntitlements as Record<string, unknown> | undefined;
+        if (!be || be["state"] !== "loaded") return be;
+        // Redactar contractInfo — contém monthly_value_brl, setup_fee_paid_brl, etc.
+        const { contractInfo: _redacted, ...safeEntitlements } = be as {
+          contractInfo: unknown;
+          [k: string]: unknown;
+        };
+        return safeEntitlements;
+      })(),
       // Omit integrationSettings (may contain sensitive tokens)
       // Omit diagnostics (internal infra detail)
     };
