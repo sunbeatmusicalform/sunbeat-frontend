@@ -101,6 +101,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         message,
         workspace_context: workspaceContextString ?? null,
+        workspace_slug: workspaceSlug || null,   // V2: usage log + budget_alert
         secret: copilotSecret || null,
       }),
     });
@@ -135,5 +136,8 @@ export async function POST(req: Request) {
     ok: true,
     text: (data as { text?: string }).text ?? "",
     used_fallback: (data as { used_fallback?: boolean }).used_fallback ?? false,
+    provider: (data as { provider?: string }).provider ?? "",
+    model: (data as { model?: string }).model ?? "",
+    budget_alert: (data as { budget_alert?: unknown }).budget_alert ?? null,
   });
 }
