@@ -1,8 +1,14 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import { getTenantFromHost } from "@/lib/tenant";
+import { isInternalAdminUser } from "@/lib/internal-admin";
+import { loadWorkspaceConfigReadModel } from "@/lib/workspace-config/read-model";
+import type { BillingAndEntitlementsReadModel } from "@/lib/workspace-config/types";
 import { billingCatalog, resolveMarket, formatPrice, isSelfServePlan, planDefinitions, type Market, type BillingTier } from "@/lib/billing/catalog";
+import WorkspaceBillingEntitlementsPanel from "@/components/admin/WorkspaceBillingEntitlementsPanel";
 import { UpgradeButton, ManageSubscriptionButton } from "./BillingButtons";
 
 type PlanRow = {
@@ -33,14 +39,22 @@ export default async function PlanPage({
   const { plan_intent: rawPlanIntent } = await searchParams;
 
   // Resolve workspace slug from subdomain
-  const tenantRaw = getTenantFromHost(host);
-  const workspaceSlug: string =
-    (typeof tenantRaw === "string" ? tenantRaw : tenantRaw?.value) ?? "atabaque";
+  const tenant = getTenantFromHost(host);
+  const workspaceSlug = tenant?.type === "subdomain" ? tenant.value : null;
+
+  if (!workspaceSlug) {
+    redirect("/auth/select-workspace?next=/app/settings/plan");
+  }
 
   // Resolve market (USD vs BRL) from hostname
   const market: Market = resolveMarket(host);
   const marketConfig = billingCatalog[market];
   const isBrazil = market === "brazil";
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const canViewInternalBilling = isInternalAdminUser(user);
 
   // plan_intent: passed from signup when user selected a plan before creating workspace.
   // Kept separate from plan_id — it's a funnel signal, not a billing state.
@@ -50,40 +64,50 @@ export default async function PlanPage({
       ? (rawPlanIntent as BillingTier)
       : null;
 
-  let currentPlanId: BillingTier = "free";
+  let currentPlanId: BillingTier | string = "free";
   let currentPlanName = "Free";
   let hasSubscription = false;
   let plans: PlanRow[] = [];
+  let internalBilling: BillingAndEntitlementsReadModel | null = null;
 
   try {
     const admin = createSupabaseAdmin();
 
-    const { data: ws } = await admin
-      .from("workspaces")
-      .select("plan_id, stripe_customer_id")
-      .eq("slug", workspaceSlug)
-      .maybeSingle();
+    const [{ data: ws }, { data: planRows }, workspaceConfig] = await Promise.all([
+      admin
+        .from("workspaces")
+        .select("plan_id, stripe_customer_id, plans(name)")
+        .eq("slug", workspaceSlug)
+        .maybeSingle(),
+      admin
+        .from("plans")
+        .select(
+          "id, name, submissions_month, max_forms, audio_upload_mb, cover_upload_mb, ai_enabled, airtable_enabled, gdrive_enabled, gsheets_enabled, notion_enabled, custom_branding, white_label, support_level"
+        )
+        .eq("is_public", true)
+        .order("price_monthly", { ascending: true }),
+      canViewInternalBilling
+        ? loadWorkspaceConfigReadModel({ workspaceSlug })
+        : Promise.resolve(null),
+    ]);
 
     if (ws) {
-      currentPlanId = ws.plan_id as BillingTier;
+      currentPlanId = ws.plan_id as BillingTier | string;
       hasSubscription = !!ws.stripe_customer_id;
+      const plansData = ws.plans as { name: string }[] | { name: string } | null;
+      const planEntry = Array.isArray(plansData) ? plansData[0] : plansData;
+      currentPlanName = planEntry?.name ?? currentPlanName;
     }
 
-    const { data: planRows } = await admin
-      .from("plans")
-      .select(
-        "id, name, submissions_month, max_forms, audio_upload_mb, cover_upload_mb, ai_enabled, airtable_enabled, gdrive_enabled, gsheets_enabled, notion_enabled, custom_branding, white_label, support_level"
-      )
-      .order("price_monthly", { ascending: true });
-
     if (planRows) plans = planRows as PlanRow[];
+    internalBilling = workspaceConfig?.billingAndEntitlements ?? null;
 
     const current = plans.find((p) => p.id === currentPlanId);
     if (current) {
       currentPlanName = current.name;
     } else {
       // Fallback for enterprise sub-tiers not in the DB plans table
-      const def = planDefinitions[currentPlanId];
+      const def = planDefinitions[currentPlanId as BillingTier];
       if (def) currentPlanName = isBrazil ? def.labelPt : def.labelEn;
     }
   } catch {
@@ -94,6 +118,7 @@ export default async function PlanPage({
     free:                    { bg: "#F3F4F6", text: "#374151",  badge: "#6B7280" },
     starter:                 { bg: "#EFF6FF", text: "#1D4ED8",  badge: "#2563EB" },
     pro:                     { bg: "#F5F3FF", text: "#6D28D9",  badge: "#7C3AED" },
+    consulting:              { bg: "#FFF7ED", text: "#9A3412",  badge: "#C2410C" },
     enterprise:              { bg: "#111111", text: "#FFFFFF",  badge: "#111111" },
     enterprise_core:         { bg: "#111111", text: "#FFFFFF",  badge: "#111111" },
     enterprise_ops:          { bg: "#111111", text: "#FFFFFF",  badge: "#111111" },
@@ -206,6 +231,12 @@ export default async function PlanPage({
                   : "You're being redirected to Stripe checkout to complete your subscription."}
               </p>
             </div>
+          </div>
+        )}
+
+        {canViewInternalBilling && internalBilling && (
+          <div className="mb-8">
+            <WorkspaceBillingEntitlementsPanel billing={internalBilling} />
           </div>
         )}
 

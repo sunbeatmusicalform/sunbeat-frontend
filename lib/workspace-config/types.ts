@@ -114,11 +114,61 @@ export type AccessAndGovernanceReadModel = {
   membershipsState: "not_connected";
 };
 
-export type BillingAndEntitlementsReadModel = {
-  state: "deferred";
-  source: "not_loaded";
-  note: string;
+export type BillingEntitlements = {
+  aiEnabled: boolean;
+  aiMonthlyBudgetBrl: number;
+  aiOveragePolicy: "block" | "notify" | "allow";
+  aiGeminiReserveBrl: number;
+  maxSubmissionsMonth: number | null;
+  audioUploadMb: number;
+  coverUploadMb: number;
+  airtableEnabled: boolean;
+  gdriveEnabled: boolean;
+  supportTier: "community" | "email" | "priority" | "dedicated";
+  slaResponseHours: number | null;
+  enabledWorkflowTypes: string[] | null;
 };
+
+export type BillingEntitlementSource = "plan" | "override";
+
+export type BillingEntitlementSources = {
+  aiEnabled: BillingEntitlementSource;
+  aiMonthlyBudgetBrl: BillingEntitlementSource;
+  aiOveragePolicy: BillingEntitlementSource;
+  aiGeminiReserveBrl: BillingEntitlementSource;
+  maxSubmissionsMonth: BillingEntitlementSource;
+  audioUploadMb: BillingEntitlementSource;
+  coverUploadMb: BillingEntitlementSource;
+  airtableEnabled: BillingEntitlementSource;
+  gdriveEnabled: BillingEntitlementSource;
+  supportTier: BillingEntitlementSource;
+  slaResponseHours: BillingEntitlementSource;
+  enabledWorkflowTypes: BillingEntitlementSource;
+};
+
+/** Campos sensíveis — nunca expor ao workspace_context da IA */
+export type BillingContractInfo = {
+  monthlyValueBrl: number | null;
+  setupFeePaidBrl: number | null;
+  contractStartDate: string | null;
+  contractEndDate: string | null;
+  billingCycle: string;
+  configuredBy: string | null;
+};
+
+export type BillingAndEntitlementsReadModel =
+  | { state: "deferred"; source: "not_loaded"; note: string }
+  | {
+      state: "loaded";
+      source: "plan_with_override" | "plan_only";
+      planId: string;
+      planName: string;
+      isConsultingPlan: boolean;
+      basePlanEntitlements: BillingEntitlements;
+      entitlementSources: BillingEntitlementSources;
+      entitlements: BillingEntitlements;
+      contractInfo: BillingContractInfo; // SENSÍVEL — não expor à IA
+    };
 
 export type WorkspaceConfigDiagnostics = {
   brandingConfigured: boolean;
