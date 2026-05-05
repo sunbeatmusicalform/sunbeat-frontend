@@ -7,6 +7,8 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import type {
   AccessAndGovernanceReadModel,
   BillingAndEntitlementsReadModel,
+  BillingEntitlementSources,
+  BillingEntitlements,
   IntegrationSettingsReadModel,
   PublicExperienceReadModel,
   WorkspaceConfigFieldOverride,
@@ -35,13 +37,13 @@ type WorkspaceBrandingRow = {
   logo_url?: string | null;
   banner_url?: string | null;
   submission_email_enabled?: boolean | null;
-  /** Permite edição pública do formulário (substitui hardcode "atabaque"). */
+  /** Permite ediÃ§Ã£o pÃºblica do formulÃ¡rio (substitui hardcode "atabaque"). */
   public_edit_allowed?: boolean | null;
   /** URL da imagem usada no preview social (OG/WhatsApp). Distinta do logo da UI. */
   social_image_url?: string | null;
-  /** Título customizado para o card de preview social. */
+  /** TÃ­tulo customizado para o card de preview social. */
   social_title?: string | null;
-  /** Descrição customizada para o card de preview social. */
+  /** DescriÃ§Ã£o customizada para o card de preview social. */
   social_description?: string | null;
   /** CSS color for form page background. */
   form_bg_color?: string | null;
@@ -108,7 +110,7 @@ type WorkspacePlanOverrideRow = {
   configured_by: string | null;
 };
 
-/** Orçamento de IA por plan_id (fallback quando não há override). Espelho do backend. */
+/** OrÃ§amento de IA por plan_id (fallback quando nÃ£o hÃ¡ override). Espelho do backend. */
 const AI_BUDGET_BY_PLAN: Record<string, number> = {
   free: 2.0,
   starter: 10.0,
@@ -353,6 +355,54 @@ function buildAccessAndGovernance(args: {
   };
 }
 
+function buildBasePlanEntitlements(plan: WorkspacePlanRow): BillingEntitlements {
+  return {
+    aiEnabled: plan.plan_ai_enabled,
+    aiMonthlyBudgetBrl:
+      AI_BUDGET_BY_PLAN[plan.plan_id] ?? AI_BUDGET_BY_PLAN["starter"],
+    aiOveragePolicy: "block",
+    aiGeminiReserveBrl: 0,
+    maxSubmissionsMonth: plan.plan_submissions_month,
+    audioUploadMb: plan.plan_audio_upload_mb ?? 10,
+    coverUploadMb: plan.plan_cover_upload_mb ?? 5,
+    airtableEnabled: plan.plan_airtable_enabled,
+    gdriveEnabled: plan.plan_gdrive_enabled,
+    supportTier: (plan.plan_support_level ?? "community") as
+      | "community"
+      | "email"
+      | "priority"
+      | "dedicated",
+    slaResponseHours: null,
+    enabledWorkflowTypes: null,
+  };
+}
+
+function buildEntitlementSources(
+  override: WorkspacePlanOverrideRow | null
+): BillingEntitlementSources {
+  return {
+    aiEnabled: override?.ai_enabled != null ? "override" : "plan",
+    aiMonthlyBudgetBrl:
+      override?.ai_monthly_budget_brl != null ? "override" : "plan",
+    aiOveragePolicy:
+      override?.ai_overage_policy != null ? "override" : "plan",
+    aiGeminiReserveBrl:
+      override?.ai_gemini_reserve_brl != null ? "override" : "plan",
+    maxSubmissionsMonth:
+      override?.max_submissions_month !== undefined ? "override" : "plan",
+    audioUploadMb: override?.audio_upload_mb != null ? "override" : "plan",
+    coverUploadMb: override?.cover_upload_mb != null ? "override" : "plan",
+    airtableEnabled:
+      override?.airtable_enabled != null ? "override" : "plan",
+    gdriveEnabled: override?.gdrive_enabled != null ? "override" : "plan",
+    supportTier: override?.support_tier != null ? "override" : "plan",
+    slaResponseHours:
+      override?.sla_response_hours != null ? "override" : "plan",
+    enabledWorkflowTypes:
+      override?.enabled_workflow_types != null ? "override" : "plan",
+  };
+}
+
 function buildBillingAndEntitlements(args: {
   plan: WorkspacePlanRow | null;
   override: WorkspacePlanOverrideRow | null;
@@ -364,36 +414,8 @@ function buildBillingAndEntitlements(args: {
   const p = args.plan;
   const o = args.override;
   const hasOverride = o !== null;
-
-  // Resolver entitlement: override (quando não-nulo) > plano base > fallback
-  const aiEnabled = o?.ai_enabled ?? p.plan_ai_enabled;
-  const aiMonthlyBudgetBrl =
-    o?.ai_monthly_budget_brl != null
-      ? Number(o.ai_monthly_budget_brl)
-      : (AI_BUDGET_BY_PLAN[p.plan_id] ?? AI_BUDGET_BY_PLAN["starter"]);
-  const aiOveragePolicy = (o?.ai_overage_policy ?? "block") as
-    | "block"
-    | "notify"
-    | "allow";
-  const aiGeminiReserveBrl =
-    o?.ai_gemini_reserve_brl != null ? Number(o.ai_gemini_reserve_brl) : 0;
-  const maxSubmissionsMonth =
-    o?.max_submissions_month !== undefined
-      ? o.max_submissions_month
-      : p.plan_submissions_month;
-  const audioUploadMb =
-    o?.audio_upload_mb ?? p.plan_audio_upload_mb ?? 10;
-  const coverUploadMb =
-    o?.cover_upload_mb ?? p.plan_cover_upload_mb ?? 5;
-  const airtableEnabled = o?.airtable_enabled ?? p.plan_airtable_enabled;
-  const gdriveEnabled = o?.gdrive_enabled ?? p.plan_gdrive_enabled;
-  const supportTier = (o?.support_tier ?? p.plan_support_level ?? "community") as
-    | "community"
-    | "email"
-    | "priority"
-    | "dedicated";
-  const slaResponseHours = o?.sla_response_hours ?? null;
-  const enabledWorkflowTypes = o?.enabled_workflow_types ?? null;
+  const basePlanEntitlements = buildBasePlanEntitlements(p);
+  const entitlementSources = buildEntitlementSources(o);
 
   return {
     state: "loaded",
@@ -401,19 +423,61 @@ function buildBillingAndEntitlements(args: {
     planId: p.plan_id,
     planName: p.plan_name,
     isConsultingPlan: !p.plan_is_public,
+    basePlanEntitlements,
+    entitlementSources,
     entitlements: {
-      aiEnabled,
-      aiMonthlyBudgetBrl,
-      aiOveragePolicy,
-      aiGeminiReserveBrl,
-      maxSubmissionsMonth,
-      audioUploadMb,
-      coverUploadMb,
-      airtableEnabled,
-      gdriveEnabled,
-      supportTier,
-      slaResponseHours,
-      enabledWorkflowTypes,
+      aiEnabled:
+        entitlementSources.aiEnabled === "override"
+          ? Boolean(o?.ai_enabled)
+          : basePlanEntitlements.aiEnabled,
+      aiMonthlyBudgetBrl:
+        entitlementSources.aiMonthlyBudgetBrl === "override"
+          ? Number(o?.ai_monthly_budget_brl)
+          : basePlanEntitlements.aiMonthlyBudgetBrl,
+      aiOveragePolicy:
+        entitlementSources.aiOveragePolicy === "override"
+          ? ((o?.ai_overage_policy ?? "block") as "block" | "notify" | "allow")
+          : basePlanEntitlements.aiOveragePolicy,
+      aiGeminiReserveBrl:
+        entitlementSources.aiGeminiReserveBrl === "override"
+          ? Number(o?.ai_gemini_reserve_brl)
+          : basePlanEntitlements.aiGeminiReserveBrl,
+      maxSubmissionsMonth:
+        entitlementSources.maxSubmissionsMonth === "override"
+          ? o?.max_submissions_month ?? null
+          : basePlanEntitlements.maxSubmissionsMonth,
+      audioUploadMb:
+        entitlementSources.audioUploadMb === "override"
+          ? Number(o?.audio_upload_mb)
+          : basePlanEntitlements.audioUploadMb,
+      coverUploadMb:
+        entitlementSources.coverUploadMb === "override"
+          ? Number(o?.cover_upload_mb)
+          : basePlanEntitlements.coverUploadMb,
+      airtableEnabled:
+        entitlementSources.airtableEnabled === "override"
+          ? Boolean(o?.airtable_enabled)
+          : basePlanEntitlements.airtableEnabled,
+      gdriveEnabled:
+        entitlementSources.gdriveEnabled === "override"
+          ? Boolean(o?.gdrive_enabled)
+          : basePlanEntitlements.gdriveEnabled,
+      supportTier:
+        entitlementSources.supportTier === "override"
+          ? ((o?.support_tier ?? "community") as
+              | "community"
+              | "email"
+              | "priority"
+              | "dedicated")
+          : basePlanEntitlements.supportTier,
+      slaResponseHours:
+        entitlementSources.slaResponseHours === "override"
+          ? o?.sla_response_hours ?? null
+          : basePlanEntitlements.slaResponseHours,
+      enabledWorkflowTypes:
+        entitlementSources.enabledWorkflowTypes === "override"
+          ? o?.enabled_workflow_types ?? null
+          : basePlanEntitlements.enabledWorkflowTypes,
     },
     contractInfo: {
       monthlyValueBrl: o?.monthly_value_brl != null ? Number(o.monthly_value_brl) : null,
@@ -425,7 +489,6 @@ function buildBillingAndEntitlements(args: {
     },
   };
 }
-
 export function buildWorkspaceConfigReadModel(args: {
   workspaceSlug: string;
   workflowType?: WorkflowType | null;
@@ -528,13 +591,13 @@ export async function loadWorkspaceConfigReadModel(args: {
       .select("*")
       .eq("workspace_slug", args.workspaceSlug)
       .eq("is_enabled", true),
-    // Plano base do workspace (fail-open: null se não encontrado)
+    // Plano base do workspace (fail-open: null se nÃ£o encontrado)
     supabase
       .from("workspaces")
       .select("plan_id, plans!inner(id, name, is_public, ai_enabled, audio_upload_mb, cover_upload_mb, submissions_month, airtable_enabled, gdrive_enabled, support_level)")
       .eq("slug", args.workspaceSlug)
       .maybeSingle(),
-    // Override por workspace (fail-open: null se não houver override)
+    // Override por workspace (fail-open: null se nÃ£o houver override)
     supabase
       .from("workspace_plan_overrides")
       .select("ai_enabled, ai_monthly_budget_brl, ai_overage_policy, ai_gemini_reserve_brl, audio_upload_mb, cover_upload_mb, max_submissions_month, airtable_enabled, gdrive_enabled, support_tier, sla_response_hours, enabled_workflow_types, monthly_value_brl, setup_fee_paid_brl, contract_start_date, contract_end_date, billing_cycle, configured_by")
@@ -546,7 +609,7 @@ export async function loadWorkspaceConfigReadModel(args: {
   if (fieldOverridesError) throw new Error(fieldOverridesError.message);
   if (airtableError) throw new Error(airtableError.message);
 
-  // Resolver plan row — normalizar join aninhado do Supabase
+  // Resolver plan row â€” normalizar join aninhado do Supabase
   let planRow: WorkspacePlanRow | null = null;
   if (workspaceRow) {
     const raw = workspaceRow as Record<string, unknown>;

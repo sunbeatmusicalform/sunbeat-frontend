@@ -53,9 +53,9 @@ export type PublicExperienceReadModel = {
   bannerUrl: string | null;
   /** URL da imagem usada no preview social (WhatsApp/OG). Distinta do logoUrl exibido na UI. */
   socialImageUrl: string | null;
-  /** Título customizado para o preview social. Se nulo, usa workspaceName. */
+  /** TÃ­tulo customizado para o preview social. Se nulo, usa workspaceName. */
   socialTitle: string | null;
-  /** Descrição customizada para o preview social. Se nulo, usa slogan ou fallback. */
+  /** DescriÃ§Ã£o customizada para o preview social. Se nulo, usa slogan ou fallback. */
   socialDescription: string | null;
   /** CSS color for form page background. Null = platform default (#ebdbba). */
   formBgColor: string | null;
@@ -137,7 +137,24 @@ export type BillingEntitlements = {
   enabledWorkflowTypes: string[] | null;
 };
 
-/** Campos sensíveis — nunca expor ao workspace_context da IA */
+export type BillingEntitlementSource = "plan" | "override";
+
+export type BillingEntitlementSources = {
+  aiEnabled: BillingEntitlementSource;
+  aiMonthlyBudgetBrl: BillingEntitlementSource;
+  aiOveragePolicy: BillingEntitlementSource;
+  aiGeminiReserveBrl: BillingEntitlementSource;
+  maxSubmissionsMonth: BillingEntitlementSource;
+  audioUploadMb: BillingEntitlementSource;
+  coverUploadMb: BillingEntitlementSource;
+  airtableEnabled: BillingEntitlementSource;
+  gdriveEnabled: BillingEntitlementSource;
+  supportTier: BillingEntitlementSource;
+  slaResponseHours: BillingEntitlementSource;
+  enabledWorkflowTypes: BillingEntitlementSource;
+};
+
+/** Campos sensÃ­veis â€” nunca expor ao workspace_context da IA */
 export type BillingContractInfo = {
   monthlyValueBrl: number | null;
   setupFeePaidBrl: number | null;
@@ -155,8 +172,10 @@ export type BillingAndEntitlementsReadModel =
       planId: string;
       planName: string;
       isConsultingPlan: boolean;
+      basePlanEntitlements: BillingEntitlements;
+      entitlementSources: BillingEntitlementSources;
       entitlements: BillingEntitlements;
-      contractInfo: BillingContractInfo; // SENSÍVEL — não expor à IA
+      contractInfo: BillingContractInfo; // SENSÃVEL â€” nÃ£o expor Ã  IA
     };
 
 export type WorkspaceConfigDiagnostics = {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadWorkspaceConfigReadModel } from "@/lib/workspace-config/read-model";
+import { isInternalAdminUser } from "@/lib/internal-admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -33,11 +34,22 @@ export async function GET(
       workflowType: url.searchParams.get("workflow_type"),
       formVersion: url.searchParams.get("form_version"),
     });
+    const responseData: unknown =
+      !isInternalAdminUser(user) &&
+      data.billingAndEntitlements.state === "loaded"
+        ? {
+            ...data,
+            billingAndEntitlements: (({
+              contractInfo: _contractInfo,
+              ...safeBilling
+            }) => safeBilling)(data.billingAndEntitlements),
+          }
+        : data;
 
     return NextResponse.json(
       {
         ok: true,
-        data,
+        data: responseData,
       },
       {
         headers: {
