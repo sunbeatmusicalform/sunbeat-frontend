@@ -1,11 +1,83 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { atabaqueTemplate } from "@/lib/form-engine/atabaque-template";
+import { createLegacyReleaseIntakeTemplate } from "@/lib/form-engine/atabaque-template";
 import { createRightsClearanceTemplate } from "@/lib/form-engine/rights-clearance-template";
+import { createCompanyRegistryTemplate } from "@/lib/form-engine/company-registry-template";
+import {
+  getDefaultPeopleRegistryProfile,
+  getPeopleRegistryProfile,
+} from "@/lib/people-registry/profile-registry";
+import { createPeopleRegistryWorkflowTemplate } from "@/lib/people-registry/workflow-template-adapter";
 import type { FormStepKey, WorkflowTemplate } from "@/lib/form-engine/types";
 
-type FormType = "intake" | "clearance";
+type FormType =
+  | "release_intake"
+  | "rights_clearance"
+  | "company_registry"
+  | "people_registry";
+
+type FormEditorMode =
+  | "legacy_release_intake"
+  | "workflow_config"
+  | "profile_adapter";
+
+type FormTypeConfig = {
+  formType: FormType;
+  label: string;
+  heading: string;
+  description: string;
+  summaryTitle: string;
+  editorNote: string;
+  mode: FormEditorMode;
+};
+
+const FORM_TYPE_CONFIGS: FormTypeConfig[] = [
+  {
+    formType: "release_intake",
+    label: "Release Intake",
+    heading: "Edite o formulario",
+    description:
+      "Ajuste o formulario publico da Atabaque sem mexer em codigo: visibilidade, obrigatoriedade, titulos, helper text, senha do modo edit e e-mails de resumo.",
+    summaryTitle: "Estado atual do intake",
+    editorNote:
+      "Esta area inclui os campos de Identificacao, Projeto, Faixas e Marketing. A etapa de Faixas pode ser editada aqui do mesmo jeito que as demais.",
+    mode: "legacy_release_intake",
+  },
+  {
+    formType: "rights_clearance",
+    label: "Rights Clearance",
+    heading: "Edite o clearance",
+    description:
+      "Configure os campos do formulario de Rights Clearance: visibilidade, obrigatoriedade, titulos personalizados e helper texts.",
+    summaryTitle: "Estado atual do clearance",
+    editorNote:
+      "Este workflow usa o endpoint generico workflow-config e preserva o fluxo publico ja existente.",
+    mode: "workflow_config",
+  },
+  {
+    formType: "company_registry",
+    label: "Company Registry",
+    heading: "Edite o cadastro de empresa",
+    description:
+      "Configure os campos do cadastro de empresa da Atabaque usando o template conectado ao workflow-config.",
+    summaryTitle: "Estado atual do company registry",
+    editorNote:
+      "Company Registry ja consome getWorkflowTemplate, entao os overrides salvos aqui refletem no formulario publico.",
+    mode: "workflow_config",
+  },
+  {
+    formType: "people_registry",
+    label: "People Registry",
+    heading: "Revise o cadastro de pessoas",
+    description:
+      "Visualize a baseline profile-driven do People Registry da Atabaque sem trocar o renderer publico.",
+    summaryTitle: "Estado atual do people registry",
+    editorNote:
+      "People Registry continua profile-driven nesta etapa. O adapter interno mostra a baseline de campos sem persistir overrides.",
+    mode: "profile_adapter",
+  },
+];
 
 
 
@@ -190,10 +262,6 @@ function buildEditorFieldsFromTemplate(
     );
 }
 
-function buildEditorFields(overrides: ApiOverride[]) {
-  return buildEditorFieldsFromTemplate(atabaqueTemplate, overrides);
-}
-
 function serializeFields(fields: EditorField[]) {
   return JSON.stringify(
     fields.map((field) => ({
@@ -253,12 +321,29 @@ function updateFieldValue(
 
 export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: string }) {
   const WORKSPACE_EDIT_PASSWORD_STORAGE_KEY = `sunbeat:workspace-edit-password:${workspaceSlug}`;
-  const [formType, setFormType] = useState<FormType>("intake");
-  const clearanceTemplate = useMemo(
-    () => createRightsClearanceTemplate({ workspaceSlug }),
-    []
-  );
-  const activeTemplate: WorkflowTemplate = formType === "intake" ? atabaqueTemplate : clearanceTemplate;
+  const [formType, setFormType] = useState<FormType>("release_intake");
+  const templatesByFormType = useMemo<Record<FormType, WorkflowTemplate>>(() => {
+    const peopleProfile =
+      getPeopleRegistryProfile(workspaceSlug) ?? getDefaultPeopleRegistryProfile();
+
+    return {
+      release_intake: createLegacyReleaseIntakeTemplate({ workspaceSlug }),
+      rights_clearance: createRightsClearanceTemplate({ workspaceSlug }),
+      company_registry: createCompanyRegistryTemplate({ workspaceSlug }),
+      people_registry: createPeopleRegistryWorkflowTemplate({
+        ...peopleProfile,
+        workspaceSlug,
+      }),
+    };
+  }, [workspaceSlug]);
+  const activeTemplate = templatesByFormType[formType];
+  const activeConfig =
+    FORM_TYPE_CONFIGS.find((config) => config.formType === formType) ??
+    FORM_TYPE_CONFIGS[0];
+  const isLegacyReleaseIntake =
+    activeConfig.mode === "legacy_release_intake";
+  const isProfileAdapter = activeConfig.mode === "profile_adapter";
+  const canPersistActiveForm = activeConfig.mode !== "profile_adapter";
 
   const [fields, setFields] = useState<EditorField[]>([]);
   const [emailSettings, setEmailSettings] = useState<EmailSettings>(
@@ -280,8 +365,15 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
   const [error, setError] = useState<string | null>(null);
   const initialSnapshotRef = useRef("");
 
-  function applyLoadedEditorState(data: FieldOverridesResponse, password = "") {
-    const nextFields = buildEditorFields(data.overrides ?? []);
+  function applyLoadedEditorState(
+    data: FieldOverridesResponse,
+    password = "",
+    template = templatesByFormType.release_intake
+  ) {
+    const nextFields = buildEditorFieldsFromTemplate(
+      template,
+      data.overrides ?? []
+    );
     const nextEmailSettings = buildInitialEmailSettings(data.email_settings);
     const nextSecuritySettings = buildInitialSecuritySettings(data.security);
 
@@ -308,31 +400,54 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
     }
   }
 
+  function applyWorkflowConfigEditorState(
+    template: WorkflowTemplate,
+    overrides: ApiOverride[]
+  ) {
+    const nextFields = buildEditorFieldsFromTemplate(template, overrides);
+    initialSnapshotRef.current = serializeEditorState(
+      nextFields,
+      createEmptyEmailSettings(),
+      createEmptySecuritySettings()
+    );
+    setFields(nextFields);
+    setEmailSettings(createEmptyEmailSettings());
+    setSecuritySettings(createEmptySecuritySettings());
+    setStats({ submissions: 0, drafts: 0 });
+    setIsLocked(false);
+  }
+
   useEffect(() => {
     let mounted = true;
 
-    async function loadEditor(password = "", currentFormType: FormType = "intake") {
+    async function loadEditor(
+      password = "",
+      currentFormType: FormType = "release_intake"
+    ) {
       try {
         setIsLoading(true);
         setError(null);
 
-        if (currentFormType === "clearance") {
-          // Rights clearance: use workflow-config endpoint, no password
+        if (currentFormType !== "release_intake") {
+          const template = templatesByFormType[currentFormType];
+
+          if (
+            FORM_TYPE_CONFIGS.find((config) => config.formType === currentFormType)
+              ?.mode === "profile_adapter"
+          ) {
+            if (!mounted) return;
+            applyWorkflowConfigEditorState(template, []);
+            return;
+          }
+
           const response = await fetch(
-            `/api/workspaces/${workspaceSlug}/workflow-config?workflow_type=rights_clearance`,
+            `/api/workspaces/${workspaceSlug}/workflow-config?workflow_type=${template.workflowType}&form_version=${template.formVersion}`,
             { cache: "no-store" }
           );
           const data = await response.json() as { ok: boolean; field_overrides?: ApiOverride[]; error?: string };
           if (!mounted) return;
           if (!response.ok || !data.ok) throw new Error(data.error || "Nao foi possivel carregar os campos.");
-          const nextFields = buildEditorFieldsFromTemplate(clearanceTemplate, data.field_overrides ?? []);
-          const snap = serializeEditorState(nextFields, createEmptyEmailSettings(), createEmptySecuritySettings());
-          initialSnapshotRef.current = snap;
-          setFields(nextFields);
-          setEmailSettings(createEmptyEmailSettings());
-          setSecuritySettings(createEmptySecuritySettings());
-          setStats({ submissions: 0, drafts: 0 });
-          setIsLocked(false);
+          applyWorkflowConfigEditorState(template, data.field_overrides ?? []);
           return;
         }
 
@@ -360,7 +475,11 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
         }
 
         if (!mounted) return;
-        applyLoadedEditorState(data, password);
+        applyLoadedEditorState(
+          data,
+          password,
+          templatesByFormType.release_intake
+        );
       } catch (loadError) {
         if (!mounted) return;
         setError(
@@ -384,8 +503,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
     return () => {
       mounted = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formType]);
+  }, [formType, templatesByFormType, workspaceSlug]);
 
   const visibleFieldsCount = useMemo(
     () => fields.filter((field) => field.isVisible).length,
@@ -417,8 +535,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
           .filter((field) => field.stepKey === step.key)
           .sort((a, b) => a.sortOrder - b.sortOrder),
       }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields, formType]);
+  }, [activeTemplate, fields]);
   const stepSummaries = useMemo<StepSummary[]>(
     () =>
       groupedSteps.map((step) => ({
@@ -533,7 +650,11 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
         throw new Error(data.error || "Nao foi possivel desbloquear o workspace.");
       }
 
-      applyLoadedEditorState(data, workspacePassword.trim());
+      applyLoadedEditorState(
+        data,
+        workspacePassword.trim(),
+        templatesByFormType.release_intake
+      );
     } catch (unlockError) {
       setError(
         unlockError instanceof Error
@@ -551,10 +672,15 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
       setError(null);
       setNotice(null);
 
-      // Rights clearance: simpler save via workflow-config PUT
-      if (formType === "clearance") {
-        const clearancePayload = {
-          workflow_type: "rights_clearance",
+      if (!canPersistActiveForm) {
+        setNotice("People Registry usa adapter profile-driven nesta etapa.");
+        return;
+      }
+
+      if (!isLegacyReleaseIntake) {
+        const workflowPayload = {
+          workflow_type: activeTemplate.workflowType,
+          form_version: activeTemplate.formVersion,
           overrides: fields.map((field) => ({
             step_key: field.stepKey,
             field_key: field.fieldKey,
@@ -570,26 +696,25 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(clearancePayload),
+            body: JSON.stringify(workflowPayload),
           }
         );
         const data = await response.json() as { ok: boolean; error?: string };
         if (!response.ok || !data.ok) {
           throw new Error(data.error || "Nao foi possivel salvar as configuracoes.");
         }
-        // Refresh clearance fields
         const refreshResponse = await fetch(
-          `/api/workspaces/${workspaceSlug}/workflow-config?workflow_type=rights_clearance`,
+          `/api/workspaces/${workspaceSlug}/workflow-config?workflow_type=${activeTemplate.workflowType}&form_version=${activeTemplate.formVersion}`,
           { cache: "no-store" }
         );
         const refreshData = await refreshResponse.json() as { ok: boolean; field_overrides?: ApiOverride[] };
         if (refreshData.ok) {
-          const nextFields = buildEditorFieldsFromTemplate(clearanceTemplate, refreshData.field_overrides ?? []);
-          const snap = serializeEditorState(nextFields, createEmptyEmailSettings(), createEmptySecuritySettings());
-          initialSnapshotRef.current = snap;
-          setFields(nextFields);
+          applyWorkflowConfigEditorState(
+            activeTemplate,
+            refreshData.field_overrides ?? []
+          );
         }
-        setNotice("Configuracoes do formulario de clearance salvas com sucesso.");
+        setNotice(`Configuracoes de ${activeConfig.label} salvas com sucesso.`);
         return;
       }
 
@@ -688,7 +813,11 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
         );
       }
 
-      applyLoadedEditorState(refreshedData, activePassword);
+      applyLoadedEditorState(
+        refreshedData,
+        activePassword,
+        templatesByFormType.release_intake
+      );
       setSecuritySettings(nextSecuritySettings);
       setNotice(
         "Configuracoes salvas. O intake publico e os e-mails de resumo ja podem refletir essas mudancas."
@@ -802,23 +931,26 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
     <div className="grid gap-6">
 
       {/* Form type switcher */}
-      <div className="flex rounded-2xl border border-black/8 bg-[#F8F5EF] p-1 w-fit">
-        <button
-          type="button"
-          onClick={() => { setFormType("intake"); setNotice(null); setError(null); }}
-          className="rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition"
-          style={formType === "intake" ? { backgroundColor: "#111111", color: "#ffffff" } : { color: "#8D867B" }}
-        >
-          Release Intake
-        </button>
-        <button
-          type="button"
-          onClick={() => { setFormType("clearance"); setNotice(null); setError(null); }}
-          className="rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition"
-          style={formType === "clearance" ? { backgroundColor: "#111111", color: "#ffffff" } : { color: "#8D867B" }}
-        >
-          Rights Clearance
-        </button>
+      <div className="flex w-fit flex-wrap rounded-2xl border border-black/8 bg-[#F8F5EF] p-1">
+        {FORM_TYPE_CONFIGS.map((config) => (
+          <button
+            key={config.formType}
+            type="button"
+            onClick={() => {
+              setFormType(config.formType);
+              setNotice(null);
+              setError(null);
+            }}
+            className="rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition"
+            style={
+              formType === config.formType
+                ? { backgroundColor: "#111111", color: "#ffffff" }
+                : { color: "#8D867B" }
+            }
+          >
+            {config.label}
+          </button>
+        ))}
       </div>
 
       <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
@@ -828,29 +960,29 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
               Modo edit
             </span>
             <span className="rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-[#8D867B]">
-              {formType === "intake" ? "Release Intake" : "Rights Clearance"}
+              {activeConfig.label}
             </span>
           </div>
 
           <h1 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-[#111111] md:text-5xl">
-            {formType === "intake" ? (
-              <>Edite o formulario<span className="block text-[#6F695F]">sem tocar no codigo.</span></>
-            ) : (
-              <>Edite o clearance<span className="block text-[#6F695F]">de direitos autorais.</span></>
-            )}
+            {activeConfig.heading}
+            <span className="block text-[#6F695F]">sem tocar no codigo.</span>
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#605A52]">
-            {formType === "intake"
-              ? "Ajuste o formulario publico da Atabaque sem mexer em codigo: visibilidade, obrigatoriedade, titulos, helper text, senha do modo edit e e-mails de resumo."
-              : "Configure os campos do formulario de Rights Clearance: visibilidade, obrigatoriedade, titulos personalizados e helper texts. As mudancas refletem no formulario publico de clearance."}
+            {activeConfig.description}
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving || isLoading || !hasUnsavedChanges}
+              disabled={
+                isSaving ||
+                isLoading ||
+                !hasUnsavedChanges ||
+                !canPersistActiveForm
+              }
               className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#111111] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSaving ? "Salvando..." : "Salvar configuracoes"}
@@ -858,7 +990,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
             <button
               type="button"
               onClick={resetAllFields}
-              disabled={isSaving || isLoading}
+              disabled={isSaving || isLoading || isProfileAdapter}
               className="inline-flex h-12 items-center justify-center rounded-2xl border border-black/10 bg-[#F8F5EF] px-5 text-sm font-medium text-[#111111] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Restaurar padrao
@@ -883,7 +1015,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
             Resumo rapido
           </div>
           <h2 className="mt-3 text-2xl font-semibold text-[#111111]">
-            Estado atual do intake
+            {activeConfig.summaryTitle}
           </h2>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
@@ -900,16 +1032,16 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
               value={String(requiredFieldsCount)}
               label="campos obrigatorios visiveis"
             />
-            <MetricCard
-              value={String(activeNotificationEmailsCount)}
-              label="emails extras de resumo"
-            />
+            {isLegacyReleaseIntake ? (
+              <MetricCard
+                value={String(activeNotificationEmailsCount)}
+                label="emails extras de resumo"
+              />
+            ) : null}
           </div>
 
           <div className="mt-4 rounded-[24px] border border-black/8 bg-[#F8F5EF] p-5 text-sm leading-7 text-[#605A52]">
-            Esta area inclui os campos de Identificacao, Projeto, Faixas e
-            Marketing. A etapa de Faixas pode ser editada aqui do mesmo jeito
-            que as demais.
+            {activeConfig.editorNote}
           </div>
         </div>
       </section>
@@ -937,7 +1069,8 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
             </div>
 
             <div className="rounded-full border border-black/8 bg-[#F8F5EF] px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-[#8D867B]">
-              4 etapas editaveis
+              {stepSummaries.length} etapas{" "}
+              {isProfileAdapter ? "mapeadas" : "editaveis"}
             </div>
           </div>
 
@@ -974,7 +1107,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
         </section>
       ) : null}
 
-      {!isLoading ? (
+      {!isLoading && isLegacyReleaseIntake ? (
         <section className="rounded-[32px] border border-black/8 bg-white px-7 py-7 shadow-[0_18px_48px_rgba(0,0,0,0.04)]">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -1036,7 +1169,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
         </section>
       ) : null}
 
-      {!isLoading ? (
+      {!isLoading && isLegacyReleaseIntake ? (
         <section className="rounded-[32px] border border-black/8 bg-white px-7 py-7 shadow-[0_18px_48px_rgba(0,0,0,0.04)]">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -1105,7 +1238,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8D867B]">
-                  Etapa do intake
+                  Etapa do workflow
                 </div>
                 <h2 className="mt-3 text-2xl font-semibold text-[#111111]">
                   {step.title}
@@ -1144,7 +1277,8 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
                     <button
                       type="button"
                       onClick={() => resetField(field.stepKey, field.fieldKey)}
-                      className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm text-[#111111] hover:bg-[#F4F1EA]"
+                      disabled={isProfileAdapter}
+                      className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm text-[#111111] hover:bg-[#F4F1EA] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Restaurar campo
                     </button>
@@ -1157,12 +1291,13 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
                       </label>
                       <input
                         value={field.labelValue}
+                        disabled={isProfileAdapter}
                         onChange={(event) =>
                           updateField(field.stepKey, field.fieldKey, {
                             labelValue: event.target.value,
                           })
                         }
-                        className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                        className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                       <p className="mt-2 text-xs leading-6 text-[#8D867B]">
                         Padrao: {field.defaultLabel}
@@ -1175,12 +1310,13 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
                       </label>
                       <textarea
                         value={field.helperTextValue}
+                        disabled={isProfileAdapter}
                         onChange={(event) =>
                           updateField(field.stepKey, field.fieldKey, {
                             helperTextValue: event.target.value,
                           })
                         }
-                        className="mt-3 min-h-[120px] w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm leading-7 text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                        className="mt-3 min-h-[120px] w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm leading-7 text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                       <p className="mt-2 text-xs leading-6 text-[#8D867B]">
                         Se quiser remover o helper, deixe este campo vazio.
@@ -1192,6 +1328,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
                         title="Campo visivel"
                         description="Mostra ou oculta no intake publico."
                         checked={field.isVisible}
+                        disabled={isProfileAdapter}
                         onChange={(checked) =>
                           updateField(field.stepKey, field.fieldKey, {
                             isVisible: checked,
@@ -1202,6 +1339,7 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
                         title="Campo obrigatorio"
                         description="Exige preenchimento para seguir."
                         checked={field.isRequired}
+                        disabled={isProfileAdapter}
                         onChange={(checked) =>
                           updateField(field.stepKey, field.fieldKey, {
                             isRequired: checked,
@@ -1233,14 +1371,20 @@ function ToggleCard({
   description,
   checked,
   onChange,
+  disabled = false,
 }: {
   title: string;
   description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-[18px] border border-black/8 bg-white px-4 py-4">
+    <label
+      className={`flex items-start justify-between gap-4 rounded-[18px] border border-black/8 bg-white px-4 py-4 ${
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+      }`}
+    >
       <div>
         <div className="text-sm font-semibold text-[#111111]">{title}</div>
         <div className="mt-1 text-xs leading-6 text-[#6F695F]">{description}</div>
@@ -1248,8 +1392,9 @@ function ToggleCard({
       <input
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-1 h-4 w-4 rounded border-black/20 bg-transparent text-[#111111]"
+        className="mt-1 h-4 w-4 rounded border-black/20 bg-transparent text-[#111111] disabled:cursor-not-allowed"
       />
     </label>
   );
