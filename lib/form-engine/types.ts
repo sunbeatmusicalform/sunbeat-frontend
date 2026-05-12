@@ -34,6 +34,29 @@ export type WorkflowPayloadBuilderKey =
   | "company_registry"
   | "external";
 
+export type WorkflowFieldEditorMode =
+  | "legacy_release_intake"
+  | "workflow_config"
+  | "profile_adapter"
+  | "none";
+
+export type WorkflowOperationalDefaults = {
+  postSubmitEmailEnabled: boolean;
+  editEmailEnabled: boolean;
+  airtableSyncEnabled: boolean;
+  driveSyncEnabled: boolean;
+  editModeEnabled: boolean;
+};
+
+export type WorkflowCapabilities = {
+  steps: { label: string }[];
+  airtableTarget: string;
+  driveNote: string;
+  previewPath: string | null;
+  fieldEditorMode: WorkflowFieldEditorMode;
+  operationalDefaults: WorkflowOperationalDefaults;
+};
+
 export function buildWorkflowSource(
   workspaceSlug: string,
   workflowType: WorkflowType,
@@ -62,6 +85,7 @@ export type WorkflowRegistryEntry = {
   templateFactory: WorkflowTemplateFactoryKey;
   payloadBuilder: WorkflowPayloadBuilderKey;
   publicPathPrefix: string;
+  capabilities: WorkflowCapabilities;
 };
 
 export type WorkflowIdentity = WorkflowRegistryEntry & {
@@ -158,6 +182,10 @@ export type IntroConfig = {
 export type FormStepKey =
   | "intro"
   | "identification"
+  | "contact"
+  | "address"
+  | "banking"
+  | "additional_info"
   | "release"
   | "tracks"
   | "marketing"
