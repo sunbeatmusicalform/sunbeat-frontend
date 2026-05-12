@@ -129,7 +129,6 @@ export default async function WorkflowsSettingsPage() {
       </section>
 
       <WorkflowTogglesClient
-        workspaceSlug={workspaceSlug}
         workflows={workflows}
         initialEnabled={branding?.enabled_workflows ?? null}
       />
@@ -266,7 +265,7 @@ export default async function WorkflowsSettingsPage() {
               </div>
 
               <div className="flex flex-wrap gap-2 px-6 py-4">
-                {isActive && (
+                {isActive && publicPath ? (
                   <a
                     href={publicPath}
                     target="_blank"
@@ -275,7 +274,12 @@ export default async function WorkflowsSettingsPage() {
                   >
                     Abrir formulario
                   </a>
-                )}
+                ) : null}
+                {isActive && !publicPath ? (
+                  <span className="inline-flex h-9 items-center justify-center rounded-2xl border border-black/8 bg-[#F4F1EA] px-4 text-xs font-medium text-[#8D867B]">
+                    Formulario publico indisponivel nesta PR
+                  </span>
+                ) : null}
                 {capabilities.previewPath ? (
                   <Link
                     href={capabilities.previewPath}
@@ -283,7 +287,11 @@ export default async function WorkflowsSettingsPage() {
                   >
                     Preview interno
                   </Link>
-                ) : null}
+                ) : (
+                  <span className="inline-flex h-9 items-center justify-center rounded-2xl border border-black/8 bg-[#F4F1EA] px-4 text-xs font-medium text-[#8D867B]">
+                    Preview interno indisponivel
+                  </span>
+                )}
                 {!isActive && (
                   <span className="inline-flex h-9 items-center px-4 text-xs text-[#9A9590]">
                     Formulario em desenvolvimento
