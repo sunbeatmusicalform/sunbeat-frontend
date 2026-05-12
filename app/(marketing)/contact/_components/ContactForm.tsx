@@ -8,16 +8,21 @@ const roles = [
   { value: "artist", label: "Artista" },
   { value: "label", label: "Label / Distribuidora" },
   { value: "manager", label: "Manager" },
-  { value: "company", label: "Empresa / Agência" },
+  { value: "company", label: "Empresa / Agencia" },
   { value: "other", label: "Outro" },
 ];
 
 export default function ContactForm() {
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const isSubmitting = state === "submitting";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+
     setState("submitting");
     setError(null);
 
@@ -94,12 +99,16 @@ export default function ContactForm() {
             Sunbeat
           </div>
           <div className="text-sm text-[#5E5A54]">
-            Acesso, onboarding e configuração do intake
+            Acesso, onboarding e configuracao do intake
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 space-y-4"
+        aria-busy={isSubmitting}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label
@@ -113,8 +122,9 @@ export default function ContactForm() {
               name="name"
               type="text"
               required
+              disabled={isSubmitting}
               placeholder="Seu nome"
-              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           <div>
@@ -129,8 +139,9 @@ export default function ContactForm() {
               name="email"
               type="email"
               required
+              disabled={isSubmitting}
               placeholder="seu@email.com"
-              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
         </div>
@@ -150,8 +161,9 @@ export default function ContactForm() {
               id="company"
               name="company"
               type="text"
+              disabled={isSubmitting}
               placeholder="Nome da empresa ou label"
-              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           <div>
@@ -165,8 +177,9 @@ export default function ContactForm() {
               id="role"
               name="role"
               required
+              disabled={isSubmitting}
               defaultValue=""
-              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none focus:border-black/30 focus:ring-2 focus:ring-black/5 transition appearance-none"
+              className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none focus:border-black/30 focus:ring-2 focus:ring-black/5 transition appearance-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="" disabled>
                 Selecione...
@@ -191,14 +204,18 @@ export default function ContactForm() {
             id="message"
             name="message"
             required
+            disabled={isSubmitting}
             rows={4}
-            placeholder="Descreva seu contexto operacional: tipo de conteúdo, volume de lançamentos, ferramentas que você já usa..."
-            className="w-full resize-none rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm leading-7 text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+            placeholder="Descreva seu contexto operacional: tipo de conteudo, volume de lancamentos, ferramentas que voce ja usa..."
+            className="w-full resize-none rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm leading-7 text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
 
         {state === "error" && error && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div
+            className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600"
+            aria-live="polite"
+          >
             {error}
           </div>
         )}
@@ -206,11 +223,12 @@ export default function ContactForm() {
         <div className="flex flex-col gap-3 pt-2 sm:flex-row">
           <button
             type="submit"
-            disabled={state === "submitting"}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#111111] px-6 py-3.5 text-sm font-semibold transition hover:bg-[#1D1D1D] disabled:opacity-60"
-            style={{ color: '#ffffff' }}
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#111111] px-6 py-3.5 text-sm font-semibold transition hover:bg-[#1D1D1D] disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ color: "#ffffff" }}
           >
-            {state === "submitting" ? (
+            {isSubmitting ? (
               <>
                 <svg
                   className="h-4 w-4 animate-spin"
