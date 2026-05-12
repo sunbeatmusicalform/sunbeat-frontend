@@ -84,7 +84,7 @@ export type WorkflowRegistryEntry = {
   renderer: WorkflowRenderer;
   templateFactory: WorkflowTemplateFactoryKey;
   payloadBuilder: WorkflowPayloadBuilderKey;
-  publicPathPrefix: string;
+  publicPathPrefix: string | null;
   capabilities: WorkflowCapabilities;
 };
 

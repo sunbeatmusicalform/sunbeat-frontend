@@ -126,7 +126,7 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
       ],
       airtableTarget: "Dados Cadastrais / People Registry",
       driveNote: "Não mapeado ainda",
-      previewPath: "/app/people-registry",
+      previewPath: null,
       fieldEditorMode: "profile_adapter",
       operationalDefaults: {
         postSubmitEmailEnabled: false,
@@ -147,7 +147,7 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
     renderer: "company_registry",
     templateFactory: "company_registry",
     payloadBuilder: "company_registry",
-    publicPathPrefix: "/company",
+    publicPathPrefix: null,
     capabilities: {
       steps: [
         { label: "Boas-vindas" },
@@ -160,7 +160,7 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
       ],
       airtableTarget: "Tabela de clientes efetivos",
       driveNote: "Não mapeado ainda",
-      previewPath: "/app/company-registry",
+      previewPath: null,
       fieldEditorMode: "workflow_config",
       operationalDefaults: {
         postSubmitEmailEnabled: true,
@@ -199,7 +199,7 @@ export function getWorkflowRegistryEntry(
       renderer: "external",
       templateFactory: "external",
       payloadBuilder: "external",
-      publicPathPrefix: `/${normalized}`,
+      publicPathPrefix: null,
       capabilities: DEFAULT_EXTERNAL_WORKFLOW_CAPABILITIES,
     }
   );
@@ -243,6 +243,9 @@ export function buildWorkflowPublicPath(args: {
   workflowType?: WorkflowType | null;
 }) {
   const workflow = getWorkflowRegistryEntry(args.workflowType);
+  if (!workflow.publicPathPrefix) {
+    return null;
+  }
   return `${workflow.publicPathPrefix}/${args.workspaceSlug.trim()}`;
 }
 
