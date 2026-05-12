@@ -1,9 +1,11 @@
 import { createLegacyReleaseIntakeTemplate } from "./atabaque-template";
 import { createRightsClearanceTemplate } from "./rights-clearance-template";
+import { createCompanyRegistryTemplate } from "./company-registry-template";
 import {
   ACTIVE_WORKFLOW_FORM_VERSION,
   buildWorkflowSource,
   buildWorkflowTemplateId,
+  COMPANY_REGISTRY_WORKFLOW_TYPE,
   DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE,
   LEGACY_RELEASE_INTAKE_FORM_VERSION,
   PEOPLE_REGISTRY_WORKFLOW_TYPE,
@@ -11,10 +13,26 @@ import {
   RIGHTS_CLEARANCE_WORKFLOW_TYPE,
   type FormVersion,
   type ReleaseIntakeTemplate,
+  type WorkflowCapabilities,
   type WorkflowIdentity,
   type WorkflowRegistryEntry,
   type WorkflowType,
 } from "./types";
+
+const DEFAULT_EXTERNAL_WORKFLOW_CAPABILITIES: WorkflowCapabilities = {
+  steps: [],
+  airtableTarget: "—",
+  driveNote: "—",
+  previewPath: null,
+  fieldEditorMode: "none",
+  operationalDefaults: {
+    postSubmitEmailEnabled: false,
+    editEmailEnabled: false,
+    airtableSyncEnabled: false,
+    driveSyncEnabled: false,
+    editModeEnabled: false,
+  },
+};
 
 const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
   [DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE]: {
@@ -28,6 +46,27 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
     templateFactory: "release_intake",
     payloadBuilder: "release_intake",
     publicPathPrefix: "/intake",
+    capabilities: {
+      steps: [
+        { label: "Introdução" },
+        { label: "Identificação" },
+        { label: "Projeto" },
+        { label: "Faixas" },
+        { label: "Marketing" },
+        { label: "Revisão" },
+      ],
+      airtableTarget: "[V2] Projetos + Faixas Musicais",
+      driveNote: "Root folder do workspace",
+      previewPath: "/app/release-intake",
+      fieldEditorMode: "legacy_release_intake",
+      operationalDefaults: {
+        postSubmitEmailEnabled: true,
+        editEmailEnabled: true,
+        airtableSyncEnabled: true,
+        driveSyncEnabled: true,
+        editModeEnabled: true,
+      },
+    },
   },
   [RIGHTS_CLEARANCE_WORKFLOW_TYPE]: {
     workflowType: RIGHTS_CLEARANCE_WORKFLOW_TYPE,
@@ -40,18 +79,97 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
     templateFactory: "rights_clearance",
     payloadBuilder: "rights_clearance",
     publicPathPrefix: "/clearance",
+    capabilities: {
+      steps: [
+        { label: "Introdução" },
+        { label: "Solicitante" },
+        { label: "Formato" },
+        { label: "Contexto" },
+        { label: "Faixas" },
+        { label: "Escopo" },
+        { label: "Assets" },
+        { label: "Revisão" },
+      ],
+      airtableTarget: "[V2] Clearance — Case · Itens · Partes",
+      driveNote: "Pasta Clearance Musical / Não-Musical",
+      previewPath: "/app/rights-clearance",
+      fieldEditorMode: "workflow_config",
+      operationalDefaults: {
+        postSubmitEmailEnabled: true,
+        editEmailEnabled: true,
+        airtableSyncEnabled: true,
+        driveSyncEnabled: true,
+        editModeEnabled: true,
+      },
+    },
   },
   [PEOPLE_REGISTRY_WORKFLOW_TYPE]: {
     workflowType: PEOPLE_REGISTRY_WORKFLOW_TYPE,
     label: "People registry",
     description:
-      "Placeholder inicial para o workflow de cadastro de pessoas fisicas e juridicas.",
+      "Cadastro de pessoas fisicas e juridicas com perfil operacional da Atabaque.",
     defaultFormVersion: PLANNED_WORKFLOW_FORM_VERSION,
-    status: "planned",
+    status: "active",
     renderer: "external",
     templateFactory: "external",
     payloadBuilder: "external",
     publicPathPrefix: "/people",
+    capabilities: {
+      steps: [
+        { label: "Introdução" },
+        { label: "Identificação" },
+        { label: "Contato" },
+        { label: "Endereço" },
+        { label: "Bancário" },
+        { label: "Informações adicionais" },
+        { label: "Revisão" },
+      ],
+      airtableTarget: "Dados Cadastrais / People Registry",
+      driveNote: "Não mapeado ainda",
+      previewPath: null,
+      fieldEditorMode: "profile_adapter",
+      operationalDefaults: {
+        postSubmitEmailEnabled: false,
+        editEmailEnabled: false,
+        airtableSyncEnabled: true,
+        driveSyncEnabled: false,
+        editModeEnabled: true,
+      },
+    },
+  },
+  [COMPANY_REGISTRY_WORKFLOW_TYPE]: {
+    workflowType: COMPANY_REGISTRY_WORKFLOW_TYPE,
+    label: "Cadastro de empresa",
+    description:
+      "Cadastro de clientes efetivos da Atabaque — dados contratuais, financeiros e operacionais.",
+    defaultFormVersion: ACTIVE_WORKFLOW_FORM_VERSION,
+    status: "active",
+    renderer: "company_registry",
+    templateFactory: "company_registry",
+    payloadBuilder: "company_registry",
+    publicPathPrefix: null,
+    capabilities: {
+      steps: [
+        { label: "Boas-vindas" },
+        { label: "Dados da empresa" },
+        { label: "Resp. legal" },
+        { label: "Resp. contrato" },
+        { label: "Resp. financeiro" },
+        { label: "Bancário" },
+        { label: "Revisão" },
+      ],
+      airtableTarget: "Tabela de clientes efetivos",
+      driveNote: "Não mapeado ainda",
+      previewPath: null,
+      fieldEditorMode: "workflow_config",
+      operationalDefaults: {
+        postSubmitEmailEnabled: true,
+        editEmailEnabled: true,
+        airtableSyncEnabled: true,
+        driveSyncEnabled: false,
+        editModeEnabled: true,
+      },
+    },
   },
 };
 
@@ -81,7 +199,8 @@ export function getWorkflowRegistryEntry(
       renderer: "external",
       templateFactory: "external",
       payloadBuilder: "external",
-      publicPathPrefix: `/${normalized}`,
+      publicPathPrefix: null,
+      capabilities: DEFAULT_EXTERNAL_WORKFLOW_CAPABILITIES,
     }
   );
 }
@@ -124,6 +243,9 @@ export function buildWorkflowPublicPath(args: {
   workflowType?: WorkflowType | null;
 }) {
   const workflow = getWorkflowRegistryEntry(args.workflowType);
+  if (!workflow.publicPathPrefix) {
+    return null;
+  }
   return `${workflow.publicPathPrefix}/${args.workspaceSlug.trim()}`;
 }
 
@@ -133,6 +255,8 @@ export function resolveWorkflowTemplateFactory(identity: WorkflowIdentity) {
       return createLegacyReleaseIntakeTemplate;
     case "rights_clearance":
       return createRightsClearanceTemplate;
+    case "company_registry":
+      return createCompanyRegistryTemplate;
     default:
       throw new Error(
         `Workflow ${identity.workflowType} ainda nao esta ligado a uma factory de template local.`
