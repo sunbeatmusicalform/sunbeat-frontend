@@ -1,26 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createLegacyReleaseIntakeTemplate } from "@/lib/form-engine/atabaque-template";
-import { createRightsClearanceTemplate } from "@/lib/form-engine/rights-clearance-template";
-import { createCompanyRegistryTemplate } from "@/lib/form-engine/company-registry-template";
+import {
+  createWorkflowTemplate,
+  listFieldEditableWorkflows,
+  resolveWorkflowIdentity,
+} from "@/lib/form-engine/workflow-registry";
 import {
   getDefaultPeopleRegistryProfile,
   getPeopleRegistryProfile,
 } from "@/lib/people-registry/profile-registry";
 import { createPeopleRegistryWorkflowTemplate } from "@/lib/people-registry/workflow-template-adapter";
-import type { FormStepKey, WorkflowTemplate } from "@/lib/form-engine/types";
+import {
+  DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE,
+  PEOPLE_REGISTRY_WORKFLOW_TYPE,
+  type FormStepKey,
+  type WorkflowFieldEditorMode,
+  type WorkflowTemplate,
+  type WorkflowType,
+} from "@/lib/form-engine/types";
 
-type FormType =
-  | "release_intake"
-  | "rights_clearance"
-  | "company_registry"
-  | "people_registry";
-
-type FormEditorMode =
-  | "legacy_release_intake"
-  | "workflow_config"
-  | "profile_adapter";
+type FormType = WorkflowType;
+type FormEditorMode = Exclude<WorkflowFieldEditorMode, "none">;
 
 type FormTypeConfig = {
   formType: FormType;
@@ -32,9 +33,12 @@ type FormTypeConfig = {
   mode: FormEditorMode;
 };
 
-const FORM_TYPE_CONFIGS: FormTypeConfig[] = [
-  {
-    formType: "release_intake",
+type FormEditorCopy = Omit<FormTypeConfig, "formType" | "mode">;
+
+const DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE = DEFAULT_RELEASE_INTAKE_WORKFLOW_TYPE;
+
+const FORM_TYPE_COPY: Record<string, FormEditorCopy> = {
+  release_intake: {
     label: "Release Intake",
     heading: "Edite o formulario",
     description:
@@ -42,10 +46,8 @@ const FORM_TYPE_CONFIGS: FormTypeConfig[] = [
     summaryTitle: "Estado atual do intake",
     editorNote:
       "Esta area inclui os campos de Identificacao, Projeto, Faixas e Marketing. A etapa de Faixas pode ser editada aqui do mesmo jeito que as demais.",
-    mode: "legacy_release_intake",
   },
-  {
-    formType: "rights_clearance",
+  rights_clearance: {
     label: "Rights Clearance",
     heading: "Edite o clearance",
     description:
@@ -53,10 +55,8 @@ const FORM_TYPE_CONFIGS: FormTypeConfig[] = [
     summaryTitle: "Estado atual do clearance",
     editorNote:
       "Este workflow usa o endpoint generico workflow-config e preserva o fluxo publico ja existente.",
-    mode: "workflow_config",
   },
-  {
-    formType: "company_registry",
+  company_registry: {
     label: "Company Registry",
     heading: "Edite o cadastro de empresa",
     description:
@@ -64,10 +64,8 @@ const FORM_TYPE_CONFIGS: FormTypeConfig[] = [
     summaryTitle: "Estado atual do company registry",
     editorNote:
       "Company Registry ja consome getWorkflowTemplate, entao os overrides salvos aqui refletem no formulario publico.",
-    mode: "workflow_config",
   },
-  {
-    formType: "people_registry",
+  people_registry: {
     label: "People Registry",
     heading: "Revise o cadastro de pessoas",
     description:
@@ -75,11 +73,44 @@ const FORM_TYPE_CONFIGS: FormTypeConfig[] = [
     summaryTitle: "Estado atual do people registry",
     editorNote:
       "People Registry continua profile-driven nesta etapa. O adapter interno mostra a baseline de campos sem persistir overrides.",
-    mode: "profile_adapter",
   },
-];
+};
 
+function toFieldEditorMode(mode: WorkflowFieldEditorMode): FormEditorMode | null {
+  return mode === "none" ? null : mode;
+}
 
+const FORM_TYPE_CONFIGS: FormTypeConfig[] = listFieldEditableWorkflows().flatMap(
+  (workflow) => {
+    const mode = toFieldEditorMode(workflow.capabilities.fieldEditorMode);
+    if (!mode) return [];
+
+    const copy = FORM_TYPE_COPY[workflow.workflowType];
+
+    return [
+      {
+        formType: workflow.workflowType,
+        label: copy?.label ?? workflow.label,
+        heading: copy?.heading ?? `Edite ${workflow.label}`,
+        description: copy?.description ?? workflow.description,
+        summaryTitle: copy?.summaryTitle ?? `Estado atual de ${workflow.label}`,
+        editorNote:
+          copy?.editorNote ??
+          "Este workflow segue o registry central de capabilities e defaults.",
+        mode,
+      },
+    ];
+  }
+);
+
+const DEFAULT_FORM_TYPE_CONFIG: FormTypeConfig =
+  FORM_TYPE_CONFIGS.find(
+    (config) => config.formType === DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE
+  ) ?? {
+    formType: DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE,
+    ...FORM_TYPE_COPY[DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE],
+    mode: "legacy_release_intake",
+  };
 
 type ApiOverride = {
   step_key: string;
@@ -319,27 +350,57 @@ function updateFieldValue(
   );
 }
 
+function createFieldEditorTemplate(args: {
+  workspaceSlug: string;
+  workflowType: WorkflowType;
+}): WorkflowTemplate {
+  if (args.workflowType === PEOPLE_REGISTRY_WORKFLOW_TYPE) {
+    const peopleProfile =
+      getPeopleRegistryProfile(args.workspaceSlug) ??
+      getDefaultPeopleRegistryProfile();
+
+    return createPeopleRegistryWorkflowTemplate({
+      ...peopleProfile,
+      workspaceSlug: args.workspaceSlug,
+    });
+  }
+
+  return createWorkflowTemplate(
+    resolveWorkflowIdentity({
+      workspaceSlug: args.workspaceSlug,
+      workflowType: args.workflowType,
+    })
+  );
+}
+
 export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: string }) {
   const WORKSPACE_EDIT_PASSWORD_STORAGE_KEY = `sunbeat:workspace-edit-password:${workspaceSlug}`;
-  const [formType, setFormType] = useState<FormType>("release_intake");
-  const templatesByFormType = useMemo<Record<FormType, WorkflowTemplate>>(() => {
-    const peopleProfile =
-      getPeopleRegistryProfile(workspaceSlug) ?? getDefaultPeopleRegistryProfile();
-
-    return {
-      release_intake: createLegacyReleaseIntakeTemplate({ workspaceSlug }),
-      rights_clearance: createRightsClearanceTemplate({ workspaceSlug }),
-      company_registry: createCompanyRegistryTemplate({ workspaceSlug }),
-      people_registry: createPeopleRegistryWorkflowTemplate({
-        ...peopleProfile,
-        workspaceSlug,
-      }),
-    };
-  }, [workspaceSlug]);
-  const activeTemplate = templatesByFormType[formType];
+  const [formType, setFormType] = useState<FormType>(
+    DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE
+  );
+  const templatesByFormType = useMemo<Record<string, WorkflowTemplate>>(
+    () =>
+      Object.fromEntries(
+        FORM_TYPE_CONFIGS.map((config) => [
+          config.formType,
+          createFieldEditorTemplate({
+            workspaceSlug,
+            workflowType: config.formType,
+          }),
+        ])
+      ),
+    [workspaceSlug]
+  );
+  const activeTemplate =
+    templatesByFormType[formType] ??
+    templatesByFormType[DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE] ??
+    createFieldEditorTemplate({
+      workspaceSlug,
+      workflowType: DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE,
+    });
   const activeConfig =
     FORM_TYPE_CONFIGS.find((config) => config.formType === formType) ??
-    FORM_TYPE_CONFIGS[0];
+    DEFAULT_FORM_TYPE_CONFIG;
   const isLegacyReleaseIntake =
     activeConfig.mode === "legacy_release_intake";
   const isProfileAdapter = activeConfig.mode === "profile_adapter";
@@ -368,7 +429,8 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
   function applyLoadedEditorState(
     data: FieldOverridesResponse,
     password = "",
-    template = templatesByFormType.release_intake
+    template =
+      templatesByFormType[DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE] ?? activeTemplate
   ) {
     const nextFields = buildEditorFieldsFromTemplate(
       template,
@@ -422,14 +484,14 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
 
     async function loadEditor(
       password = "",
-      currentFormType: FormType = "release_intake"
+      currentFormType: FormType = DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE
     ) {
       try {
         setIsLoading(true);
         setError(null);
 
-        if (currentFormType !== "release_intake") {
-          const template = templatesByFormType[currentFormType];
+        if (currentFormType !== DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE) {
+          const template = templatesByFormType[currentFormType] ?? activeTemplate;
 
           if (
             FORM_TYPE_CONFIGS.find((config) => config.formType === currentFormType)
@@ -478,7 +540,8 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
         applyLoadedEditorState(
           data,
           password,
-          templatesByFormType.release_intake
+          templatesByFormType[DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE] ??
+            activeTemplate
         );
       } catch (loadError) {
         if (!mounted) return;
@@ -653,7 +716,8 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
       applyLoadedEditorState(
         data,
         workspacePassword.trim(),
-        templatesByFormType.release_intake
+        templatesByFormType[DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE] ??
+          activeTemplate
       );
     } catch (unlockError) {
       setError(
@@ -816,7 +880,8 @@ export function FieldSettingsPageClient({ workspaceSlug }: { workspaceSlug: stri
       applyLoadedEditorState(
         refreshedData,
         activePassword,
-        templatesByFormType.release_intake
+        templatesByFormType[DEFAULT_FIELD_EDITOR_WORKFLOW_TYPE] ??
+          activeTemplate
       );
       setSecuritySettings(nextSecuritySettings);
       setNotice(

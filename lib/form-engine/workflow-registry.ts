@@ -15,6 +15,7 @@ import {
   type ReleaseIntakeTemplate,
   type WorkflowCapabilities,
   type WorkflowIdentity,
+  type WorkflowOperationalDefaults,
   type WorkflowRegistryEntry,
   type WorkflowType,
 } from "./types";
@@ -207,6 +208,21 @@ export function getWorkflowRegistryEntry(
 
 export function listRegisteredWorkflows(): WorkflowRegistryEntry[] {
   return Object.values(WORKFLOW_REGISTRY);
+}
+
+export function listFieldEditableWorkflows(): WorkflowRegistryEntry[] {
+  return listRegisteredWorkflows().filter(
+    (workflow) => workflow.capabilities.fieldEditorMode !== "none"
+  );
+}
+
+export function getWorkflowOperationalDefaults(
+  workflowType?: WorkflowType | null
+): WorkflowOperationalDefaults {
+  const defaults =
+    getWorkflowRegistryEntry(workflowType).capabilities.operationalDefaults;
+
+  return { ...defaults };
 }
 
 export function resolveWorkflowIdentity(args: {
