@@ -3,6 +3,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 import {
   buildWorkflowPublicPath,
+  getWorkflowOperationalDefaults,
   listRegisteredWorkflows,
 } from "@/lib/form-engine/workflow-registry";
 import { WorkflowTogglesClient } from "./WorkflowTogglesClient";
@@ -140,7 +141,7 @@ export default async function WorkflowsSettingsPage() {
             workflowType: workflow.workflowType,
           });
           const { capabilities } = workflow;
-          const defaults = capabilities.operationalDefaults;
+          const defaults = getWorkflowOperationalDefaults(workflow.workflowType);
           const mappedInAirtable = airtableEnabledWorkflows.has(
             workflow.workflowType
           );
