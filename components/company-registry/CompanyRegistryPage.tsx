@@ -20,6 +20,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import type {
   CompanyRegistryFormValues,
   CompanyRegistryStepKey,
+  FormField,
   FormVersion,
   WorkflowType,
 } from "@/lib/form-engine/types";
@@ -90,6 +91,7 @@ function FormInput({
   value,
   required,
   placeholder,
+  helperText,
   error,
   options,
   onChange,
@@ -99,6 +101,7 @@ function FormInput({
   value: string;
   required?: boolean;
   placeholder?: string;
+  helperText?: string;
   error?: string;
   options?: { label: string; value: string }[];
   onChange: (value: string) => void;
@@ -106,6 +109,9 @@ function FormInput({
   return (
     <div>
       <FieldLabel label={label} required={required} />
+      {helperText ? (
+        <p className="mt-1.5 text-sm leading-6 text-slate-500">{helperText}</p>
+      ) : null}
       {type === "select" && options ? (
         <select
           value={value}
@@ -141,18 +147,23 @@ function SameAsToggle({
   label,
   value,
   required,
+  helperText,
   error,
   onChange,
 }: {
   label: string;
   value: string;
   required?: boolean;
+  helperText?: string;
   error?: string;
   onChange: (value: "yes" | "no" | "") => void;
 }) {
   return (
     <div>
       <FieldLabel label={label} required={required} />
+      {helperText ? (
+        <p className="mt-1.5 text-sm leading-6 text-slate-500">{helperText}</p>
+      ) : null}
       <div className="mt-3 flex gap-3">
         {(["yes", "no"] as const).map((opt) => {
           const isActive = value === opt;
@@ -354,6 +365,114 @@ export default function CompanyRegistryPage({
     [template, currentStep]
   );
 
+  function getFieldMeta(
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string
+  ): FormField | null {
+    return (
+      template.steps
+        .find((step) => step.key === stepKey)
+        ?.fields.find((field) => field.key === fieldKey) ?? null
+    );
+  }
+
+  function isFieldVisible(stepKey: CompanyRegistryStepKey, fieldKey: string) {
+    return Boolean(getFieldMeta(stepKey, fieldKey));
+  }
+
+  function isFieldRequired(stepKey: CompanyRegistryStepKey, fieldKey: string) {
+    return Boolean(getFieldMeta(stepKey, fieldKey)?.required);
+  }
+
+  function getFieldLabel(
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string,
+    fallback: string
+  ) {
+    return getFieldMeta(stepKey, fieldKey)?.label || fallback;
+  }
+
+  function getFieldPlaceholder(
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string,
+    fallback?: string
+  ) {
+    return getFieldMeta(stepKey, fieldKey)?.placeholder || fallback;
+  }
+
+  function getFieldHelperText(stepKey: CompanyRegistryStepKey, fieldKey: string) {
+    return getFieldMeta(stepKey, fieldKey)?.helperText;
+  }
+
+  function getFieldProps(
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string,
+    fallbackLabel: string,
+    fallbackPlaceholder?: string
+  ) {
+    return {
+      label: getFieldLabel(stepKey, fieldKey, fallbackLabel),
+      required: isFieldRequired(stepKey, fieldKey),
+      placeholder: getFieldPlaceholder(stepKey, fieldKey, fallbackPlaceholder),
+      helperText: getFieldHelperText(stepKey, fieldKey),
+    };
+  }
+
+  function getStepTitle(stepKey: CompanyRegistryStepKey, fallback: string) {
+    return template.steps.find((step) => step.key === stepKey)?.title || fallback;
+  }
+
+  function renderReviewRow(
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string,
+    fallbackLabel: string,
+    value?: string
+  ) {
+    if (!isFieldVisible(stepKey, fieldKey)) return null;
+
+    return (
+      <ReviewRow
+        label={getFieldLabel(stepKey, fieldKey, fallbackLabel)}
+        value={value}
+      />
+    );
+  }
+
+  function addRequiredError(
+    errorsByField: Record<string, string>,
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string,
+    value: string,
+    message: string
+  ) {
+    if (
+      isFieldVisible(stepKey, fieldKey) &&
+      isFieldRequired(stepKey, fieldKey) &&
+      !value.trim()
+    ) {
+      errorsByField[`${stepKey}.${fieldKey}`] = message;
+    }
+  }
+
+  function addEmailError(
+    errorsByField: Record<string, string>,
+    stepKey: CompanyRegistryStepKey,
+    fieldKey: string,
+    value: string,
+    requiredMessage: string
+  ) {
+    if (!isFieldVisible(stepKey, fieldKey)) return;
+
+    if (isFieldRequired(stepKey, fieldKey) && !value.trim()) {
+      errorsByField[`${stepKey}.${fieldKey}`] = requiredMessage;
+      return;
+    }
+
+    if (value.trim() && !/\S+@\S+\.\S+/.test(value)) {
+      errorsByField[`${stepKey}.${fieldKey}`] = "Informe um e-mail valido.";
+    }
+  }
+
   // Load workspace-specific template
   useEffect(() => {
     let cancelled = false;
@@ -518,55 +637,37 @@ export default function CompanyRegistryPage({
     const newErrors: Record<string, string> = {};
 
     if (currentStep === "company_data") {
-      if (!values.company_data.document_type)
-        newErrors["company_data.document_type"] = "Selecione o tipo de documento.";
-      if (!values.company_data.document_number.trim())
-        newErrors["company_data.document_number"] = "Informe o numero do documento.";
-      if (!values.company_data.fantasy_name.trim())
-        newErrors["company_data.fantasy_name"] = "Informe o nome fantasia.";
-      if (!values.company_data.legal_name.trim())
-        newErrors["company_data.legal_name"] = "Informe a razao social.";
-      if (!values.company_data.address.trim())
-        newErrors["company_data.address"] = "Informe o endereco.";
-      if (!values.company_data.city.trim())
-        newErrors["company_data.city"] = "Informe a cidade.";
-      if (!values.company_data.state.trim())
-        newErrors["company_data.state"] = "Informe o estado.";
-      if (!values.company_data.zip_code.trim())
-        newErrors["company_data.zip_code"] = "Informe o CEP.";
+      addRequiredError(newErrors, "company_data", "document_type", values.company_data.document_type, "Selecione o tipo de documento.");
+      addRequiredError(newErrors, "company_data", "document_number", values.company_data.document_number, "Informe o numero do documento.");
+      addRequiredError(newErrors, "company_data", "fantasy_name", values.company_data.fantasy_name, "Informe o nome fantasia.");
+      addRequiredError(newErrors, "company_data", "legal_name", values.company_data.legal_name, "Informe a razao social.");
+      addRequiredError(newErrors, "company_data", "address", values.company_data.address, "Informe o endereco.");
+      addRequiredError(newErrors, "company_data", "city", values.company_data.city, "Informe a cidade.");
+      addRequiredError(newErrors, "company_data", "state", values.company_data.state, "Informe o estado.");
+      addRequiredError(newErrors, "company_data", "zip_code", values.company_data.zip_code, "Informe o CEP.");
     }
 
     if (currentStep === "legal_representative") {
-      if (!values.legal_representative.name.trim())
-        newErrors["legal_representative.name"] = "Informe o nome.";
-      if (!values.legal_representative.phone.trim())
-        newErrors["legal_representative.phone"] = "Informe o telefone.";
-      if (!values.legal_representative.email.trim())
-        newErrors["legal_representative.email"] = "Informe o e-mail.";
-      else if (!/\S+@\S+\.\S+/.test(values.legal_representative.email))
-        newErrors["legal_representative.email"] = "Informe um e-mail valido.";
+      addRequiredError(newErrors, "legal_representative", "name", values.legal_representative.name, "Informe o nome.");
+      addRequiredError(newErrors, "legal_representative", "phone", values.legal_representative.phone, "Informe o telefone.");
+      addEmailError(newErrors, "legal_representative", "email", values.legal_representative.email, "Informe o e-mail.");
     }
 
     if (currentStep === "contract_representative") {
-      if (!values.contract_representative.same_as_legal)
-        newErrors["contract_representative.same_as_legal"] = "Selecione uma opcao.";
+      addRequiredError(newErrors, "contract_representative", "same_as_legal", values.contract_representative.same_as_legal, "Selecione uma opcao.");
       if (values.contract_representative.same_as_legal === "no") {
-        if (!values.contract_representative.name.trim())
-          newErrors["contract_representative.name"] = "Informe o nome.";
-        if (!values.contract_representative.phone.trim())
-          newErrors["contract_representative.phone"] = "Informe o telefone.";
-        if (!values.contract_representative.email.trim())
-          newErrors["contract_representative.email"] = "Informe o e-mail.";
-        else if (!/\S+@\S+\.\S+/.test(values.contract_representative.email))
-          newErrors["contract_representative.email"] = "Informe um e-mail valido.";
+        addRequiredError(newErrors, "contract_representative", "name", values.contract_representative.name, "Informe o nome.");
+        addRequiredError(newErrors, "contract_representative", "phone", values.contract_representative.phone, "Informe o telefone.");
+        addEmailError(newErrors, "contract_representative", "email", values.contract_representative.email, "Informe o e-mail.");
       }
     }
 
     if (currentStep === "financial_representative") {
-      if (!values.financial_representative.same_as_legal)
-        newErrors["financial_representative.same_as_legal"] = "Selecione uma opcao.";
+      addRequiredError(newErrors, "financial_representative", "same_as_legal", values.financial_representative.same_as_legal, "Selecione uma opcao.");
       if (
         values.financial_representative.same_as_legal === "no" &&
+        isFieldVisible("financial_representative", "same_as_contract") &&
+        isFieldRequired("financial_representative", "same_as_contract") &&
         !values.financial_representative.same_as_contract
       )
         newErrors["financial_representative.same_as_contract"] = "Selecione uma opcao.";
@@ -574,26 +675,17 @@ export default function CompanyRegistryPage({
         values.financial_representative.same_as_legal === "no" &&
         values.financial_representative.same_as_contract === "no"
       ) {
-        if (!values.financial_representative.name.trim())
-          newErrors["financial_representative.name"] = "Informe o nome.";
-        if (!values.financial_representative.phone.trim())
-          newErrors["financial_representative.phone"] = "Informe o telefone.";
-        if (!values.financial_representative.email.trim())
-          newErrors["financial_representative.email"] = "Informe o e-mail.";
-        else if (!/\S+@\S+\.\S+/.test(values.financial_representative.email))
-          newErrors["financial_representative.email"] = "Informe um e-mail valido.";
+        addRequiredError(newErrors, "financial_representative", "name", values.financial_representative.name, "Informe o nome.");
+        addRequiredError(newErrors, "financial_representative", "phone", values.financial_representative.phone, "Informe o telefone.");
+        addEmailError(newErrors, "financial_representative", "email", values.financial_representative.email, "Informe o e-mail.");
       }
     }
 
     if (currentStep === "banking_data") {
-      if (!values.banking_data.bank_name.trim())
-        newErrors["banking_data.bank_name"] = "Informe o banco.";
-      if (!values.banking_data.agency.trim())
-        newErrors["banking_data.agency"] = "Informe a agencia.";
-      if (!values.banking_data.account.trim())
-        newErrors["banking_data.account"] = "Informe a conta.";
-      if (!values.banking_data.account_type)
-        newErrors["banking_data.account_type"] = "Selecione o tipo de conta.";
+      addRequiredError(newErrors, "banking_data", "bank_name", values.banking_data.bank_name, "Informe o banco.");
+      addRequiredError(newErrors, "banking_data", "agency", values.banking_data.agency, "Informe a agencia.");
+      addRequiredError(newErrors, "banking_data", "account", values.banking_data.account, "Informe a conta.");
+      addRequiredError(newErrors, "banking_data", "account_type", values.banking_data.account_type, "Selecione o tipo de conta.");
     }
 
     setErrors(newErrors);
@@ -865,73 +957,73 @@ export default function CompanyRegistryPage({
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <FormInput
-              label="Tipo de documento"
-              type="select"
-              value={values.company_data.document_type}
-              required
-              options={[
-                { label: "Selecione", value: "" },
-                { label: "CPF (pessoa fisica)", value: "cpf" },
-                { label: "CNPJ (pessoa juridica)", value: "cnpj" },
-              ]}
-              error={errors["company_data.document_type"]}
-              onChange={(v) => {
-                setSectionField("company_data", "document_type", v);
-                clearFieldError("company_data.document_type");
-              }}
-            />
-            <FormInput
-              label="Numero do documento (CPF ou CNPJ)"
-              value={values.company_data.document_number}
-              required
-              placeholder="000.000.000-00 ou 00.000.000/0001-00"
-              error={errors["company_data.document_number"]}
-              onChange={(v) => {
-                setSectionField("company_data", "document_number", v);
-                clearFieldError("company_data.document_number");
-              }}
-            />
-            <FormInput
-              label="Nome fantasia"
-              value={values.company_data.fantasy_name}
-              required
-              placeholder="Nome pelo qual a empresa e conhecida"
-              error={errors["company_data.fantasy_name"]}
-              onChange={(v) => {
-                setSectionField("company_data", "fantasy_name", v);
-                clearFieldError("company_data.fantasy_name");
-              }}
-            />
-            <FormInput
-              label="Razao social"
-              value={values.company_data.legal_name}
-              required
-              placeholder="Razao social completa conforme registro"
-              error={errors["company_data.legal_name"]}
-              onChange={(v) => {
-                setSectionField("company_data", "legal_name", v);
-                clearFieldError("company_data.legal_name");
-              }}
-            />
-            <FormInput
-              label="Endereco (logradouro, numero, complemento)"
-              value={values.company_data.address}
-              required
-              placeholder="Rua, numero, complemento"
-              error={errors["company_data.address"]}
-              onChange={(v) => {
-                setSectionField("company_data", "address", v);
-                clearFieldError("company_data.address");
-              }}
-            />
+            {isFieldVisible("company_data", "document_type") && (
+              <FormInput
+                {...getFieldProps("company_data", "document_type", "Tipo de documento")}
+                type="select"
+                value={values.company_data.document_type}
+                options={[
+                  { label: "Selecione", value: "" },
+                  { label: "CPF (pessoa fisica)", value: "cpf" },
+                  { label: "CNPJ (pessoa juridica)", value: "cnpj" },
+                ]}
+                error={errors["company_data.document_type"]}
+                onChange={(v) => {
+                  setSectionField("company_data", "document_type", v);
+                  clearFieldError("company_data.document_type");
+                }}
+              />
+            )}
+            {isFieldVisible("company_data", "document_number") && (
+              <FormInput
+                {...getFieldProps("company_data", "document_number", "Numero do documento (CPF ou CNPJ)", "000.000.000-00 ou 00.000.000/0001-00")}
+                value={values.company_data.document_number}
+                error={errors["company_data.document_number"]}
+                onChange={(v) => {
+                  setSectionField("company_data", "document_number", v);
+                  clearFieldError("company_data.document_number");
+                }}
+              />
+            )}
+            {isFieldVisible("company_data", "fantasy_name") && (
+              <FormInput
+                {...getFieldProps("company_data", "fantasy_name", "Nome fantasia", "Nome pelo qual a empresa e conhecida")}
+                value={values.company_data.fantasy_name}
+                error={errors["company_data.fantasy_name"]}
+                onChange={(v) => {
+                  setSectionField("company_data", "fantasy_name", v);
+                  clearFieldError("company_data.fantasy_name");
+                }}
+              />
+            )}
+            {isFieldVisible("company_data", "legal_name") && (
+              <FormInput
+                {...getFieldProps("company_data", "legal_name", "Razao social", "Razao social completa conforme registro")}
+                value={values.company_data.legal_name}
+                error={errors["company_data.legal_name"]}
+                onChange={(v) => {
+                  setSectionField("company_data", "legal_name", v);
+                  clearFieldError("company_data.legal_name");
+                }}
+              />
+            )}
+            {isFieldVisible("company_data", "address") && (
+              <FormInput
+                {...getFieldProps("company_data", "address", "Endereco (logradouro, numero, complemento)", "Rua, numero, complemento")}
+                value={values.company_data.address}
+                error={errors["company_data.address"]}
+                onChange={(v) => {
+                  setSectionField("company_data", "address", v);
+                  clearFieldError("company_data.address");
+                }}
+              />
+            )}
             <div className="grid grid-cols-6 gap-4">
+              {isFieldVisible("company_data", "city") && (
               <div className="col-span-3">
                 <FormInput
-                  label="Cidade"
+                  {...getFieldProps("company_data", "city", "Cidade", "São Paulo")}
                   value={values.company_data.city}
-                  required
-                  placeholder="São Paulo"
                   error={errors["company_data.city"]}
                   onChange={(v) => {
                     setSectionField("company_data", "city", v);
@@ -939,12 +1031,12 @@ export default function CompanyRegistryPage({
                   }}
                 />
               </div>
+              )}
+              {isFieldVisible("company_data", "state") && (
               <div className="col-span-1">
                 <FormInput
-                  label="UF"
+                  {...getFieldProps("company_data", "state", "UF", "SP")}
                   value={values.company_data.state}
-                  required
-                  placeholder="SP"
                   error={errors["company_data.state"]}
                   onChange={(v) => {
                     setSectionField("company_data", "state", v.toUpperCase());
@@ -952,12 +1044,12 @@ export default function CompanyRegistryPage({
                   }}
                 />
               </div>
+              )}
+              {isFieldVisible("company_data", "zip_code") && (
               <div className="col-span-2">
                 <FormInput
-                  label="CEP"
+                  {...getFieldProps("company_data", "zip_code", "CEP", "00000-000")}
                   value={values.company_data.zip_code}
-                  required
-                  placeholder="00000-000"
                   error={errors["company_data.zip_code"]}
                   onChange={(v) => {
                     setSectionField("company_data", "zip_code", v);
@@ -965,6 +1057,7 @@ export default function CompanyRegistryPage({
                   }}
                 />
               </div>
+              )}
             </div>
           </div>
         )}
@@ -978,40 +1071,40 @@ export default function CompanyRegistryPage({
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <FormInput
-              label="Nome completo"
-              value={values.legal_representative.name}
-              required
-              placeholder="Nome do responsavel legal"
-              error={errors["legal_representative.name"]}
-              onChange={(v) => {
-                setSectionField("legal_representative", "name", v);
-                clearFieldError("legal_representative.name");
-              }}
-            />
-            <FormInput
-              label="Telefone / WhatsApp"
-              value={values.legal_representative.phone}
-              required
-              placeholder="+55 11 99999-9999"
-              error={errors["legal_representative.phone"]}
-              onChange={(v) => {
-                setSectionField("legal_representative", "phone", v);
-                clearFieldError("legal_representative.phone");
-              }}
-            />
-            <FormInput
-              label="E-mail"
-              type="email"
-              value={values.legal_representative.email}
-              required
-              placeholder="email@empresa.com"
-              error={errors["legal_representative.email"]}
-              onChange={(v) => {
-                setSectionField("legal_representative", "email", v);
-                clearFieldError("legal_representative.email");
-              }}
-            />
+            {isFieldVisible("legal_representative", "name") && (
+              <FormInput
+                {...getFieldProps("legal_representative", "name", "Nome completo", "Nome do responsavel legal")}
+                value={values.legal_representative.name}
+                error={errors["legal_representative.name"]}
+                onChange={(v) => {
+                  setSectionField("legal_representative", "name", v);
+                  clearFieldError("legal_representative.name");
+                }}
+              />
+            )}
+            {isFieldVisible("legal_representative", "phone") && (
+              <FormInput
+                {...getFieldProps("legal_representative", "phone", "Telefone / WhatsApp", "+55 11 99999-9999")}
+                value={values.legal_representative.phone}
+                error={errors["legal_representative.phone"]}
+                onChange={(v) => {
+                  setSectionField("legal_representative", "phone", v);
+                  clearFieldError("legal_representative.phone");
+                }}
+              />
+            )}
+            {isFieldVisible("legal_representative", "email") && (
+              <FormInput
+                {...getFieldProps("legal_representative", "email", "E-mail", "email@empresa.com")}
+                type="email"
+                value={values.legal_representative.email}
+                error={errors["legal_representative.email"]}
+                onChange={(v) => {
+                  setSectionField("legal_representative", "email", v);
+                  clearFieldError("legal_representative.email");
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -1024,17 +1117,19 @@ export default function CompanyRegistryPage({
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <SameAsToggle
-              label="E a mesma pessoa que o responsavel legal?"
-              value={values.contract_representative.same_as_legal}
-              required
-              error={errors["contract_representative.same_as_legal"]}
-              onChange={(v) => {
-                setSectionField("contract_representative", "same_as_legal", v);
-                clearFieldError("contract_representative.same_as_legal");
-              }}
-            />
-            {values.contract_representative.same_as_legal === "yes" && (
+            {isFieldVisible("contract_representative", "same_as_legal") && (
+              <SameAsToggle
+                {...getFieldProps("contract_representative", "same_as_legal", "E a mesma pessoa que o responsavel legal?")}
+                value={values.contract_representative.same_as_legal}
+                error={errors["contract_representative.same_as_legal"]}
+                onChange={(v) => {
+                  setSectionField("contract_representative", "same_as_legal", v);
+                  clearFieldError("contract_representative.same_as_legal");
+                }}
+              />
+            )}
+            {isFieldVisible("contract_representative", "same_as_legal") &&
+              values.contract_representative.same_as_legal === "yes" && (
               <InheritedPersonCard
                 sourceLabel="Dados herdados do responsavel legal"
                 name={values.legal_representative.name}
@@ -1042,42 +1137,43 @@ export default function CompanyRegistryPage({
                 email={values.legal_representative.email}
               />
             )}
-            {values.contract_representative.same_as_legal === "no" && (
+            {isFieldVisible("contract_representative", "same_as_legal") &&
+              values.contract_representative.same_as_legal === "no" && (
               <>
-                <FormInput
-                  label="Nome completo"
-                  value={values.contract_representative.name}
-                  required
-                  placeholder="Nome do responsavel pelo contrato"
-                  error={errors["contract_representative.name"]}
-                  onChange={(v) => {
-                    setSectionField("contract_representative", "name", v);
-                    clearFieldError("contract_representative.name");
-                  }}
-                />
-                <FormInput
-                  label="Telefone / WhatsApp"
-                  value={values.contract_representative.phone}
-                  required
-                  placeholder="+55 11 99999-9999"
-                  error={errors["contract_representative.phone"]}
-                  onChange={(v) => {
-                    setSectionField("contract_representative", "phone", v);
-                    clearFieldError("contract_representative.phone");
-                  }}
-                />
-                <FormInput
-                  label="E-mail"
-                  type="email"
-                  value={values.contract_representative.email}
-                  required
-                  placeholder="email@empresa.com"
-                  error={errors["contract_representative.email"]}
-                  onChange={(v) => {
-                    setSectionField("contract_representative", "email", v);
-                    clearFieldError("contract_representative.email");
-                  }}
-                />
+                {isFieldVisible("contract_representative", "name") && (
+                  <FormInput
+                    {...getFieldProps("contract_representative", "name", "Nome completo", "Nome do responsavel pelo contrato")}
+                    value={values.contract_representative.name}
+                    error={errors["contract_representative.name"]}
+                    onChange={(v) => {
+                      setSectionField("contract_representative", "name", v);
+                      clearFieldError("contract_representative.name");
+                    }}
+                  />
+                )}
+                {isFieldVisible("contract_representative", "phone") && (
+                  <FormInput
+                    {...getFieldProps("contract_representative", "phone", "Telefone / WhatsApp", "+55 11 99999-9999")}
+                    value={values.contract_representative.phone}
+                    error={errors["contract_representative.phone"]}
+                    onChange={(v) => {
+                      setSectionField("contract_representative", "phone", v);
+                      clearFieldError("contract_representative.phone");
+                    }}
+                  />
+                )}
+                {isFieldVisible("contract_representative", "email") && (
+                  <FormInput
+                    {...getFieldProps("contract_representative", "email", "E-mail", "email@empresa.com")}
+                    type="email"
+                    value={values.contract_representative.email}
+                    error={errors["contract_representative.email"]}
+                    onChange={(v) => {
+                      setSectionField("contract_representative", "email", v);
+                      clearFieldError("contract_representative.email");
+                    }}
+                  />
+                )}
               </>
             )}
           </div>
@@ -1092,17 +1188,19 @@ export default function CompanyRegistryPage({
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <SameAsToggle
-              label="E a mesma pessoa que o responsavel legal?"
-              value={values.financial_representative.same_as_legal}
-              required
-              error={errors["financial_representative.same_as_legal"]}
-              onChange={(v) => {
-                setSectionField("financial_representative", "same_as_legal", v);
-                clearFieldError("financial_representative.same_as_legal");
-              }}
-            />
-            {values.financial_representative.same_as_legal === "yes" && (
+            {isFieldVisible("financial_representative", "same_as_legal") && (
+              <SameAsToggle
+                {...getFieldProps("financial_representative", "same_as_legal", "E a mesma pessoa que o responsavel legal?")}
+                value={values.financial_representative.same_as_legal}
+                error={errors["financial_representative.same_as_legal"]}
+                onChange={(v) => {
+                  setSectionField("financial_representative", "same_as_legal", v);
+                  clearFieldError("financial_representative.same_as_legal");
+                }}
+              />
+            )}
+            {isFieldVisible("financial_representative", "same_as_legal") &&
+              values.financial_representative.same_as_legal === "yes" && (
               <InheritedPersonCard
                 sourceLabel="Dados herdados do responsavel legal"
                 name={values.legal_representative.name}
@@ -1110,11 +1208,12 @@ export default function CompanyRegistryPage({
                 email={values.legal_representative.email}
               />
             )}
-            {values.financial_representative.same_as_legal === "no" && (
+            {isFieldVisible("financial_representative", "same_as_legal") &&
+              values.financial_representative.same_as_legal === "no" &&
+              isFieldVisible("financial_representative", "same_as_contract") && (
               <SameAsToggle
-                label="E a mesma pessoa que o responsavel pelo contrato?"
+                {...getFieldProps("financial_representative", "same_as_contract", "E a mesma pessoa que o responsavel pelo contrato?")}
                 value={values.financial_representative.same_as_contract}
-                required
                 error={errors["financial_representative.same_as_contract"]}
                 onChange={(v) => {
                   setSectionField("financial_representative", "same_as_contract", v);
@@ -1122,7 +1221,9 @@ export default function CompanyRegistryPage({
                 }}
               />
             )}
-            {values.financial_representative.same_as_legal === "no" &&
+            {isFieldVisible("financial_representative", "same_as_legal") &&
+              values.financial_representative.same_as_legal === "no" &&
+              isFieldVisible("financial_representative", "same_as_contract") &&
               values.financial_representative.same_as_contract === "yes" && (
                 <InheritedPersonCard
                   sourceLabel="Dados herdados do responsavel pelo contrato"
@@ -1131,43 +1232,45 @@ export default function CompanyRegistryPage({
                   email={resolvedContract.email}
                 />
               )}
-            {values.financial_representative.same_as_legal === "no" &&
+            {isFieldVisible("financial_representative", "same_as_legal") &&
+              values.financial_representative.same_as_legal === "no" &&
+              isFieldVisible("financial_representative", "same_as_contract") &&
               values.financial_representative.same_as_contract === "no" && (
                 <>
-                  <FormInput
-                    label="Nome completo"
-                    value={values.financial_representative.name}
-                    required
-                    placeholder="Nome do responsavel financeiro"
-                    error={errors["financial_representative.name"]}
-                    onChange={(v) => {
-                      setSectionField("financial_representative", "name", v);
-                      clearFieldError("financial_representative.name");
-                    }}
-                  />
-                  <FormInput
-                    label="Telefone / WhatsApp"
-                    value={values.financial_representative.phone}
-                    required
-                    placeholder="+55 11 99999-9999"
-                    error={errors["financial_representative.phone"]}
-                    onChange={(v) => {
-                      setSectionField("financial_representative", "phone", v);
-                      clearFieldError("financial_representative.phone");
-                    }}
-                  />
-                  <FormInput
-                    label="E-mail"
-                    type="email"
-                    value={values.financial_representative.email}
-                    required
-                    placeholder="email@empresa.com"
-                    error={errors["financial_representative.email"]}
-                    onChange={(v) => {
-                      setSectionField("financial_representative", "email", v);
-                      clearFieldError("financial_representative.email");
-                    }}
-                  />
+                  {isFieldVisible("financial_representative", "name") && (
+                    <FormInput
+                      {...getFieldProps("financial_representative", "name", "Nome completo", "Nome do responsavel financeiro")}
+                      value={values.financial_representative.name}
+                      error={errors["financial_representative.name"]}
+                      onChange={(v) => {
+                        setSectionField("financial_representative", "name", v);
+                        clearFieldError("financial_representative.name");
+                      }}
+                    />
+                  )}
+                  {isFieldVisible("financial_representative", "phone") && (
+                    <FormInput
+                      {...getFieldProps("financial_representative", "phone", "Telefone / WhatsApp", "+55 11 99999-9999")}
+                      value={values.financial_representative.phone}
+                      error={errors["financial_representative.phone"]}
+                      onChange={(v) => {
+                        setSectionField("financial_representative", "phone", v);
+                        clearFieldError("financial_representative.phone");
+                      }}
+                    />
+                  )}
+                  {isFieldVisible("financial_representative", "email") && (
+                    <FormInput
+                      {...getFieldProps("financial_representative", "email", "E-mail", "email@empresa.com")}
+                      type="email"
+                      value={values.financial_representative.email}
+                      error={errors["financial_representative.email"]}
+                      onChange={(v) => {
+                        setSectionField("financial_representative", "email", v);
+                        clearFieldError("financial_representative.email");
+                      }}
+                    />
+                  )}
                 </>
               )}
           </div>
@@ -1182,63 +1285,65 @@ export default function CompanyRegistryPage({
                 <p className="mt-1.5 text-sm text-slate-500">{currentStepMeta.description}</p>
               )}
             </div>
-            <FormInput
-              label="Banco"
-              value={values.banking_data.bank_name}
-              required
-              placeholder="Ex: Itau, Bradesco, Nubank"
-              error={errors["banking_data.bank_name"]}
-              onChange={(v) => {
-                setSectionField("banking_data", "bank_name", v);
-                clearFieldError("banking_data.bank_name");
-              }}
-            />
-            <div className="grid grid-cols-2 gap-4">
+            {isFieldVisible("banking_data", "bank_name") && (
               <FormInput
-                label="Agencia"
+                {...getFieldProps("banking_data", "bank_name", "Banco", "Ex: Itau, Bradesco, Nubank")}
+                value={values.banking_data.bank_name}
+                error={errors["banking_data.bank_name"]}
+                onChange={(v) => {
+                  setSectionField("banking_data", "bank_name", v);
+                  clearFieldError("banking_data.bank_name");
+                }}
+              />
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              {isFieldVisible("banking_data", "agency") && (
+              <FormInput
+                {...getFieldProps("banking_data", "agency", "Agencia", "0000")}
                 value={values.banking_data.agency}
-                required
-                placeholder="0000"
                 error={errors["banking_data.agency"]}
                 onChange={(v) => {
                   setSectionField("banking_data", "agency", v);
                   clearFieldError("banking_data.agency");
                 }}
               />
+              )}
+              {isFieldVisible("banking_data", "account") && (
               <FormInput
-                label="Conta (com digito)"
+                {...getFieldProps("banking_data", "account", "Conta (com digito)", "00000-0")}
                 value={values.banking_data.account}
-                required
-                placeholder="00000-0"
                 error={errors["banking_data.account"]}
                 onChange={(v) => {
                   setSectionField("banking_data", "account", v);
                   clearFieldError("banking_data.account");
                 }}
               />
+              )}
             </div>
-            <FormInput
-              label="Tipo de conta"
-              type="select"
-              value={values.banking_data.account_type}
-              required
-              options={[
-                { label: "Selecione", value: "" },
-                { label: "Conta corrente", value: "corrente" },
-                { label: "Conta poupanca", value: "poupanca" },
-              ]}
-              error={errors["banking_data.account_type"]}
-              onChange={(v) => {
-                setSectionField("banking_data", "account_type", v);
-                clearFieldError("banking_data.account_type");
-              }}
-            />
-            <FormInput
-              label="Chave Pix (opcional)"
-              value={values.banking_data.pix_key}
-              placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatoria"
-              onChange={(v) => setSectionField("banking_data", "pix_key", v)}
-            />
+            {isFieldVisible("banking_data", "account_type") && (
+              <FormInput
+                {...getFieldProps("banking_data", "account_type", "Tipo de conta")}
+                type="select"
+                value={values.banking_data.account_type}
+                options={[
+                  { label: "Selecione", value: "" },
+                  { label: "Conta corrente", value: "corrente" },
+                  { label: "Conta poupanca", value: "poupanca" },
+                ]}
+                error={errors["banking_data.account_type"]}
+                onChange={(v) => {
+                  setSectionField("banking_data", "account_type", v);
+                  clearFieldError("banking_data.account_type");
+                }}
+              />
+            )}
+            {isFieldVisible("banking_data", "pix_key") && (
+              <FormInput
+                {...getFieldProps("banking_data", "pix_key", "Chave Pix (opcional)", "CPF, CNPJ, e-mail, telefone ou chave aleatoria")}
+                value={values.banking_data.pix_key}
+                onChange={(v) => setSectionField("banking_data", "pix_key", v)}
+              />
+            )}
           </div>
         )}
 
@@ -1252,56 +1357,59 @@ export default function CompanyRegistryPage({
               </p>
             </div>
 
-            <ReviewSection title="Dados da empresa">
-              <ReviewRow label="Tipo de documento" value={values.company_data.document_type === "cpf" ? "CPF" : values.company_data.document_type === "cnpj" ? "CNPJ" : ""} />
-              <ReviewRow label="Documento" value={values.company_data.document_number} />
-              <ReviewRow label="Nome fantasia" value={values.company_data.fantasy_name} />
-              <ReviewRow label="Razao social" value={values.company_data.legal_name} />
-              <ReviewRow label="Endereco" value={values.company_data.address} />
-              <ReviewRow label="Cidade" value={`${values.company_data.city} - ${values.company_data.state}`} />
-              <ReviewRow label="CEP" value={values.company_data.zip_code} />
+            <ReviewSection title={getStepTitle("company_data", "Dados da empresa")}>
+              {renderReviewRow("company_data", "document_type", "Tipo de documento", values.company_data.document_type === "cpf" ? "CPF" : values.company_data.document_type === "cnpj" ? "CNPJ" : "")}
+              {renderReviewRow("company_data", "document_number", "Documento", values.company_data.document_number)}
+              {renderReviewRow("company_data", "fantasy_name", "Nome fantasia", values.company_data.fantasy_name)}
+              {renderReviewRow("company_data", "legal_name", "Razao social", values.company_data.legal_name)}
+              {renderReviewRow("company_data", "address", "Endereco", values.company_data.address)}
+              {renderReviewRow("company_data", "city", "Cidade", `${values.company_data.city} - ${values.company_data.state}`)}
+              {renderReviewRow("company_data", "zip_code", "CEP", values.company_data.zip_code)}
             </ReviewSection>
 
-            <ReviewSection title="Responsavel legal">
-              <ReviewRow label="Nome" value={values.legal_representative.name} />
-              <ReviewRow label="Telefone" value={values.legal_representative.phone} />
-              <ReviewRow label="E-mail" value={values.legal_representative.email} />
+            <ReviewSection title={getStepTitle("legal_representative", "Responsavel legal")}>
+              {renderReviewRow("legal_representative", "name", "Nome", values.legal_representative.name)}
+              {renderReviewRow("legal_representative", "phone", "Telefone", values.legal_representative.phone)}
+              {renderReviewRow("legal_representative", "email", "E-mail", values.legal_representative.email)}
             </ReviewSection>
 
-            <ReviewSection title="Responsavel pelo contrato">
-              {values.contract_representative.same_as_legal === "yes" ? (
-                <ReviewRow label="Mesmo que o legal" value="Sim" />
+            <ReviewSection title={getStepTitle("contract_representative", "Responsavel pelo contrato")}>
+              {isFieldVisible("contract_representative", "same_as_legal") &&
+              values.contract_representative.same_as_legal === "yes" ? (
+                renderReviewRow("contract_representative", "same_as_legal", "Mesmo que o legal", "Sim")
               ) : (
                 <>
-                  <ReviewRow label="Nome" value={(resolvedContract as typeof values.legal_representative).name} />
-                  <ReviewRow label="Telefone" value={(resolvedContract as typeof values.legal_representative).phone} />
-                  <ReviewRow label="E-mail" value={(resolvedContract as typeof values.legal_representative).email} />
+                  {renderReviewRow("contract_representative", "name", "Nome", (resolvedContract as typeof values.legal_representative).name)}
+                  {renderReviewRow("contract_representative", "phone", "Telefone", (resolvedContract as typeof values.legal_representative).phone)}
+                  {renderReviewRow("contract_representative", "email", "E-mail", (resolvedContract as typeof values.legal_representative).email)}
                 </>
               )}
             </ReviewSection>
 
-            <ReviewSection title="Responsavel financeiro">
-              {values.financial_representative.same_as_legal === "yes" ? (
-                <ReviewRow label="Mesmo que o legal" value="Sim" />
-              ) : values.financial_representative.same_as_contract === "yes" ? (
-                <ReviewRow label="Mesmo que o contrato" value="Sim" />
+            <ReviewSection title={getStepTitle("financial_representative", "Responsavel financeiro")}>
+              {isFieldVisible("financial_representative", "same_as_legal") &&
+              values.financial_representative.same_as_legal === "yes" ? (
+                renderReviewRow("financial_representative", "same_as_legal", "Mesmo que o legal", "Sim")
+              ) : isFieldVisible("financial_representative", "same_as_contract") &&
+                values.financial_representative.same_as_contract === "yes" ? (
+                renderReviewRow("financial_representative", "same_as_contract", "Mesmo que o contrato", "Sim")
               ) : (
                 <>
-                  <ReviewRow label="Nome" value={(resolvedFinancial as typeof values.legal_representative).name} />
-                  <ReviewRow label="Telefone" value={(resolvedFinancial as typeof values.legal_representative).phone} />
-                  <ReviewRow label="E-mail" value={(resolvedFinancial as typeof values.legal_representative).email} />
+                  {renderReviewRow("financial_representative", "name", "Nome", (resolvedFinancial as typeof values.legal_representative).name)}
+                  {renderReviewRow("financial_representative", "phone", "Telefone", (resolvedFinancial as typeof values.legal_representative).phone)}
+                  {renderReviewRow("financial_representative", "email", "E-mail", (resolvedFinancial as typeof values.legal_representative).email)}
                 </>
               )}
             </ReviewSection>
 
-            <ReviewSection title="Dados bancarios">
-              <ReviewRow label="Banco" value={values.banking_data.bank_name} />
-              <ReviewRow label="Agencia" value={values.banking_data.agency} />
-              <ReviewRow label="Conta" value={values.banking_data.account} />
-              <ReviewRow label="Tipo" value={values.banking_data.account_type === "corrente" ? "Conta corrente" : values.banking_data.account_type === "poupanca" ? "Conta poupanca" : ""} />
-              {values.banking_data.pix_key && (
-                <ReviewRow label="Chave Pix" value={values.banking_data.pix_key} />
-              )}
+            <ReviewSection title={getStepTitle("banking_data", "Dados bancarios")}>
+              {renderReviewRow("banking_data", "bank_name", "Banco", values.banking_data.bank_name)}
+              {renderReviewRow("banking_data", "agency", "Agencia", values.banking_data.agency)}
+              {renderReviewRow("banking_data", "account", "Conta", values.banking_data.account)}
+              {renderReviewRow("banking_data", "account_type", "Tipo", values.banking_data.account_type === "corrente" ? "Conta corrente" : values.banking_data.account_type === "poupanca" ? "Conta poupanca" : "")}
+              {values.banking_data.pix_key
+                ? renderReviewRow("banking_data", "pix_key", "Chave Pix", values.banking_data.pix_key)
+                : null}
             </ReviewSection>
 
             {submitError && (
