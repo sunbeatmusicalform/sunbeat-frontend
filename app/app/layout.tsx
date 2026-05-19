@@ -121,6 +121,17 @@ const navSections = [
         description: "Identidade e personalização",
       },
       {
+        label: "Setup AI",
+        href: "/app/settings/ai-guide",
+        icon: (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9.75 3.104v3.808a2.25 2.25 0 01-.659 1.591l-4.3 4.3a6.75 6.75 0 009.546 9.546l4.3-4.3a2.25 2.25 0 011.591-.659h.668M14.25 3.104v3.808c0 .597.237 1.17.659 1.591l4.3 4.3a6.75 6.75 0 01-9.546 9.546l-4.3-4.3a2.25 2.25 0 00-1.591-.659H3.104" />
+          </svg>
+        ),
+        description: "Configuracao assistida",
+      },
+      {
         label: "Plano",
         href: "/app/settings/plan",
         icon: (
