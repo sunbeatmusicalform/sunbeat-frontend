@@ -2,10 +2,23 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getTenantFromHost } from "@/lib/tenant";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getBackendApiBaseUrl, getErrorMessage } from "@/lib/server/backend-api";
+import {
+  getBackendApiBaseUrl,
+  getErrorMessage,
+  parseJsonSafely,
+} from "@/lib/server/backend-api";
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  let body: unknown;
+
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Invalid JSON body" },
+      { status: 400 }
+    );
+  }
 
   let base: string;
 
@@ -33,25 +46,44 @@ export async function POST(req: Request) {
 
   const accessToken = session?.access_token;
 
-  const upstream = await fetch(`${base}/submissions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(tenant?.value ? { "X-Tenant-Value": tenant.value } : {}),
-      ...(tenant?.type ? { "X-Tenant-Type": tenant.type } : {}),
-      ...(user?.id ? { "X-User-Id": user.id } : {}),
-      ...(user?.email ? { "X-User-Email": user.email } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-
-  const text = await upstream.text();
+  let upstream: Response;
 
   try {
-    const json = JSON.parse(text);
-    return NextResponse.json(json, { status: upstream.status });
-  } catch {
-    return new NextResponse(text, { status: upstream.status });
+    upstream = await fetch(`${base}/submissions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(tenant?.value ? { "X-Tenant-Value": tenant.value } : {}),
+        ...(tenant?.type ? { "X-Tenant-Type": tenant.type } : {}),
+        ...(user?.id ? { "X-User-Id": user.id } : {}),
+        ...(user?.email ? { "X-User-Email": user.email } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: getErrorMessage(error, "Could not reach submissions backend"),
+      },
+      { status: 502 }
+    );
   }
+
+  const text = await upstream.text();
+  const json = parseJsonSafely(text);
+
+  if (json !== null) {
+    return NextResponse.json(json, { status: upstream.status });
+  }
+
+  return NextResponse.json(
+    {
+      ok: upstream.ok,
+      error: text || "Submission request failed",
+    },
+    { status: upstream.status }
+  );
 }

@@ -113,6 +113,29 @@ function parseJsonResponseText(raw: string) {
   }
 }
 
+function getRecordValue(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function getStringResponseField(
+  data: Record<string, unknown> | null,
+  key: string
+) {
+  const value = data?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+function getBooleanResponseField(
+  data: Record<string, unknown> | null,
+  key: string
+) {
+  return data?.[key] === true;
+}
+
 function getApiMessage(
   data: Record<string, unknown> | null,
   raw: string,
@@ -796,14 +819,12 @@ export default function ReleaseIntakePage({
         });
 
         const raw = await response.text();
-        const data = raw ? JSON.parse(raw) : null;
+        const data = parseJsonResponseText(raw);
         console.info("[edit hydration] raw response body", data);
 
         if (!response.ok) {
           throw new Error(
-            data?.detail ||
-              data?.message ||
-              "Falha ao carregar submissão para edição."
+            getApiMessage(data, raw, "Falha ao carregar submissão para edição.")
           );
         }
 
@@ -1249,13 +1270,13 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      const data = parseJsonResponseText(raw);
 
       if (!response.ok) {
-        throw new Error(data?.detail || data?.message || "Falha ao carregar rascunho.");
+        throw new Error(getApiMessage(data, raw, "Falha ao carregar rascunho."));
       }
 
-      const draftData = data?.data ?? data;
+      const draftData = getRecordValue(data?.data) ?? data;
       const hydratedValues = draftData?.values ?? null;
 
       if (hydratedValues) {
@@ -1270,21 +1291,31 @@ export default function ReleaseIntakePage({
         });
       }
 
-      const hydratedStep = draftData?.current_step ?? null;
-      if (hydratedStep) {
-        setCurrentStep(hydratedStep);
+      const hydratedStep =
+        typeof draftData?.current_step === "string"
+          ? draftData.current_step
+          : "";
+      if (STEP_ORDER.includes(hydratedStep as FormStepKey)) {
+        setCurrentStep(hydratedStep as FormStepKey);
       }
 
-      if (data?.draft_token) {
-        setDraftToken(data.draft_token);
+      const nextDraftToken = getStringResponseField(data, "draft_token");
+      if (nextDraftToken) {
+        setDraftToken(nextDraftToken);
       }
 
-      if (data?.draft_link_email_sent) {
+      if (getBooleanResponseField(data, "draft_link_email_sent")) {
         setDraftLinkEmailSent(true);
       }
 
-      if (hydratedValues?.tracks?.length) {
-        setActiveTrackId(hydratedValues.tracks[0].local_id);
+      const hydratedTracks = getRecordValue(hydratedValues)?.tracks;
+      if (Array.isArray(hydratedTracks) && hydratedTracks.length > 0) {
+        const firstTrack = getRecordValue(hydratedTracks[0]);
+        const firstTrackId =
+          typeof firstTrack?.local_id === "string" ? firstTrack.local_id : "";
+        if (firstTrackId) {
+          setActiveTrackId(firstTrackId);
+        }
       }
 
       setAutosaveState("saved");
@@ -1330,21 +1361,20 @@ export default function ReleaseIntakePage({
         });
 
         const raw = await response.text();
-        const data = raw ? JSON.parse(raw) : null;
+        const data = parseJsonResponseText(raw);
 
         if (!response.ok) {
           throw new Error(
-            typeof data?.detail === "string"
-              ? data.detail
-              : data?.message || "Falha ao salvar rascunho."
+            getApiMessage(data, raw, "Falha ao salvar rascunho.")
           );
         }
 
-        if (data?.draft_token && data.draft_token !== draftToken) {
-          setDraftToken(data.draft_token);
+        const nextDraftToken = getStringResponseField(data, "draft_token");
+        if (nextDraftToken && nextDraftToken !== draftToken) {
+          setDraftToken(nextDraftToken);
         }
 
-        if (data?.draft_link_email_sent) {
+        if (getBooleanResponseField(data, "draft_link_email_sent")) {
           setDraftLinkEmailSent(true);
         }
 
@@ -1398,21 +1428,20 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      const data = parseJsonResponseText(raw);
 
       if (!response.ok) {
         throw new Error(
-          typeof data?.detail === "string"
-            ? data.detail
-            : data?.message || "Falha ao salvar rascunho."
+          getApiMessage(data, raw, "Falha ao salvar rascunho.")
         );
       }
 
-      if (data?.draft_token && data.draft_token !== draftToken) {
-        setDraftToken(data.draft_token);
+      const nextDraftToken = getStringResponseField(data, "draft_token");
+      if (nextDraftToken && nextDraftToken !== draftToken) {
+        setDraftToken(nextDraftToken);
       }
 
-      if (data?.draft_link_email_sent) {
+      if (getBooleanResponseField(data, "draft_link_email_sent")) {
         setDraftLinkEmailSent(true);
       }
 
@@ -1465,15 +1494,16 @@ export default function ReleaseIntakePage({
       });
 
       const saveRaw = await saveResponse.text();
-      const saveData = saveRaw ? JSON.parse(saveRaw) : null;
+      const saveData = parseJsonResponseText(saveRaw);
 
       if (!saveResponse.ok) {
         throw new Error(
-          saveData?.detail || saveData?.message || "Falha ao salvar rascunho."
+          getApiMessage(saveData, saveRaw, "Falha ao salvar rascunho.")
         );
       }
 
-      const stableDraftToken = saveData?.draft_token || token;
+      const stableDraftToken =
+        getStringResponseField(saveData, "draft_token") || token;
       setDraftToken(stableDraftToken);
 
       const response = await fetch("/api/release-drafts/send-link", {
@@ -1491,17 +1521,17 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      const data = parseJsonResponseText(raw);
 
       if (!response.ok) {
         throw new Error(
-          data?.detail || data?.message || "Falha ao enviar email do rascunho."
+          getApiMessage(data, raw, "Falha ao enviar email do rascunho.")
         );
       }
 
       setDraftLinkEmailSent(true);
 
-      if (data?.already_sent) {
+      if (getBooleanResponseField(data, "already_sent")) {
         showDraftNotice("O link do rascunho já havia sido enviado por email.", "success");
       } else {
         showDraftNotice("Link do rascunho enviado por email com sucesso.", "success");
@@ -1589,10 +1619,10 @@ export default function ReleaseIntakePage({
       });
 
       const raw = await response.text();
-      const data = raw ? JSON.parse(raw) : null;
+      const data = parseJsonResponseText(raw);
 
       if (!response.ok) {
-        throw new Error(data?.detail || data?.message || "Falha no envio.");
+        throw new Error(getApiMessage(data, raw, "Falha no envio."));
       }
 
       setSubmitMessage(
