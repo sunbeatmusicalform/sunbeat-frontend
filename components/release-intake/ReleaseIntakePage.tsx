@@ -501,6 +501,16 @@ function getTodayDateValue() {
   return `${year}-${month}-${day}`;
 }
 
+function createInitialReleaseIntakeValuesForSession() {
+  const values = createInitialReleaseIntakeValues();
+
+  if (!normalizeDateInputValue(values.project.release_date)) {
+    values.project.release_date = getTodayDateValue();
+  }
+
+  return values;
+}
+
 function getCurrentDateTimeValue() {
   const now = new Date();
   const year = now.getFullYear();
@@ -558,7 +568,7 @@ export default function ReleaseIntakePage({
 
   const [currentStep, setCurrentStep] = useState<FormStepKey>("intro");
   const [values, setValues] = useState<ReleaseIntakeFormValues>(
-    createInitialReleaseIntakeValues()
+    createInitialReleaseIntakeValuesForSession
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [draftToken, setDraftToken] = useState<string | null>(resumeToken);
@@ -889,7 +899,7 @@ export default function ReleaseIntakePage({
   }
 
   function resetAfterSubmission() {
-    const nextValues = createInitialReleaseIntakeValues();
+    const nextValues = createInitialReleaseIntakeValuesForSession();
 
     setValues(nextValues);
     setErrors({});
@@ -1008,6 +1018,47 @@ export default function ReleaseIntakePage({
 
     setDraftToken(generated);
     return generated;
+  }
+
+  async function persistDraftSnapshot(args: {
+    draftToken: string;
+    currentStep: FormStepKey;
+    values: ReleaseIntakeFormValues;
+  }) {
+    const payload = buildWorkflowDraftPayload({
+      draftToken: args.draftToken,
+      workspaceSlug: template.workspaceSlug,
+      workflowType: template.workflowType,
+      formVersion: template.formVersion,
+      currentStep: args.currentStep,
+      values: args.values,
+    });
+
+    const response = await fetch("/api/release-drafts/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const raw = await response.text();
+    const data = parseJsonResponseText(raw);
+
+    if (!response.ok) {
+      throw new Error(getApiMessage(data, raw, "Falha ao salvar rascunho."));
+    }
+
+    const nextDraftToken = getStringResponseField(data, "draft_token");
+    if (nextDraftToken && nextDraftToken !== args.draftToken) {
+      setDraftToken(nextDraftToken);
+    }
+
+    if (getBooleanResponseField(data, "draft_link_email_sent")) {
+      setDraftLinkEmailSent(true);
+    }
+
+    return data;
   }
 
   async function uploadFile(args: {
@@ -1574,7 +1625,22 @@ export default function ReleaseIntakePage({
     setErrors({});
 
     if (currentStep === "identification") {
-      ensureDraftToken();
+      const token = ensureDraftToken();
+      const nextStepKey = STEP_ORDER[
+        Math.min(currentStepIndex + 1, STEP_ORDER.length - 1)
+      ];
+
+      setAutosaveState("saving");
+      void persistDraftSnapshot({
+        draftToken: token,
+        currentStep: nextStepKey,
+        values,
+      })
+        .then(() => setAutosaveState("saved"))
+        .catch((error) => {
+          console.error("First stage draft save failed", error);
+          setAutosaveState("error");
+        });
     }
 
     if (currentStep === "tracks" && values.tracks.length > 0 && !activeTrackId) {
