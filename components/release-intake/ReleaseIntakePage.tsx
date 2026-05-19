@@ -3119,8 +3119,32 @@ function ReviewStep({
     return true;
   }
 
-  function isTrackReviewFieldVisible(fieldKey: string) {
-    return hasReviewField("tracks", fieldKey);
+  function isTrackReviewFieldVisible(fieldKey: string, track: TrackInput) {
+    if (!hasReviewField("tracks", fieldKey)) {
+      return false;
+    }
+
+    if (
+      fieldKey === "artist_profile_names_to_create" &&
+      (!track.artist_profiles_status ||
+        track.artist_profiles_status === "already_exists")
+    ) {
+      return false;
+    }
+
+    if (
+      fieldKey === "existing_profile_links" &&
+      (!track.artist_profiles_status ||
+        track.artist_profiles_status === "needs_creation")
+    ) {
+      return false;
+    }
+
+    if (fieldKey === "isrc_code" && track.has_isrc !== "yes") {
+      return false;
+    }
+
+    return true;
   }
 
   return (
@@ -3315,73 +3339,73 @@ function ReviewStep({
                 Faixa {track.order_number}: {track.title || "Sem título"}
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {isTrackReviewFieldVisible("primary_artists") ? (
+                {isTrackReviewFieldVisible("primary_artists", track) ? (
                   <ReviewItem label="Artistas principais" value={track.primary_artists} />
                 ) : null}
-                {isTrackReviewFieldVisible("featured_artists") ? (
+                {isTrackReviewFieldVisible("featured_artists", track) ? (
                   <ReviewItem label="Feats" value={track.featured_artists} />
                 ) : null}
-                {isTrackReviewFieldVisible("authors") ? (
+                {isTrackReviewFieldVisible("authors", track) ? (
                   <ReviewItem label="Autores" value={track.authors} />
                 ) : null}
-                {isTrackReviewFieldVisible("interpreters") ? (
+                {isTrackReviewFieldVisible("interpreters", track) ? (
                   <ReviewItem label="Intérpretes" value={track.interpreters} />
                 ) : null}
-                {isTrackReviewFieldVisible("publishers") ? (
+                {isTrackReviewFieldVisible("publishers", track) ? (
                   <ReviewItem label="Editoras" value={track.publishers} />
                 ) : null}
-                {isTrackReviewFieldVisible("producers_musicians") ? (
+                {isTrackReviewFieldVisible("producers_musicians", track) ? (
                   <ReviewItem
                     label="Produtores / Músicos"
                     value={track.producers_musicians}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("phonographic_producer") ? (
+                {isTrackReviewFieldVisible("phonographic_producer", track) ? (
                   <ReviewItem
                     label="Produtor Fonográfico"
                     value={track.phonographic_producer}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("artist_profiles_status") ? (
+                {isTrackReviewFieldVisible("artist_profiles_status", track) ? (
                   <ReviewItem label="Status de perfil" value={track.artist_profiles_status} />
                 ) : null}
-                {isTrackReviewFieldVisible("artist_profile_names_to_create") ? (
+                {isTrackReviewFieldVisible("artist_profile_names_to_create", track) ? (
                   <ReviewItem
                     label="Perfis a criar"
                     value={track.artist_profile_names_to_create}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("existing_profile_links") ? (
+                {isTrackReviewFieldVisible("existing_profile_links", track) ? (
                   <ReviewItem
                     label="Links de perfil existentes"
                     value={track.existing_profile_links}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("has_isrc") ? (
+                {isTrackReviewFieldVisible("has_isrc", track) ? (
                   <ReviewItem label="Tem ISRC" value={track.has_isrc} />
                 ) : null}
-                {isTrackReviewFieldVisible("isrc_code") ? (
+                {isTrackReviewFieldVisible("isrc_code", track) ? (
                   <ReviewItem label="Código ISRC" value={track.isrc_code} />
                 ) : null}
-                {isTrackReviewFieldVisible("explicit_content") ? (
+                {isTrackReviewFieldVisible("explicit_content", track) ? (
                   <ReviewItem
                     label="Conteúdo explícito"
                     value={track.explicit_content}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("tiktok_snippet") ? (
+                {isTrackReviewFieldVisible("tiktok_snippet", track) ? (
                   <ReviewItem
                     label="Trecho TikTok"
                     value={track.tiktok_snippet}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("audio_file") ? (
+                {isTrackReviewFieldVisible("audio_file", track) ? (
                   <ReviewItem
                     label="Áudio"
                     value={track.audio_file?.file_name}
                   />
                 ) : null}
-                {isTrackReviewFieldVisible("lyrics") ? (
+                {isTrackReviewFieldVisible("lyrics", track) ? (
                   <ReviewItem label="Letra" value={track.lyrics} />
                 ) : null}
               </div>
