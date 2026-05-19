@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
+import SetupAirtableConfigPanel from "@/components/admin/SetupAirtableConfigPanel";
 import SetupCopilotWidget from "@/components/admin/SetupCopilotWidget";
 
 const guidePrinciples = [
@@ -60,6 +61,8 @@ export default async function AIGuideSettingsPage() {
 
   return (
     <div className="grid gap-6">
+      <SetupAirtableConfigPanel workspaceSlug={workspaceSlug} />
+
       {/* ── Setup Copilot ──────────────────────────────────────── */}
       <section className="glass-panel-strong premium-border rounded-[32px] p-7 md:p-8">
         <div className="flex flex-wrap items-center gap-3">
