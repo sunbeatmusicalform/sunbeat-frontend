@@ -29,6 +29,7 @@ import type {
   FormVersion,
   FormField,
   FormStepKey,
+  ReleaseIntakeTemplate,
   ReleaseIntakeFormValues,
   UploadedFileRef,
   WorkflowType,
@@ -2150,7 +2151,7 @@ export default function ReleaseIntakePage({
                 />
               </div>
             ) : (
-              <ReviewStep values={values} />
+              <ReviewStep values={values} template={template} />
             )
           ) : null}
 
@@ -3061,130 +3062,270 @@ function TrackSelectField({
   );
 }
 
-function ReviewStep({ values }: { values: ReleaseIntakeFormValues }) {
+function ReviewStep({
+  values,
+  template,
+}: {
+  values: ReleaseIntakeFormValues;
+  template: ReleaseIntakeTemplate;
+}) {
+  function hasReviewField(stepKey: FormStepKey, fieldKey: string) {
+    const step = template.steps.find((item) => item.key === stepKey);
+    return Boolean(step?.fields.some((field) => field.key === fieldKey));
+  }
+
+  function isProjectReviewFieldVisible(fieldKey: string) {
+    if (!hasReviewField("release", fieldKey)) {
+      return false;
+    }
+
+    if (
+      (fieldKey === "video_link" || fieldKey === "video_release_date") &&
+      values.project.has_video_asset !== "yes"
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function isMarketingReviewFieldVisible(fieldKey: string) {
+    if (!hasReviewField("marketing", fieldKey)) {
+      return false;
+    }
+
+    if (
+      fieldKey === "marketing_budget" &&
+      values.marketing.has_marketing_budget !== "yes"
+    ) {
+      return false;
+    }
+
+    if (
+      fieldKey === "focus_track_name" &&
+      !["ep", "album"].includes(values.identification.release_type)
+    ) {
+      return false;
+    }
+
+    if (
+      (fieldKey === "special_guests_bio" ||
+        fieldKey === "feat_will_promote") &&
+      values.marketing.has_special_guests !== "yes"
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function isTrackReviewFieldVisible(fieldKey: string, track: TrackInput) {
+    if (!hasReviewField("tracks", fieldKey)) {
+      return false;
+    }
+
+    if (
+      fieldKey === "artist_profile_names_to_create" &&
+      (!track.artist_profiles_status ||
+        track.artist_profiles_status === "already_exists")
+    ) {
+      return false;
+    }
+
+    if (
+      fieldKey === "existing_profile_links" &&
+      (!track.artist_profiles_status ||
+        track.artist_profiles_status === "needs_creation")
+    ) {
+      return false;
+    }
+
+    if (fieldKey === "isrc_code" && track.has_isrc !== "yes") {
+      return false;
+    }
+
+    return true;
+  }
+
   return (
     <div className="grid gap-6">
       <ReviewSection title="Identificação">
-        <ReviewItem
-          label="Nome do Responsável"
-          value={values.identification.submitter_name}
-        />
-        <ReviewItem
-          label="E-mail do Responsável"
-          value={values.identification.submitter_email}
-        />
-        <ReviewItem
-          label="Nome do Projeto"
-          value={values.identification.project_title}
-        />
-        <ReviewItem
-          label="Tipo de Lançamento"
-          value={values.identification.release_type}
-        />
+        {hasReviewField("identification", "submitter_name") ? (
+          <ReviewItem
+            label="Nome do Responsável"
+            value={values.identification.submitter_name}
+          />
+        ) : null}
+        {hasReviewField("identification", "submitter_email") ? (
+          <ReviewItem
+            label="E-mail do Responsável"
+            value={values.identification.submitter_email}
+          />
+        ) : null}
+        {hasReviewField("identification", "project_title") ? (
+          <ReviewItem
+            label="Nome do Projeto"
+            value={values.identification.project_title}
+          />
+        ) : null}
+        {hasReviewField("identification", "release_type") ? (
+          <ReviewItem
+            label="Tipo de Lançamento"
+            value={values.identification.release_type}
+          />
+        ) : null}
       </ReviewSection>
 
       <ReviewSection title="Projeto">
-        <ReviewItem label="Data de Lançamento" value={values.project.release_date} />
-        <ReviewItem label="Gênero Musical" value={values.project.genre} />
-        <ReviewItem
-          label="Conteúdo Explícito"
-          value={values.project.explicit_content}
-        />
-        <ReviewItem
-          label="Trecho do TikTok"
-          value={values.project.tiktok_snippet}
-        />
-        <ReviewItem label="Link da Capa" value={values.project.cover_link} />
-        <ReviewItem
-          label="Link de Divulgação"
-          value={values.project.promo_assets_link}
-        />
-        <ReviewItem label="Link do Presskit" value={values.project.presskit_link} />
-        <ReviewItem label="Tem Vídeo" value={values.project.has_video_asset} />
-        {values.project.has_video_asset === "yes" ? (
+        {isProjectReviewFieldVisible("release_date") ? (
+          <ReviewItem label="Data de Lançamento" value={values.project.release_date} />
+        ) : null}
+        {isProjectReviewFieldVisible("genre") ? (
+          <ReviewItem label="Gênero Musical" value={values.project.genre} />
+        ) : null}
+        {isProjectReviewFieldVisible("explicit_content") ? (
+          <ReviewItem
+            label="Conteúdo Explícito"
+            value={values.project.explicit_content}
+          />
+        ) : null}
+        {isProjectReviewFieldVisible("tiktok_snippet") ? (
+          <ReviewItem
+            label="Trecho do TikTok"
+            value={values.project.tiktok_snippet}
+          />
+        ) : null}
+        {isProjectReviewFieldVisible("cover_link") ? (
+          <ReviewItem label="Link da Capa" value={values.project.cover_link} />
+        ) : null}
+        {isProjectReviewFieldVisible("promo_assets_link") ? (
+          <ReviewItem
+            label="Link de Divulgação"
+            value={values.project.promo_assets_link}
+          />
+        ) : null}
+        {isProjectReviewFieldVisible("presskit_link") ? (
+          <ReviewItem label="Link do Presskit" value={values.project.presskit_link} />
+        ) : null}
+        {isProjectReviewFieldVisible("has_video_asset") ? (
+          <ReviewItem label="Tem Vídeo" value={values.project.has_video_asset} />
+        ) : null}
+        {isProjectReviewFieldVisible("video_link") ||
+        isProjectReviewFieldVisible("video_release_date") ? (
           <>
-            <ReviewItem label="Link do Vídeo" value={values.project.video_link} />
-            <ReviewItem
-              label="Data do Vídeo"
-              value={values.project.video_release_date}
-            />
+            {isProjectReviewFieldVisible("video_link") ? (
+              <ReviewItem label="Link do Vídeo" value={values.project.video_link} />
+            ) : null}
+            {isProjectReviewFieldVisible("video_release_date") ? (
+              <ReviewItem
+                label="Data do Vídeo"
+                value={values.project.video_release_date}
+              />
+            ) : null}
           </>
         ) : null}
-        <ReviewItem
-          label="Arquivo da Capa"
-          value={values.project.cover_file?.file_name ?? "-"}
-        />
+        {isProjectReviewFieldVisible("cover_file") ? (
+          <ReviewItem
+            label="Arquivo da Capa"
+            value={values.project.cover_file?.file_name}
+          />
+        ) : null}
       </ReviewSection>
 
       <ReviewSection title="Marketing">
-        <ReviewItem
-          label="Números e Resultados"
-          value={values.marketing.marketing_numbers}
-        />
-        <ReviewItem
-          label="Foco do Lançamento"
-          value={values.marketing.marketing_focus}
-        />
-        <ReviewItem
-          label="Metas do Lançamento"
-          value={values.marketing.marketing_objectives}
-        />
-        <ReviewItem
-          label="Tem verba para promoção"
-          value={values.marketing.has_marketing_budget}
-        />
-        {values.marketing.has_marketing_budget === "yes" ? (
+        {isMarketingReviewFieldVisible("marketing_numbers") ? (
+          <ReviewItem
+            label="Números e Resultados"
+            value={values.marketing.marketing_numbers}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("marketing_focus") ? (
+          <ReviewItem
+            label="Foco do Lançamento"
+            value={values.marketing.marketing_focus}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("marketing_objectives") ? (
+          <ReviewItem
+            label="Metas do Lançamento"
+            value={values.marketing.marketing_objectives}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("has_marketing_budget") ? (
+          <ReviewItem
+            label="Tem verba para promoção"
+            value={values.marketing.has_marketing_budget}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("marketing_budget") ? (
           <ReviewItem
             label="Valor da verba"
             value={values.marketing.marketing_budget}
           />
         ) : null}
-        {["ep", "album"].includes(values.identification.release_type) ? (
+        {isMarketingReviewFieldVisible("focus_track_name") ? (
           <ReviewItem
             label="Faixa foco"
             value={values.marketing.focus_track_name}
           />
         ) : null}
-        <ReviewItem
-          label="Flexibilidade de data"
-          value={values.marketing.date_flexibility}
-        />
-        <ReviewItem
-          label="Tem participações especiais"
-          value={values.marketing.has_special_guests}
-        />
-        {values.marketing.has_special_guests === "yes" ? (
+        {isMarketingReviewFieldVisible("date_flexibility") ? (
+          <ReviewItem
+            label="Flexibilidade de data"
+            value={values.marketing.date_flexibility}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("has_special_guests") ? (
+          <ReviewItem
+            label="Tem participações especiais"
+            value={values.marketing.has_special_guests}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("special_guests_bio") ||
+        isMarketingReviewFieldVisible("feat_will_promote") ? (
           <>
-            <ReviewItem
-              label="Mini bio das participações"
-              value={values.marketing.special_guests_bio}
-            />
-            <ReviewItem
-              label="Feat participa da divulgação"
-              value={values.marketing.feat_will_promote}
-            />
+            {isMarketingReviewFieldVisible("special_guests_bio") ? (
+              <ReviewItem
+                label="Mini bio das participações"
+                value={values.marketing.special_guests_bio}
+              />
+            ) : null}
+            {isMarketingReviewFieldVisible("feat_will_promote") ? (
+              <ReviewItem
+                label="Feat participa da divulgação"
+                value={values.marketing.feat_will_promote}
+              />
+            ) : null}
           </>
         ) : null}
-        <ReviewItem
-          label="Participantes na promoção"
-          value={values.marketing.promotion_participants}
-        />
-        <ReviewItem
-          label="Influenciadores / Marcas / Parceiros"
-          value={values.marketing.influencers_brands_partners}
-        />
-        <ReviewItem
-          label="Observações do projeto"
-          value={values.marketing.general_notes}
-        />
-        <ReviewItem
-          label="Arquivos adicionais"
-          value={
-            values.marketing.additional_files.length > 0
-              ? `${values.marketing.additional_files.length} arquivo(s)`
-              : "-"
-          }
-        />
+        {isMarketingReviewFieldVisible("promotion_participants") ? (
+          <ReviewItem
+            label="Participantes na promoção"
+            value={values.marketing.promotion_participants}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("influencers_brands_partners") ? (
+          <ReviewItem
+            label="Influenciadores / Marcas / Parceiros"
+            value={values.marketing.influencers_brands_partners}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("general_notes") ? (
+          <ReviewItem
+            label="Observações do projeto"
+            value={values.marketing.general_notes}
+          />
+        ) : null}
+        {isMarketingReviewFieldVisible("additional_files") ? (
+          <ReviewItem
+            label="Arquivos adicionais"
+            value={
+              values.marketing.additional_files.length > 0
+                ? `${values.marketing.additional_files.length} arquivo(s)`
+                : undefined
+            }
+          />
+        ) : null}
       </ReviewSection>
 
       <ReviewSection title="Faixas">
@@ -3198,43 +3339,75 @@ function ReviewStep({ values }: { values: ReleaseIntakeFormValues }) {
                 Faixa {track.order_number}: {track.title || "Sem título"}
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <ReviewItem label="Artistas principais" value={track.primary_artists} />
-                <ReviewItem label="Feats" value={track.featured_artists} />
-                <ReviewItem label="Autores" value={track.authors} />
-                <ReviewItem label="Intérpretes" value={track.interpreters} />
-                <ReviewItem label="Editoras" value={track.publishers} />
-                <ReviewItem
-                  label="Produtores / Músicos"
-                  value={track.producers_musicians}
-                />
-                <ReviewItem
-                  label="Produtor Fonográfico"
-                  value={track.phonographic_producer}
-                />
-                <ReviewItem label="Status de perfil" value={track.artist_profiles_status} />
-                <ReviewItem
-                  label="Perfis a criar"
-                  value={track.artist_profile_names_to_create}
-                />
-                <ReviewItem
-                  label="Links de perfil existentes"
-                  value={track.existing_profile_links}
-                />
-                <ReviewItem label="Tem ISRC" value={track.has_isrc} />
-                <ReviewItem label="Código ISRC" value={track.isrc_code} />
-                <ReviewItem
-                  label="Conteúdo explícito"
-                  value={track.explicit_content}
-                />
-                <ReviewItem
-                  label="Trecho TikTok"
-                  value={track.tiktok_snippet}
-                />
-                <ReviewItem
-                  label="Áudio"
-                  value={track.audio_file?.file_name ?? "-"}
-                />
-                <ReviewItem label="Letra" value={track.lyrics} />
+                {isTrackReviewFieldVisible("primary_artists", track) ? (
+                  <ReviewItem label="Artistas principais" value={track.primary_artists} />
+                ) : null}
+                {isTrackReviewFieldVisible("featured_artists", track) ? (
+                  <ReviewItem label="Feats" value={track.featured_artists} />
+                ) : null}
+                {isTrackReviewFieldVisible("authors", track) ? (
+                  <ReviewItem label="Autores" value={track.authors} />
+                ) : null}
+                {isTrackReviewFieldVisible("interpreters", track) ? (
+                  <ReviewItem label="Intérpretes" value={track.interpreters} />
+                ) : null}
+                {isTrackReviewFieldVisible("publishers", track) ? (
+                  <ReviewItem label="Editoras" value={track.publishers} />
+                ) : null}
+                {isTrackReviewFieldVisible("producers_musicians", track) ? (
+                  <ReviewItem
+                    label="Produtores / Músicos"
+                    value={track.producers_musicians}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("phonographic_producer", track) ? (
+                  <ReviewItem
+                    label="Produtor Fonográfico"
+                    value={track.phonographic_producer}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("artist_profiles_status", track) ? (
+                  <ReviewItem label="Status de perfil" value={track.artist_profiles_status} />
+                ) : null}
+                {isTrackReviewFieldVisible("artist_profile_names_to_create", track) ? (
+                  <ReviewItem
+                    label="Perfis a criar"
+                    value={track.artist_profile_names_to_create}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("existing_profile_links", track) ? (
+                  <ReviewItem
+                    label="Links de perfil existentes"
+                    value={track.existing_profile_links}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("has_isrc", track) ? (
+                  <ReviewItem label="Tem ISRC" value={track.has_isrc} />
+                ) : null}
+                {isTrackReviewFieldVisible("isrc_code", track) ? (
+                  <ReviewItem label="Código ISRC" value={track.isrc_code} />
+                ) : null}
+                {isTrackReviewFieldVisible("explicit_content", track) ? (
+                  <ReviewItem
+                    label="Conteúdo explícito"
+                    value={track.explicit_content}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("tiktok_snippet", track) ? (
+                  <ReviewItem
+                    label="Trecho TikTok"
+                    value={track.tiktok_snippet}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("audio_file", track) ? (
+                  <ReviewItem
+                    label="Áudio"
+                    value={track.audio_file?.file_name}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("lyrics", track) ? (
+                  <ReviewItem label="Letra" value={track.lyrics} />
+                ) : null}
               </div>
             </div>
           ))}
