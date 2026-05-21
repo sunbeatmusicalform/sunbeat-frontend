@@ -9,7 +9,8 @@ import type {
 export type WorkspaceConfigSourceTable =
   | "workspace_branding"
   | "workspace_field_overrides"
-  | "workspace_airtable_mapping";
+  | "workspace_airtable_mapping"
+  | "workspace_workflow_settings";
 
 export type WorkspaceConfigFieldOverride = {
   stepKey: string;
@@ -92,7 +93,9 @@ export type EmailIntegrationReadModel = {
   submissionEmailEnabled: boolean;
   notificationRecipients: string[];
   notificationRecipientCount: number;
-  source: "workspace_branding + workspace_field_overrides";
+  source:
+    | "workspace_branding + workspace_workflow_settings.extra_settings.email.events"
+    | "workspace_branding + workspace_field_overrides";
 };
 
 export type StorageIntegrationReadModel = {

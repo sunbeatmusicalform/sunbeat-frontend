@@ -16,6 +16,13 @@ const SECURITY_SETTINGS_STEP_KEY = "__workspace_security__";
 const EDIT_PASSWORD_FIELD_KEY = "edit_mode_password_hash";
 const LEGACY_EDITOR_WORKFLOW_TYPE = "release_intake";
 const LEGACY_EDITOR_FORM_VERSION = "legacy_v1";
+const RELEASE_INTAKE_EMAIL_EVENTS = [
+  "on_draft",
+  "on_submit",
+  "on_edit",
+  "on_first_stage",
+  "on_summary",
+] as const;
 const FIELD_OVERRIDE_SELECT_WITH_SCOPE =
   "id, workspace_slug, workflow_type, form_version, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order, created_at, updated_at";
 const FIELD_OVERRIDE_SELECT_LEGACY =
@@ -25,7 +32,8 @@ const FIELD_OVERRIDE_SETTINGS_SELECT_WITH_SCOPE =
 const FIELD_OVERRIDE_SETTINGS_SELECT_LEGACY =
   "workspace_slug, step_key, field_key, label_override, helper_text_override, placeholder_override, is_required, is_visible, sort_order";
 
-function getDefaultNotificationEmails(_workspaceSlug: string) {
+function getDefaultNotificationEmails(workspaceSlug: string) {
+  void workspaceSlug;
   return [];
 }
 
@@ -63,6 +71,37 @@ type SecuritySettingsInput = {
   edit_password_enabled?: boolean;
   edit_password?: string;
 };
+
+type JsonRecord = Record<string, unknown>;
+
+type WorkflowSettingsRow = {
+  post_submit_email_enabled?: boolean | null;
+  edit_email_enabled?: boolean | null;
+  airtable_sync_enabled?: boolean | null;
+  drive_sync_enabled?: boolean | null;
+  edit_mode_enabled?: boolean | null;
+  extra_settings?: unknown;
+};
+
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneJsonRecord(value: unknown): JsonRecord {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return JSON.parse(JSON.stringify(value)) as JsonRecord;
+}
+
+function ensureRecord(parent: JsonRecord, key: string) {
+  if (!isRecord(parent[key])) {
+    parent[key] = {};
+  }
+
+  return parent[key] as JsonRecord;
+}
 
 function normalizeOptionalText(value: unknown) {
   if (typeof value !== "string") {
@@ -105,6 +144,22 @@ function parseStoredEmailList(value: unknown) {
   } catch {
     return [];
   }
+}
+
+function extractOperationalEmailRecipients(extraSettings: unknown) {
+  const extra = isRecord(extraSettings) ? extraSettings : {};
+  const email = isRecord(extra.email) ? extra.email : {};
+  const events = isRecord(email.events) ? email.events : {};
+
+  const recipients = new Set<string>();
+  RELEASE_INTAKE_EMAIL_EVENTS.forEach((eventName) => {
+    const event = isRecord(events[eventName]) ? events[eventName] : {};
+    normalizeEmailList(event.recipients).forEach((recipient) =>
+      recipients.add(recipient)
+    );
+  });
+
+  return Array.from(recipients).slice(0, 5);
 }
 
 function normalizePassword(value: unknown) {
@@ -307,6 +362,73 @@ async function loadWorkspaceFieldOverrideSettings(
   };
 }
 
+async function loadReleaseIntakeWorkflowSettings(
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  workspaceSlug: string
+) {
+  const { data, error } = await supabase
+    .from("workspace_workflow_settings")
+    .select(
+      "post_submit_email_enabled, edit_email_enabled, airtable_sync_enabled, drive_sync_enabled, edit_mode_enabled, extra_settings"
+    )
+    .eq("workspace_slug", workspaceSlug)
+    .eq("workflow_type", LEGACY_EDITOR_WORKFLOW_TYPE)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      row: null,
+      error,
+    };
+  }
+
+  return {
+    row: (data ?? null) as WorkflowSettingsRow | null,
+    error: null,
+  };
+}
+
+async function saveReleaseIntakeEmailEvents(args: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  workspaceSlug: string;
+  notificationEmails: string[];
+  existingWorkflowSettings: WorkflowSettingsRow | null;
+}) {
+  const extraSettings = cloneJsonRecord(
+    args.existingWorkflowSettings?.extra_settings
+  );
+  const email = ensureRecord(extraSettings, "email");
+  const events = ensureRecord(email, "events");
+
+  RELEASE_INTAKE_EMAIL_EVENTS.forEach((eventName) => {
+    events[eventName] = {
+      enabled: true,
+      recipients: args.notificationEmails,
+    };
+  });
+
+  return args.supabase.from("workspace_workflow_settings").upsert(
+    {
+      workspace_slug: args.workspaceSlug,
+      workflow_type: LEGACY_EDITOR_WORKFLOW_TYPE,
+      post_submit_email_enabled:
+        args.existingWorkflowSettings?.post_submit_email_enabled ?? true,
+      edit_email_enabled:
+        args.existingWorkflowSettings?.edit_email_enabled ?? true,
+      airtable_sync_enabled:
+        args.existingWorkflowSettings?.airtable_sync_enabled ?? true,
+      drive_sync_enabled:
+        args.existingWorkflowSettings?.drive_sync_enabled ?? true,
+      edit_mode_enabled:
+        args.existingWorkflowSettings?.edit_mode_enabled ?? true,
+      extra_settings: extraSettings,
+    },
+    {
+      onConflict: "workspace_slug,workflow_type",
+    }
+  );
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ workspaceSlug: string }> }
@@ -322,6 +444,7 @@ export async function GET(
   const [
     overridesResult,
     { data: branding, error: brandingError },
+    workflowSettingsResult,
     { count: submissionsCount },
       { count: draftsCount },
     ] =
@@ -334,6 +457,7 @@ export async function GET(
         )
         .eq("workspace_slug", workspaceSlug)
         .maybeSingle(),
+      loadReleaseIntakeWorkflowSettings(supabase, workspaceSlug),
       supabase
         .from("submissions")
         .select("id", { count: "exact", head: true })
@@ -359,6 +483,16 @@ export async function GET(
       {
         ok: false,
         error: brandingError.message,
+      },
+      { status: 500 }
+    );
+  }
+
+  if (workflowSettingsResult.error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: workflowSettingsResult.error.message,
       },
       { status: 500 }
     );
@@ -394,6 +528,9 @@ export async function GET(
         override.field_key === EMAIL_SETTINGS_FIELD_KEY
     )?.helper_text_override
   );
+  const operationalNotificationEmails = extractOperationalEmailRecipients(
+    workflowSettingsResult.row?.extra_settings
+  );
 
   return NextResponse.json({
     ok: true,
@@ -409,9 +546,17 @@ export async function GET(
           ? branding.submission_email_enabled
           : true,
       submission_notification_emails:
-        storedNotificationEmails.length > 0
+        operationalNotificationEmails.length > 0
+          ? operationalNotificationEmails
+          : storedNotificationEmails.length > 0
           ? storedNotificationEmails
           : getDefaultNotificationEmails(workspaceSlug),
+      source:
+        operationalNotificationEmails.length > 0
+          ? "workspace_workflow_settings.extra_settings.email.events"
+          : storedNotificationEmails.length > 0
+          ? "workspace_field_overrides_legacy"
+          : "default",
     },
     security: {
       edit_password_enabled: Boolean(storedPasswordHash),
@@ -457,6 +602,18 @@ export async function PUT(
   if (brandingLoadError) {
     return NextResponse.json(
       { ok: false, error: brandingLoadError.message },
+      { status: 500 }
+    );
+  }
+
+  const workflowSettingsResult = await loadReleaseIntakeWorkflowSettings(
+    supabase,
+    workspaceSlug
+  );
+
+  if (workflowSettingsResult.error) {
+    return NextResponse.json(
+      { ok: false, error: workflowSettingsResult.error.message },
       { status: 500 }
     );
   }
@@ -623,25 +780,18 @@ export async function PUT(
     );
   }
 
-  if (notificationEmails.length > 0) {
-    const { error: settingsInsertError } = await supabase
-      .from("workspace_field_overrides")
-      .insert({
-        workspace_slug: workspaceSlug,
-        step_key: EMAIL_SETTINGS_STEP_KEY,
-        field_key: EMAIL_SETTINGS_FIELD_KEY,
-        helper_text_override: JSON.stringify(notificationEmails),
-        is_required: false,
-        is_visible: false,
-        sort_order: 999999,
-      });
+  const { error: emailEventsSaveError } = await saveReleaseIntakeEmailEvents({
+    supabase,
+    workspaceSlug,
+    notificationEmails,
+    existingWorkflowSettings: workflowSettingsResult.row,
+  });
 
-    if (settingsInsertError) {
-      return NextResponse.json(
-        { ok: false, error: settingsInsertError.message },
-        { status: 500 }
-      );
-    }
+  if (emailEventsSaveError) {
+    return NextResponse.json(
+      { ok: false, error: emailEventsSaveError.message },
+      { status: 500 }
+    );
   }
 
   if (nextPasswordHash) {
@@ -671,6 +821,7 @@ export async function PUT(
     email_settings: {
       submission_email_enabled: submissionEmailEnabled,
       submission_notification_emails: notificationEmails,
+      source: "workspace_workflow_settings.extra_settings.email.events",
     },
     security: {
       edit_password_enabled: Boolean(nextPasswordHash),
