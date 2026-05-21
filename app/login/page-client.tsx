@@ -173,20 +173,30 @@ export default function LoginPageClient() {
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
-    setPwLoading(true);
-    setPwErr(null);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: pwEmail.trim().toLowerCase(),
-      password: pwPassword,
-    });
-    setPwLoading(false);
-    if (error) {
-      setPwErr("E-mail ou senha incorretos.");
+    if (isAnyAuthBusy) {
       return;
     }
-    const redirectError = await completeAuthRedirect();
-    if (redirectError) {
-      setPwErr(redirectError);
+
+    setPwLoading(true);
+    setPwErr(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: pwEmail.trim().toLowerCase(),
+        password: pwPassword,
+      });
+
+      if (error) {
+        setPwErr("E-mail ou senha incorretos.");
+        return;
+      }
+
+      const redirectError = await completeAuthRedirect();
+      if (redirectError) {
+        setPwErr(redirectError);
+      }
+    } finally {
+      setPwLoading(false);
     }
   }
 
@@ -197,6 +207,8 @@ export default function LoginPageClient() {
   const [verifying, setVerifying] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const isOtpBusy = sending || verifying;
+  const isAnyAuthBusy = isOtpBusy || pwLoading;
 
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const otp = otpDigits.join("");
@@ -211,86 +223,103 @@ export default function LoginPageClient() {
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
+    if (isAnyAuthBusy) {
+      return;
+    }
+
     setSending(true);
     setErr(null);
     setMsg(null);
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: buildOtpRedirectUrl(),
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: buildOtpRedirectUrl(),
+        },
+      });
 
-    setSending(false);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
 
-    if (error) {
-      setErr(error.message);
-      return;
+      setEmail(normalizedEmail);
+      setOtpDigits(Array(OTP_LENGTH).fill(""));
+      setStep("otp");
+      setMsg("Codigo enviado com sucesso. Confira a sua caixa de entrada.");
+    } finally {
+      setSending(false);
     }
-
-    setEmail(normalizedEmail);
-    setOtpDigits(Array(OTP_LENGTH).fill(""));
-    setStep("otp");
-    setMsg("Codigo enviado com sucesso. Confira a sua caixa de entrada.");
   }
 
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
+    if (isAnyAuthBusy) {
+      return;
+    }
+
     setVerifying(true);
     setErr(null);
     setMsg(null);
 
     const token = otp.trim();
 
-    if (token.length < 6) {
+    try {
+      if (token.length < 6) {
+        setErr("Digite o codigo completo antes de continuar.");
+        return;
+      }
+
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "email",
+      });
+
+      if (error) {
+        setErr("Codigo invalido ou expirado. Solicite um novo codigo.");
+        return;
+      }
+
+      const redirectError = await completeAuthRedirect();
+      if (redirectError) {
+        setErr(redirectError);
+      }
+    } finally {
       setVerifying(false);
-      setErr("Digite o codigo completo antes de continuar.");
-      return;
-    }
-
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    });
-
-    setVerifying(false);
-
-    if (error) {
-      setErr("Codigo invalido ou expirado. Solicite um novo codigo.");
-      return;
-    }
-
-    const redirectError = await completeAuthRedirect();
-    if (redirectError) {
-      setErr(redirectError);
     }
   }
 
   async function handleResendCode() {
+    if (isAnyAuthBusy) {
+      return;
+    }
+
     setSending(true);
     setErr(null);
     setMsg(null);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: buildOtpRedirectUrl(),
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: buildOtpRedirectUrl(),
+        },
+      });
 
-    setSending(false);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
 
-    if (error) {
-      setErr(error.message);
-      return;
+      setOtpDigits(Array(OTP_LENGTH).fill(""));
+      setMsg("Novo codigo enviado.");
+    } finally {
+      setSending(false);
     }
-
-    setOtpDigits(Array(OTP_LENGTH).fill(""));
-    setMsg("Novo codigo enviado.");
   }
 
   function updateDigit(index: number, value: string) {
@@ -447,6 +476,7 @@ export default function LoginPageClient() {
             <button
               type="button"
               onClick={() => setLoginMode("otp")}
+              disabled={isAnyAuthBusy}
               className="flex-1 rounded-xl py-2 text-xs font-semibold tracking-[0.1em] uppercase transition"
               style={loginMode === "otp" ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#8D867B' }}
             >
@@ -455,6 +485,7 @@ export default function LoginPageClient() {
             <button
               type="button"
               onClick={() => setLoginMode("password")}
+              disabled={isAnyAuthBusy}
               className="flex-1 rounded-xl py-2 text-xs font-semibold tracking-[0.1em] uppercase transition"
               style={loginMode === "password" ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#8D867B' }}
             >
@@ -464,7 +495,11 @@ export default function LoginPageClient() {
 
           {/* Password login form */}
           {loginMode === "password" && (
-            <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
+            <form
+              onSubmit={handlePasswordLogin}
+              className="mt-6 space-y-4"
+              aria-busy={pwLoading}
+            >
               <div>
                 <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
                   E-mail
@@ -472,10 +507,11 @@ export default function LoginPageClient() {
                 <input
                   type="email"
                   required
+                  disabled={pwLoading}
                   value={pwEmail}
                   onChange={(e) => { setPwEmail(e.target.value); setPwErr(null); }}
                   placeholder="voce@empresa.com"
-                  className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                  className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
               <div>
@@ -485,20 +521,25 @@ export default function LoginPageClient() {
                 <input
                   type="password"
                   required
+                  disabled={pwLoading}
                   value={pwPassword}
                   onChange={(e) => { setPwPassword(e.target.value); setPwErr(null); }}
                   placeholder="Sua senha"
-                  className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                  className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
               {pwErr && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div
+                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  aria-live="polite"
+                >
                   {pwErr}
                 </div>
               )}
               <button
                 type="submit"
                 disabled={pwLoading}
+                aria-busy={pwLoading}
                 className="inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ backgroundColor: '#111111', color: '#ffffff' }}
               >
@@ -514,22 +555,24 @@ export default function LoginPageClient() {
           )}
 
           {loginMode === "otp" && step === "email" ? (
-            <form onSubmit={handleSendCode} className="mt-6">
+            <form onSubmit={handleSendCode} className="mt-6" aria-busy={sending}>
               <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
                 E-mail de trabalho
               </label>
               <input
                 type="email"
                 required
+                disabled={sending}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="voce@empresa.com"
-                className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20"
+                className="mt-3 h-12 w-full rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-sm text-[#111111] outline-none placeholder:text-[#9A9388] focus:border-black/20 disabled:cursor-not-allowed disabled:opacity-60"
               />
 
               <button
                 type="submit"
                 disabled={sending}
+                aria-busy={sending}
                 className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ backgroundColor: '#111111', color: '#ffffff' }}
               >
@@ -541,7 +584,11 @@ export default function LoginPageClient() {
               </p>
             </form>
           ) : loginMode === "otp" ? (
-            <form onSubmit={handleVerifyCode} className="mt-8">
+            <form
+              onSubmit={handleVerifyCode}
+              className="mt-8"
+              aria-busy={isOtpBusy}
+            >
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8D867B]">
@@ -558,7 +605,8 @@ export default function LoginPageClient() {
                     setErr(null);
                     setMsg(null);
                   }}
-                  className="rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 py-2 text-sm font-medium text-[#111111]"
+                  disabled={isOtpBusy}
+                  className="rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 py-2 text-sm font-medium text-[#111111] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Alterar
                 </button>
@@ -578,18 +626,20 @@ export default function LoginPageClient() {
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     maxLength={1}
+                    disabled={isOtpBusy}
                     value={digit}
                     onChange={(e) => updateDigit(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
-                    className="h-14 rounded-2xl border border-black/10 bg-[#F8F5EF] text-center text-xl font-semibold tracking-[0.08em] text-[#111111] outline-none focus:border-black/20"
+                    className="h-14 rounded-2xl border border-black/10 bg-[#F8F5EF] text-center text-xl font-semibold tracking-[0.08em] text-[#111111] outline-none focus:border-black/20 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 ))}
               </div>
 
               <button
                 type="submit"
-                disabled={verifying}
+                disabled={isOtpBusy}
+                aria-busy={verifying}
                 className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ backgroundColor: '#111111', color: '#ffffff' }}
               >
@@ -600,8 +650,8 @@ export default function LoginPageClient() {
                 <button
                   type="button"
                   onClick={handleResendCode}
-                  disabled={sending}
-                  className="text-left font-medium text-[#111111] disabled:opacity-50"
+                  disabled={isOtpBusy}
+                  className="text-left font-medium text-[#111111] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {sending ? "Reenviando..." : "Reenviar codigo"}
                 </button>
@@ -611,13 +661,19 @@ export default function LoginPageClient() {
           ) : null}
 
           {loginMode === "otp" && err ? (
-            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              aria-live="polite"
+            >
               {err}
             </div>
           ) : null}
 
           {loginMode === "otp" && msg ? (
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div
+              className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+              aria-live="polite"
+            >
               {msg}
             </div>
           ) : null}

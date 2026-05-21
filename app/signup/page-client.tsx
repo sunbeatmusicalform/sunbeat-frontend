@@ -58,6 +58,9 @@ export default function SignupPageClient() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) {
+      return;
+    }
     setLoading(true);
     setError(null);
     setFieldError(null);
@@ -203,7 +206,7 @@ export default function SignupPageClient() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4" aria-busy={loading}>
             {/* Nome */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
@@ -213,11 +216,12 @@ export default function SignupPageClient() {
                 name="name"
                 type="text"
                 required
+                disabled={loading}
                 autoComplete="name"
                 placeholder="Felipe Fonseca"
                 value={form.name}
                 onChange={handleChange}
-                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
 
@@ -230,11 +234,12 @@ export default function SignupPageClient() {
                 name="email"
                 type="email"
                 required
+                disabled={loading}
                 autoComplete="email"
                 placeholder="seu@email.com"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
 
@@ -247,11 +252,12 @@ export default function SignupPageClient() {
                 name="password"
                 type="password"
                 required
+                disabled={loading}
                 autoComplete="new-password"
                 placeholder="Mínimo 8 caracteres"
                 value={form.password}
                 onChange={handleChange}
-                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
 
@@ -264,10 +270,11 @@ export default function SignupPageClient() {
                 name="workspace_name"
                 type="text"
                 required
+                disabled={loading}
                 placeholder="Ex: Sun7 Records"
                 value={form.workspace_name}
                 onChange={handleChange}
-                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
+                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition disabled:cursor-not-allowed disabled:opacity-60"
               />
               {preview && (
                 <p className="mt-1.5 text-xs text-[#9A9590]">
@@ -281,7 +288,10 @@ export default function SignupPageClient() {
             </div>
 
             {error && (
-              <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div
+                className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600"
+                aria-live="polite"
+              >
                 {error}
               </div>
             )}
@@ -289,7 +299,8 @@ export default function SignupPageClient() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold transition disabled:opacity-60"
+              aria-busy={loading}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
               style={{ backgroundColor: '#111111', color: '#ffffff' }}
             >
               {loading ? (
