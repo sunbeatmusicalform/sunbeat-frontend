@@ -26,6 +26,13 @@ export const WORKSPACE_RESERVED_STEP_KEYS = [
   WORKSPACE_EMAIL_SETTINGS_STEP_KEY,
   WORKSPACE_SECURITY_STEP_KEY,
 ] as const;
+const EMAIL_EVENT_KEYS = [
+  "on_summary",
+  "on_first_stage",
+  "on_submit",
+  "on_draft",
+  "on_edit",
+] as const;
 
 type WorkspaceBrandingRow = {
   workspace_slug: string;
@@ -74,6 +81,11 @@ type WorkspaceAirtableMappingRow = Record<string, unknown> & {
   workflow_type?: string | null;
   form_version?: string | null;
   is_enabled?: boolean | null;
+};
+
+type WorkspaceWorkflowSettingsRow = {
+  workflow_type?: string | null;
+  extra_settings?: unknown;
 };
 
 type WorkspacePlanRow = {
@@ -160,7 +172,49 @@ function parseStoredEmailList(value: unknown) {
   }
 }
 
-function getDefaultNotificationEmails(_workspaceSlug: string) {
+function normalizeEmailList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const unique = new Set<string>();
+
+  value.forEach((item) => {
+    if (typeof item !== "string") {
+      return;
+    }
+
+    const normalized = item.trim().toLowerCase();
+    if (normalized) {
+      unique.add(normalized);
+    }
+  });
+
+  return Array.from(unique).slice(0, 5);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function extractOperationalEmailRecipients(extraSettings: unknown) {
+  const extra = isRecord(extraSettings) ? extraSettings : {};
+  const email = isRecord(extra.email) ? extra.email : {};
+  const events = isRecord(email.events) ? email.events : {};
+  const recipients = new Set<string>();
+
+  for (const eventName of EMAIL_EVENT_KEYS) {
+    const event = isRecord(events[eventName]) ? events[eventName] : {};
+    normalizeEmailList(event.recipients).forEach((recipient) =>
+      recipients.add(recipient)
+    );
+  }
+
+  return Array.from(recipients).slice(0, 5);
+}
+
+function getDefaultNotificationEmails(workspaceSlug: string) {
+  void workspaceSlug;
   return [];
 }
 
@@ -219,6 +273,7 @@ function buildWorkspaceSettings(args: {
       "workspace_branding",
       "workspace_field_overrides",
       "workspace_airtable_mapping",
+      "workspace_workflow_settings",
     ],
     supportsWorkflowScoping: true,
   };
@@ -276,6 +331,7 @@ function buildIntegrationSettings(args: {
   branding: WorkspaceBrandingRow | null;
   fieldOverrides: WorkspaceFieldOverrideRow[];
   airtableMappings: WorkspaceAirtableMappingRow[];
+  workflowSettings: WorkspaceWorkflowSettingsRow | null;
   workflowIdentity: ReturnType<typeof resolveWorkflowIdentity>;
 }): IntegrationSettingsReadModel {
   const summaryEmailRow = args.fieldOverrides.find(
@@ -284,9 +340,18 @@ function buildIntegrationSettings(args: {
       row.field_key === WORKSPACE_EMAIL_SETTINGS_FIELD_KEY
   );
 
+  const operationalNotificationRecipients = extractOperationalEmailRecipients(
+    args.workflowSettings?.extra_settings
+  );
   const notificationRecipients =
-    parseStoredEmailList(summaryEmailRow?.helper_text_override) ||
-    getDefaultNotificationEmails(args.workspaceSlug);
+    operationalNotificationRecipients.length > 0
+      ? operationalNotificationRecipients
+      : parseStoredEmailList(summaryEmailRow?.helper_text_override) ||
+        getDefaultNotificationEmails(args.workspaceSlug);
+  const emailSource =
+    operationalNotificationRecipients.length > 0
+      ? "workspace_branding + workspace_workflow_settings.extra_settings.email.events"
+      : "workspace_branding + workspace_field_overrides";
 
   const scopedAirtableMappings = args.airtableMappings.filter((row) =>
     matchesWorkflowScope(row, args.workflowIdentity)
@@ -315,7 +380,7 @@ function buildIntegrationSettings(args: {
         notificationRecipients.length > 0
           ? notificationRecipients.length
           : getDefaultNotificationEmails(args.workspaceSlug).length,
-      source: "workspace_branding + workspace_field_overrides",
+      source: emailSource,
     },
     storage: {
       provider: "supabase_storage",
@@ -496,6 +561,7 @@ export function buildWorkspaceConfigReadModel(args: {
   branding: WorkspaceBrandingRow | null;
   fieldOverrides: WorkspaceFieldOverrideRow[];
   airtableMappings: WorkspaceAirtableMappingRow[];
+  workflowSettings?: WorkspaceWorkflowSettingsRow | null;
   plan?: WorkspacePlanRow | null;
   planOverride?: WorkspacePlanOverrideRow | null;
 }): WorkspaceConfigReadModel {
@@ -516,6 +582,7 @@ export function buildWorkspaceConfigReadModel(args: {
     branding: args.branding,
     fieldOverrides: args.fieldOverrides,
     airtableMappings: args.airtableMappings,
+    workflowSettings: args.workflowSettings ?? null,
     workflowIdentity,
   });
   const reservedFieldOverrideCount = args.fieldOverrides.filter(
@@ -566,11 +633,17 @@ export async function loadWorkspaceConfigReadModel(args: {
   formVersion?: FormVersion | null;
 }) {
   const supabase = createSupabaseAdmin();
+  const workflowIdentity = resolveWorkflowIdentity({
+    workspaceSlug: args.workspaceSlug,
+    workflowType: args.workflowType,
+    formVersion: args.formVersion,
+  });
 
   const [
     { data: branding, error: brandingError },
     { data: fieldOverrides, error: fieldOverridesError },
     { data: airtableMappings, error: airtableError },
+    { data: workflowSettingsRow, error: workflowSettingsError },
     { data: workspaceRow },
     { data: planOverrideRow },
   ] = await Promise.all([
@@ -591,6 +664,12 @@ export async function loadWorkspaceConfigReadModel(args: {
       .select("*")
       .eq("workspace_slug", args.workspaceSlug)
       .eq("is_enabled", true),
+    supabase
+      .from("workspace_workflow_settings")
+      .select("workflow_type, extra_settings")
+      .eq("workspace_slug", args.workspaceSlug)
+      .eq("workflow_type", workflowIdentity.workflowType)
+      .maybeSingle(),
     // Plano base do workspace (fail-open: null se nÃ£o encontrado)
     supabase
       .from("workspaces")
@@ -608,6 +687,7 @@ export async function loadWorkspaceConfigReadModel(args: {
   if (brandingError) throw new Error(brandingError.message);
   if (fieldOverridesError) throw new Error(fieldOverridesError.message);
   if (airtableError) throw new Error(airtableError.message);
+  if (workflowSettingsError) throw new Error(workflowSettingsError.message);
 
   // Resolver plan row â€” normalizar join aninhado do Supabase
   let planRow: WorkspacePlanRow | null = null;
@@ -637,6 +717,8 @@ export async function loadWorkspaceConfigReadModel(args: {
     branding: branding ?? null,
     fieldOverrides: (fieldOverrides ?? []) as WorkspaceFieldOverrideRow[],
     airtableMappings: (airtableMappings ?? []) as WorkspaceAirtableMappingRow[],
+    workflowSettings:
+      (workflowSettingsRow as WorkspaceWorkflowSettingsRow | null) ?? null,
     plan: planRow,
     planOverride: (planOverrideRow as WorkspacePlanOverrideRow | null) ?? null,
   });
