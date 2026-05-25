@@ -230,3 +230,5 @@ Before any schema runtime activation:
 4. Add upload parity notes for cover, per-track audio and additional files.
 5. Only then consider an opt-in preview flag for a non-production workspace.
 
+See `docs/release-intake-draft-adapter.md` for the isolated draft adapter round-trip proof.
+
