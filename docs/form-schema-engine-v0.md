@@ -57,6 +57,10 @@ Supported field kinds in the v0 renderer:
 
 The renderer is intentionally small. It renders local values, local navigation and visual validation states only.
 
+### Relationship with `lib/form-engine`
+
+`lib/form-schema` is an experimental v0 schema contract and preview renderer layer. It runs in parallel to the existing `lib/form-engine` runtime and does not replace workflow registry entries, active renderers, submit/draft/upload behavior, or any Atabaque production flow.
+
 ## Release intake candidate
 
 `lib/form-schema/release-intake.schema.ts` defines a candidate release intake schema with four steps:
@@ -106,4 +110,3 @@ Before connecting this schema to a real workflow, a separate PR should:
 3. add a read-only runtime adapter behind an explicit feature flag;
 4. verify the full diff against `/intake/atabaque`, registry and renderer files;
 5. keep irreversible actions gated by a human approval step.
-

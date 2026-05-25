@@ -18,6 +18,8 @@ export type FieldKind =
 
 export type SchemaRendererMode = "preview" | "readonly" | "runtime_candidate";
 
+export type WorkflowType = "release_intake" | (string & {});
+
 export type ValidationRuleType =
   | "required"
   | "min_length"
@@ -123,7 +125,7 @@ export type FormStep = {
 export type FormSchema = {
   id: string;
   version: string;
-  workflowType: "release_intake";
+  workflowType: WorkflowType;
   title: string;
   description: string;
   modeLabel: string;
