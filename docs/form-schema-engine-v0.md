@@ -112,3 +112,5 @@ Before connecting this schema to a real workflow, a separate PR should:
 5. keep irreversible actions gated by a human approval step.
 
 See `docs/release-intake-schema-parity.md` for the first field-level parity audit and adapter map notes.
+
+See `docs/release-intake-draft-adapter.md` for the isolated draft adapter round-trip proof.
