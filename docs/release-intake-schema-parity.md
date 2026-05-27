@@ -247,3 +247,5 @@ Before any schema runtime activation:
 5. Only then consider an opt-in preview flag for a non-production workspace.
 
 See `docs/release-intake-draft-adapter.md` for the isolated draft adapter round-trip proof.
+
+See `docs/release-intake-submit-parity.md` for the isolated submit payload candidate proof.

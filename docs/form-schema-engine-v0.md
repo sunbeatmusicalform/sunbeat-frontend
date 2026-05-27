@@ -114,3 +114,5 @@ Before connecting this schema to a real workflow, a separate PR should:
 See `docs/release-intake-schema-parity.md` for the first field-level parity audit and adapter map notes.
 
 See `docs/release-intake-draft-adapter.md` for the isolated draft adapter round-trip proof.
+
+See `docs/release-intake-submit-parity.md` for the isolated submit payload candidate proof.
