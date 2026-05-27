@@ -2,8 +2,19 @@ import type {
   ReleaseIntakeDraftPayload,
   UploadedFileRef,
 } from "../form-engine/types";
+import type { ReleaseIntakeFileStatus } from "./release-intake.draft-adapter";
 
-const coverFile: UploadedFileRef = {
+type RuntimeFileMetadata = {
+  width?: number;
+  height?: number;
+  dpi?: number;
+  status?: ReleaseIntakeFileStatus;
+  preview?: boolean;
+};
+
+type RuntimeFileRefWithMetadata = UploadedFileRef & RuntimeFileMetadata;
+
+const coverFileLowSpec: RuntimeFileRefWithMetadata = {
   file_id: "mock-cover-low-spec",
   file_name: "aurora_leste_cover_1500.png",
   storage_bucket: "mock-covers",
@@ -12,6 +23,21 @@ const coverFile: UploadedFileRef = {
   download_url: "https://example.test/files/mock-cover-low-spec/download",
   mime_type: "image/png",
   size_bytes: 3_145_728,
+  width: 1500,
+  height: 1500,
+  dpi: 72,
+  status: "validated",
+  preview: true,
+};
+
+const coverFileValidSpec: RuntimeFileRefWithMetadata = {
+  ...coverFileLowSpec,
+  file_id: "mock-cover-valid-spec",
+  file_name: "aurora_leste_cover_3000.png",
+  storage_path: "atabaque/drafts/mock-draft/cover/aurora_leste_cover_3000.png",
+  width: 3000,
+  height: 3000,
+  dpi: 300,
 };
 
 const trackOneAudio: UploadedFileRef = {
@@ -47,7 +73,7 @@ const additionalFile: UploadedFileRef = {
   size_bytes: 1_204_111,
 };
 
-export const releaseIntakeRuntimeDraftFixture = {
+export const MOCK_RUNTIME_FULL = {
   draft_token: "mock-draft-token",
   workspace_slug: "atabaque",
   workflow_type: "release_intake",
@@ -71,7 +97,7 @@ export const releaseIntakeRuntimeDraftFixture = {
       has_video_asset: "yes",
       video_link: "https://example.test/video/aurora-leste",
       video_release_date: "2026-09-20T10:00",
-      cover_file: coverFile,
+      cover_file: coverFileLowSpec,
     },
     tracks: [
       {
@@ -104,7 +130,7 @@ export const releaseIntakeRuntimeDraftFixture = {
         order_number: 2,
         title: "Noite Clara",
         is_focus_track: false,
-        primary_artists: "Marina Oliveira feat. Davi Costa",
+        primary_artists: "Marina Oliveira, Davi Costa",
         featured_artists: "Davi Costa",
         interpreters: "Marina Oliveira, Davi Costa",
         authors: "Marina Oliveira, Davi Costa",
@@ -146,3 +172,38 @@ export const releaseIntakeRuntimeDraftFixture = {
     updated_at: "2026-05-25T12:00:00.000Z",
   },
 } satisfies ReleaseIntakeDraftPayload;
+
+export const MOCK_RUNTIME_EMPTY_PRESSKIT = {
+  ...MOCK_RUNTIME_FULL,
+  values: {
+    ...MOCK_RUNTIME_FULL.values,
+    project: {
+      ...MOCK_RUNTIME_FULL.values.project,
+      presskit_link: "",
+    },
+  },
+} satisfies ReleaseIntakeDraftPayload;
+
+export const MOCK_RUNTIME_UNIQUE_ISRC = {
+  ...MOCK_RUNTIME_FULL,
+  values: {
+    ...MOCK_RUNTIME_FULL.values,
+    tracks: MOCK_RUNTIME_FULL.values.tracks.map((track, index) => ({
+      ...track,
+      isrc_code: index === 0 ? "BR-SBT-26-00001" : "BR-SBT-26-00002",
+    })),
+  },
+} satisfies ReleaseIntakeDraftPayload;
+
+export const MOCK_RUNTIME_VALID_COVER = {
+  ...MOCK_RUNTIME_FULL,
+  values: {
+    ...MOCK_RUNTIME_FULL.values,
+    project: {
+      ...MOCK_RUNTIME_FULL.values.project,
+      cover_file: coverFileValidSpec,
+    },
+  },
+} satisfies ReleaseIntakeDraftPayload;
+
+export const releaseIntakeRuntimeDraftFixture = MOCK_RUNTIME_FULL;

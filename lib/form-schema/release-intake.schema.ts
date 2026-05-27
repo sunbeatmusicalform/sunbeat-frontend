@@ -156,6 +156,40 @@ export const releaseIntakeSchema = {
           helperText: "Campo editorial opcional para triagem.",
         },
         {
+          key: "tiktok_snippet",
+          label: "Trecho para TikTok",
+          kind: "text",
+          placeholder: "Ex.: 00:48 ate 01:18",
+          helperText: "Campo preservado no adapter; nao aciona runtime real.",
+        },
+        {
+          key: "has_video_asset",
+          label: "Tem videoclipe?",
+          kind: "select",
+          options: [
+            { label: "Sim", value: "yes" },
+            { label: "Nao", value: "no" },
+          ],
+          helperText:
+            "Condicionalidade fica como TODO do renderer; engine v0 nao suporta visibleWhen.",
+        },
+        {
+          key: "video_link",
+          label: "Link do video",
+          kind: "text",
+          placeholder: "https://...",
+          helperText:
+            "Campo sempre presente no schema v0; renderer futuro pode condicionar por has_video_asset.",
+        },
+        {
+          key: "video_release_date",
+          label: "Data/hora do video",
+          kind: "text",
+          placeholder: "2026-08-12T19:00",
+          helperText:
+            "Datetime preservado como texto no v0 porque FieldKind ainda nao tem datetime-local.",
+        },
+        {
           key: "project_notes",
           label: "Detalhes do projeto",
           kind: "textarea",
@@ -201,8 +235,65 @@ export const releaseIntakeSchema = {
           fields: [
             { key: "title", label: "Titulo", kind: "text", required: true },
             { key: "duration", label: "Duracao", kind: "text" },
+            {
+              key: "primary_artists",
+              label: "Artista(s) principal(is)",
+              kind: "text",
+              required: true,
+            },
+            { key: "featured_artists", label: "Feat.", kind: "text" },
+            { key: "interpreters", label: "Interpretes", kind: "text" },
             { key: "isrc_code", label: "ISRC", kind: "text" },
             { key: "authors", label: "Autores", kind: "textarea" },
+            { key: "publishers", label: "Editoras", kind: "text" },
+            {
+              key: "producers_musicians",
+              label: "Produtores / musicos",
+              kind: "text",
+            },
+            {
+              key: "phonographic_producer",
+              label: "Produtor fonografico",
+              kind: "text",
+            },
+            {
+              key: "has_isrc",
+              label: "Ja tem ISRC?",
+              kind: "select",
+              options: [
+                { label: "Sim", value: "yes" },
+                { label: "Nao", value: "no" },
+              ],
+            },
+            {
+              key: "explicit_content",
+              label: "Conteudo explicito",
+              kind: "select",
+              options: [
+                { label: "Sim", value: "yes" },
+                { label: "Nao", value: "no" },
+              ],
+            },
+            {
+              key: "audio_file",
+              label: "Arquivo WAV",
+              kind: "upload",
+              helperText:
+                "Visual-only ate upload parity; o patch do draft adapter nao envia este campo.",
+              statusLabel: "Visual-only",
+              uploadSpec: {
+                acceptLabel: "WAV",
+                maxSizeLabel: "Mock metadata only",
+              },
+            },
+            {
+              key: "validations",
+              label: "Validacoes derivadas",
+              kind: "review",
+              helperText:
+                "Computed no adapter: inclui isrc_duplicate, audio_missing e creditos.",
+              statusLabel: "Computed",
+            },
           ],
           aiSignals: [
             {
@@ -309,18 +400,6 @@ export const releaseIntakeSchema = {
           },
         },
         {
-          key: "audio_files",
-          label: "Masters WAV",
-          kind: "upload",
-          helperText:
-            "Lista mockada para simular validacao de audio, sem envio real.",
-          validationState: "warning",
-          uploadSpec: {
-            acceptLabel: "WAV 24-bit",
-            maxSizeLabel: "Mock limit: 100 MB",
-          },
-        },
-        {
           key: "promo_assets_link",
           label: "Pasta de divulgacao",
           kind: "text",
@@ -329,10 +408,20 @@ export const releaseIntakeSchema = {
           validationState: "valid",
         },
         {
-          key: "presskit_available",
-          label: "Presskit enviado",
-          kind: "boolean",
-          helperText: "Desmarcado no mock para renderizar warning leve.",
+          key: "cover_link",
+          label: "Link externo da capa",
+          kind: "text",
+          placeholder: "https://...",
+          helperText:
+            "Fallback de link preservado no adapter; nao altera upload real.",
+        },
+        {
+          key: "presskit_link",
+          label: "Link do presskit",
+          kind: "text",
+          placeholder: "https://...",
+          helperText:
+            "URL/string preservada no round-trip; string vazia significa ausente.",
           validationState: "warning",
           aiSignals: [
             {
@@ -345,6 +434,16 @@ export const releaseIntakeSchema = {
               validationState: "warning",
             },
           ],
+        },
+        {
+          key: "cover_specs",
+          label: "Specs da capa",
+          kind: "review",
+          helperText:
+            "Computed visual-only a partir de width, height, dpi e status da capa.",
+          validationState: "invalid",
+          blocking: "hard_block",
+          statusLabel: "Computed",
         },
       ],
     },
