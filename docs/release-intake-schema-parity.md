@@ -4,7 +4,7 @@ This document audits the gap between the active `release_intake` runtime and the
 
 ## Executive Summary
 
-The candidate schema remains a preview layer, not the active Atabaque runtime. PR20 closes the data-loss gaps found by the draft adapter proof for presskit, project marketing/video fields, per-track primary artists, per-track audio metadata and computed blockers.
+The candidate schema remains a preview layer, not the active Atabaque runtime. PR20 closes the data-loss gaps found by the draft adapter proof for presskit, project marketing/video fields, per-track primary artists, per-track audio metadata and computed blockers. PR22 adds a pure upload manifest candidate for cover, track audio and optional marketing asset metadata without connecting the active upload runtime.
 
 The active runtime still owns `/intake/atabaque`, draft/autosave, submit, upload, Airtable, Drive and email. This parity layer is declarative and isolated.
 
@@ -16,6 +16,7 @@ Included:
 - runtime path notes for draft, submit, edit mode and upload;
 - visual-only signal classification;
 - adapter map updates for PR20 fields;
+- upload manifest notes for PR22 fields;
 - documentation of fields still waiting for submit, upload or opt-in activation.
 
 Not included:
@@ -141,10 +142,10 @@ The complete typed source of truth is `lib/form-schema/release-intake.parity.ts`
 | `tracks.isrc_code` | `tracks` | `tracks[].isrc_code` | matched | low | Value round-trips; duplicate check is computed only. |
 | `tracks.explicit_content` | `tracks` | `tracks[].explicit_content` | matched | low | Direct match. |
 | `tracks.tiktok_snippet` | `tracks` | `tracks[].tiktok_snippet` | matched | low | Direct match. |
-| `tracks.audio_file` | `tracks` | `tracks[].audio_file` | visual_only | high | Schema preserves metadata; patch excludes it until upload parity. |
+| `tracks.audio_file` | `tracks` | `tracks[].audio_file` | visual_only | high | Schema preserves metadata; PR22 can describe upload candidates, but runtime upload remains disconnected. |
 | `tracks.lyrics` | `tracks` | `tracks[].lyrics` | matched | low | Direct match. |
 | `tracks.validations` | `tracks` | computed from track fields | visual_only | high | Computed ISRC/audio/credit validation bundle. |
-| `assets.cover_file` | `assets` | `project.cover_file` | visual_only | high | Metadata drives visual specs; patch excludes file refs until upload parity. |
+| `assets.cover_file` | `assets` | `project.cover_file` | visual_only | high | Metadata drives visual specs; PR22 can describe a cover upload candidate, but runtime upload remains disconnected. |
 | `assets.cover_specs` | `assets` | computed from `project.cover_file` | visual_only | high | Computed resolution/DPI/status specs. |
 | `cover_link` | `assets` | `project.cover_link` | matched | low | Direct fallback link. |
 | `promo_assets_link` | `assets` | `project.promo_assets_link` | matched | low | Direct match. |
@@ -163,8 +164,8 @@ The complete typed source of truth is `lib/form-schema/release-intake.parity.ts`
 
 ## Remaining Critical Gaps
 
-- Submit parity has not been implemented, so computed blockers do not block real submit.
-- Upload parity has not been implemented, so cover/audio file refs stay visual-only in patches.
+- Submit parity is still isolated, so computed blockers do not block real submit.
+- Upload parity is now described by an isolated manifest candidate, but cover/audio/asset refs are still not connected to runtime upload, draft or submit.
 - The visible four-step schema still has no dedicated marketing step for the full runtime marketing object.
 - Active profile-management fields and focus-track policy remain out of schema UI.
 - Conditional rendering for video fields waits on a future `visibleWhen` or equivalent schema feature.
@@ -214,13 +215,14 @@ The map identifies:
 - active Airtable/Drive/email payload assumptions;
 - final normalization against `buildWorkflowSubmitPayload`.
 
-## Fields Waiting For Upload Parity
+## Upload Parity Manifest
 
 - `assets.cover_file`
 - `assets.cover_specs`
 - `tracks[].audio_file`
 - `marketing.additional_files`
-- image dimension validation location: client, upload route or backend.
+
+PR22 adds `docs/release-intake-upload-parity.md` and a pure manifest adapter for these fields. Runtime upload execution, storage policy enforcement, Drive mapping and submit integration remain future work.
 
 ## Atabaque Activation Checklist
 
@@ -240,8 +242,8 @@ Before any schema runtime activation:
 
 ## Recommended Next Steps
 
-1. Add submit parity tests against `buildReleaseIntakeSubmitPayload`.
-2. Add upload parity for cover, per-track audio and additional files.
+1. Compare submit parity candidates against `buildReleaseIntakeSubmitPayload`.
+2. Connect upload parity to draft/submit only in a future opt-in PR after runtime review.
 3. Decide whether to expose the full marketing object in a schema step or keep it adapter-only.
 4. Add conditional rendering support before hiding video fields behind `has_video_asset`.
 5. Only then consider an opt-in preview flag for a non-production workspace.
@@ -249,3 +251,5 @@ Before any schema runtime activation:
 See `docs/release-intake-draft-adapter.md` for the isolated draft adapter round-trip proof.
 
 See `docs/release-intake-submit-parity.md` for the isolated submit payload candidate proof.
+
+See `docs/release-intake-upload-parity.md` for the isolated upload manifest candidate proof.

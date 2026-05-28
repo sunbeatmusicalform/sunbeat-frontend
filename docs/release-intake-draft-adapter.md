@@ -97,7 +97,7 @@ The adapter also carries runtime marketing fields through `schemaValues.marketin
 - `assets.cover_specs`
 - `tracks[].audio_file`
 
-These fields can exist in schema values for preview, audit and blocker derivation. They are intentionally excluded from runtime patch output until upload parity exists.
+These fields can exist in schema values for preview, audit, blocker derivation and the isolated PR22 upload manifest. They are intentionally excluded from runtime patch output.
 
 ## ISRC Duplicate Derivation
 
@@ -147,7 +147,7 @@ The harness verifies:
 This adapter is a local proof, not a runtime migration. It still leaves several decisions for later PRs:
 
 - submit parity must decide whether computed blockers block real submit;
-- upload parity must decide how cover/audio refs and image dimensions are validated;
+- upload parity manifest exists, but a future runtime PR must decide how cover/audio refs and image dimensions are validated;
 - the full marketing object needs a visible schema/product policy;
 - active profile-management fields need schema policy;
 - conditional rendering needs an engine feature such as `visibleWhen`;
@@ -158,7 +158,9 @@ This adapter is a local proof, not a runtime migration. It still leaves several 
 Before connecting anything to runtime:
 
 - add submit parity tests against `buildReleaseIntakeSubmitPayload`;
-- add upload parity for cover, per-track audio and additional files;
+- connect upload parity to runtime only after draft and submit impacts are reviewed;
 - decide how computed blockers become submit blockers;
 - decide whether marketing gets a schema step or remains adapter-only;
 - keep activation behind explicit opt-in and verify `/intake/atabaque` remains unchanged.
+
+See `docs/release-intake-upload-parity.md` for the isolated upload manifest candidate proof.

@@ -41,6 +41,20 @@ export type ReleaseIntakeRuntimeSurfaceMap = {
   schemaParityRequirement: string;
 };
 
+export type ReleaseIntakeUploadManifestFieldMapEntry = {
+  schemaFieldId: string;
+  manifestPath: string;
+  runtimePayloadPath: string | null;
+  uploadKind: "cover" | "audio" | "asset";
+  status:
+    | "requires_upload_runtime"
+    | "requires_storage_policy"
+    | "requires_drive_mapping"
+    | "requires_submit_integration"
+    | "visual_only_metadata";
+  notes: string;
+};
+
 export const VISUAL_ONLY_FIELDS = [
   "assets.cover_file",
   "assets.cover_specs",
@@ -367,7 +381,7 @@ export const releaseIntakeRuntimeFieldMap = [
     parityStatus: "visual_only",
     uploadKind: "audio",
     notes:
-      "Per-track audio metadata survives in schema values but is excluded from runtime patches until upload parity.",
+      "Per-track audio metadata survives in schema values and can be described by the PR22 upload manifest, but remains disconnected from runtime upload.",
   },
   {
     schemaFieldId: "tracks.lyrics",
@@ -403,7 +417,7 @@ export const releaseIntakeRuntimeFieldMap = [
     parityStatus: "visual_only",
     uploadKind: "cover",
     notes:
-      "Cover metadata is displayed and used to derive cover_specs, but file refs stay out of patches until upload parity.",
+      "Cover metadata is displayed, used to derive cover_specs and can be described by the PR22 upload manifest, but file refs stay out of patches.",
   },
   {
     schemaFieldId: "cover_specs",
@@ -510,9 +524,48 @@ export const releaseIntakeRuntimeOnlyPaths = [
     runtimeStep: "marketing",
     risk: "high",
     reason:
-      "Active optional marketing uploads are intentionally out of scope until upload parity.",
+      "Active optional marketing uploads are runtime-only unless explicitly supplied to the PR22 upload manifest adapter.",
   },
 ] as const satisfies readonly ReleaseIntakeRuntimeOnlyPath[];
+
+export const releaseIntakeUploadManifestFieldMap = [
+  {
+    schemaFieldId: "assets.cover_file",
+    manifestPath: "cover",
+    runtimePayloadPath: "project.cover_file",
+    uploadKind: "cover",
+    status: "requires_upload_runtime",
+    notes:
+      "Manifest preserves cover file metadata and computed specs, but the active upload route must still create the real file ref.",
+  },
+  {
+    schemaFieldId: "assets.cover_specs",
+    manifestPath: "cover.specs",
+    runtimePayloadPath: null,
+    uploadKind: "cover",
+    status: "visual_only_metadata",
+    notes:
+      "Cover specs are computed from metadata and must not be sent as upload or submit payload.",
+  },
+  {
+    schemaFieldId: "tracks[].audio_file",
+    manifestPath: "trackAudio[]",
+    runtimePayloadPath: "tracks[].audio_file",
+    uploadKind: "audio",
+    status: "requires_upload_runtime",
+    notes:
+      "Manifest preserves per-track audio metadata and trackLocalId, but upload path creation remains runtime-owned.",
+  },
+  {
+    schemaFieldId: "marketing.additional_files",
+    manifestPath: "marketingAdditionalFiles[]",
+    runtimePayloadPath: "marketing.additional_files",
+    uploadKind: "asset",
+    status: "requires_upload_runtime",
+    notes:
+      "Schema values do not include marketing additional files yet; the adapter can carry explicit fixture metadata for parity review.",
+  },
+] as const satisfies readonly ReleaseIntakeUploadManifestFieldMapEntry[];
 
 export const releaseIntakeRuntimeSurfaces = [
   {

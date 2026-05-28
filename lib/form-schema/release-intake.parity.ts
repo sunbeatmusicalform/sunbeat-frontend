@@ -372,7 +372,7 @@ export const releaseIntakeParityEntries = [
     risk: "high",
     surfaces: ["preview", "upload", "drive"],
     notes:
-      "Schema values preserve audio metadata per track, but the adapter intentionally excludes it from patches until upload parity.",
+      "Schema values preserve audio metadata per track. PR22 describes it in a pure upload manifest while keeping runtime upload disconnected.",
   },
   {
     schemaFieldId: "tracks.lyrics",
@@ -407,7 +407,7 @@ export const releaseIntakeParityEntries = [
     risk: "high",
     surfaces: ["preview", "upload", "drive"],
     notes:
-      "Cover metadata can derive visual blockers, but the actual file ref is excluded from patch until upload parity.",
+      "Cover metadata can derive visual blockers and PR22 can describe it as a manifest candidate, but the actual file ref is excluded from patches.",
   },
   {
     schemaFieldId: "assets.cover_specs",
@@ -592,6 +592,7 @@ export const releaseIntakeParityEntries = [
     status: "missing_in_schema",
     risk: "high",
     surfaces: ["draft", "submit", "edit_mode", "upload", "drive"],
-    notes: "Active asset upload list remains outside PR20 until upload parity.",
+    notes:
+      "Active asset upload list remains runtime-only; PR22 can carry explicit fixture metadata without adding it to schema values.",
   },
 ] as const satisfies readonly ReleaseIntakeParityEntry[];
