@@ -116,3 +116,5 @@ See `docs/release-intake-schema-parity.md` for the first field-level parity audi
 See `docs/release-intake-draft-adapter.md` for the isolated draft adapter round-trip proof.
 
 See `docs/release-intake-submit-parity.md` for the isolated submit payload candidate proof.
+
+See `docs/release-intake-upload-parity.md` for the isolated upload manifest candidate proof.

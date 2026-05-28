@@ -88,7 +88,7 @@ The candidate mirrors active normalization where safe:
 - serializes `isrc_code` only when `has_isrc === "yes"`;
 - omits empty marketing object.
 
-The candidate uses adapter-only types instead of the real `ReleaseIntakeSubmitPayload` type because upload refs are intentionally excluded until upload parity.
+The candidate uses adapter-only types instead of the real `ReleaseIntakeSubmitPayload` type because upload refs are intentionally excluded from submit payloads. PR22 adds an upload manifest candidate, but does not serialize file refs into submit.
 
 ## Covered Fields
 
@@ -137,7 +137,7 @@ These fields are excluded from the submit candidate:
 
 They remain available in schema values for preview and parity reporting, but they do not enter submit payload candidates.
 
-## Upload Parity Pending
+## Upload Parity Manifest
 
 The active submit payload can include:
 
@@ -145,7 +145,7 @@ The active submit payload can include:
 - `tracks[].audio_file`;
 - `marketing.additional_files`.
 
-PR21 intentionally excludes those refs because upload parity must first prove that `UploadedFileRef`, upload kind, draft token, buckets and per-track file paths are preserved safely.
+PR21 intentionally excludes those refs. PR22 describes them in an isolated upload manifest candidate, preserving `UploadedFileRef` metadata, upload kind, draft-token requirement, buckets and per-track file paths without connecting real upload or submit.
 
 ## Pending Decisions
 
@@ -184,7 +184,7 @@ This adapter is a proof layer. It is not imported by `/intake/atabaque`, active 
 Before real submit activation:
 
 - compare candidate output against `buildReleaseIntakeSubmitPayload` with controlled fixtures;
-- complete upload parity for cover, audio and marketing files;
+- connect upload manifest output to submit only in a future opt-in PR after upload runtime review;
 - decide focus-track and track-status policy;
 - decide how computed blockers become real submit blockers;
 - verify Airtable, Drive and email downstream expectations;
@@ -203,3 +203,5 @@ Before real submit activation:
 - Email unchanged.
 - Backend unchanged.
 - SQL, secrets, deploy and billing unchanged.
+
+See `docs/release-intake-upload-parity.md` for the isolated upload manifest candidate proof.
