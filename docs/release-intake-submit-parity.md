@@ -205,3 +205,5 @@ Before real submit activation:
 - SQL, secrets, deploy and billing unchanged.
 
 See `docs/release-intake-upload-parity.md` for the isolated upload manifest candidate proof.
+
+See `docs/release-intake-integration-readiness.md` for the opt-in readiness matrix, rollback plan and activation checklist.

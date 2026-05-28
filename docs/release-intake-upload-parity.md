@@ -146,3 +146,5 @@ The PR22 adapter mirrors those categories declaratively through `RELEASE_INTAKE_
 - confirm submit payload accepts uploaded refs without changing unrelated fields;
 - confirm Drive and email behavior with uploaded refs;
 - keep activation behind a separate explicit opt-in PR.
+
+See `docs/release-intake-integration-readiness.md` for the opt-in readiness matrix, rollback plan and activation checklist.
