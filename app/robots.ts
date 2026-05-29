@@ -5,9 +5,20 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/"
-      }
+        allow: "/",
+        disallow: [
+          "/intake/",
+          "/clearance/",
+          "/people/",
+          "/company/",
+          "/app/",
+          "/auth/",
+          "/api/",
+          "/dev/",
+          "/edit/",
+        ],
+      },
     ],
-    sitemap: "https://sunbeat.pro/sitemap.xml"
+    sitemap: "https://sunbeat.pro/sitemap.xml",
   };
 }
