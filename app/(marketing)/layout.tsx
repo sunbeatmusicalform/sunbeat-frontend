@@ -42,5 +42,9 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-[#F4F1EA] text-[#111111]">
+      {children}
+    </div>
+  );
 }
