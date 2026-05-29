@@ -3,14 +3,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   metadataBase: new URL("https://sunbeat.pro"),
   title: {
-    default: "Sunbeat — Infraestrutura inteligente de intake, workflow e operação",
+    default: "Sunbeat — Intelligent Infrastructure for Creative Operations",
     template: "%s | Sunbeat",
   },
   description:
-    "Sunbeat é uma infraestrutura inteligente de intake, workflow e operação para mercados criativos. Transforme formulários e briefings em execução organizada.",
+    "Intake, workflow and operations infrastructure for creative businesses. Turn forms, briefs and release data into structured execution.",
   keywords: [
-    "intake workflow operação mercados criativos",
-    "gestão inteligente mercados criativos",
     "music operations platform",
     "release intake for labels",
     "creative workflow management",
@@ -20,16 +18,16 @@ export const metadata: Metadata = {
     "creative operations infrastructure",
   ],
   openGraph: {
-    title: "Sunbeat — Infraestrutura de intake, workflow e operação",
+    title: "Sunbeat — Intelligent Infrastructure for Creative Operations",
     description:
-      "Transforme formulários, briefing e entrada de demandas em workflow, contexto operacional e execução organizada para equipes criativas.",
+      "Turn forms, briefs and incoming work into structured workflows, operational context and scalable execution.",
     url: "https://sunbeat.pro",
     siteName: "Sunbeat",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sunbeat — Intelligent infrastructure for creative operations",
+    title: "Sunbeat — Intelligent Infrastructure for Creative Operations",
     description:
       "Turn forms, briefs and incoming work into structured workflows, operational context and scalable execution.",
   },

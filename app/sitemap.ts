@@ -1,18 +1,22 @@
 import { MetadataRoute } from "next";
 
+const BASE = "https://sunbeat.pro";
+
+const PUBLIC_ROUTES = [
+  "/",
+  "/product",
+  "/pricing",
+  "/how-it-works",
+  "/airtable-music-workflow",
+  "/contact",
+  "/legal/privacy",
+  "/legal/terms",
+  "/security",
+];
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: "https://sunbeat.pro",
-      lastModified: new Date()
-    },
-    {
-      url: "https://sunbeat.pro/product",
-      lastModified: new Date()
-    },
-    {
-      url: "https://sunbeat.pro/pricing",
-      lastModified: new Date()
-    }
-  ];
+  return PUBLIC_ROUTES.map((path) => ({
+    url: `${BASE}${path}`,
+    lastModified: new Date(),
+  }));
 }
