@@ -1,49 +1,64 @@
+/**
+ * Navbar — Warm editorial header
+ *
+ * Replaces the legacy dark-blue/slate SaaS header.
+ * Removes "Release Intake" subtitle and "Request access" blue button.
+ * Used by marketing pages that opt into the shared chrome.
+ * The home (MarketingHome.tsx) renders its own inline market-aware header.
+ */
+
 import Link from "next/link";
-import Image from "next/image";
 
 export default function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-black/8 bg-[#F4F1EA]/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+        {/* Logo */}
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Sunbeat" width={34} height={34} priority />
-          <div className="leading-tight">
-            <div className="text-sm font-semibold text-slate-900">Sunbeat</div>
-            <div className="text-xs text-slate-500">Release Intake</div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-black/8 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+            <img
+              src="/sunbeat-logan-transparent-black.ico"
+              alt="Sunbeat"
+              className="h-5 w-5 object-contain"
+            />
           </div>
+          <span className="text-sm font-semibold uppercase tracking-[0.22em] text-[#111111]">
+            Sunbeat
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link className="text-slate-600 hover:text-slate-900" href="/product">
-            Product
-          </Link>
-          <Link className="text-slate-600 hover:text-slate-900" href="/how-it-works">
-            How it works
-          </Link>
-          <Link className="text-slate-600 hover:text-slate-900" href="/security">
-            Security
-          </Link>
-          <Link className="text-slate-600 hover:text-slate-900" href="/pricing">
-            Pricing
-          </Link>
-          <Link className="text-slate-600 hover:text-slate-900" href="/contact">
-            Contact
-          </Link>
+        {/* Nav links */}
+        <nav className="hidden items-center gap-1 md:flex">
+          {[
+            { label: "How it works", href: "/how-it-works" },
+            { label: "Platform", href: "/product" },
+            { label: "Integrations", href: "/product#integrations" },
+            { label: "Security", href: "/security" },
+            { label: "Pricing", href: "/pricing" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full px-4 py-2 text-sm font-medium text-[#6A6660] hover:bg-black/5 hover:text-[#111111] transition-colors"
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        {/* CTAs */}
+        <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="hidden rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#111111] sm:inline-flex"
           >
-            Client login
+            Log in
           </Link>
-
           <Link
-            href="/contact"
-            className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white hover:bg-[#1D4ED8]"
+            href="/signup"
+            className="inline-flex rounded-full bg-[#111111] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1D1D1D] transition-colors"
           >
-            Request access
+            Get started
           </Link>
         </div>
       </div>
