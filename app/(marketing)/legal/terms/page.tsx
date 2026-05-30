@@ -74,7 +74,7 @@ const COPY = {
       {
         id: "billing",
         title: "7. Plans and billing",
-        body: "Paid plan details are described on the pricing page or within the checkout flow. Prices and plan features may change. Continued use of a paid plan after a pricing change constitutes acceptance of the new pricing.",
+        body: "Paid plan details are described on the pricing page or within the checkout flow. Prices and plan features may change, and material changes should be presented through the product, pricing page, checkout flow or account notice where appropriate.",
         bullets: [],
         showContact: false,
         showPricing: true,
@@ -182,7 +182,7 @@ const COPY = {
       {
         id: "billing",
         title: "7. Planos e cobrança",
-        body: "Os detalhes dos planos pagos estão descritos na página de planos ou no fluxo de checkout. Preços e recursos dos planos podem ser alterados. O uso continuado de um plano pago após uma alteração de preço constitui aceitação do novo preço.",
+        body: "Os detalhes dos planos pagos estão descritos na página de planos ou no fluxo de checkout. Preços e recursos dos planos podem mudar, e alterações relevantes devem ser apresentadas pelo produto, pela página de planos, pelo checkout ou por aviso de conta quando apropriado.",
         bullets: [],
         showContact: false,
         showPricing: true,

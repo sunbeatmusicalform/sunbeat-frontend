@@ -85,7 +85,7 @@ const COPY = {
       {
         id: "changes",
         title: "10. Changes to this policy",
-        body: "Sunbeat may update this policy as the service evolves. Continued use of the service after an update constitutes acceptance of the revised policy.",
+        body: "Sunbeat may update this policy as the service evolves. When we make material changes, we will update the date above or provide notice where appropriate.",
         bullets: [],
       },
       {
@@ -176,7 +176,7 @@ const COPY = {
       {
         id: "changes",
         title: "10. Alterações nesta política",
-        body: "A Sunbeat pode atualizar esta política conforme o serviço evolui. O uso continuado do serviço após uma atualização constitui aceitação da política revisada.",
+        body: "A Sunbeat pode atualizar esta política conforme o serviço evolui. Quando fizermos alterações relevantes, atualizaremos a data acima ou forneceremos aviso quando apropriado.",
         bullets: [],
       },
       {
