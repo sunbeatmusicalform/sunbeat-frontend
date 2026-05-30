@@ -3,74 +3,74 @@ import { resolveMarket, type Market } from "@/lib/billing/catalog";
 import MarketingPageChrome from "@/components/marketing/MarketingPageChrome";
 import Link from "next/link";
 
+// ─── Copy ────────────────────────────────────────────────────────────────────
+
 const COPY = {
   global: {
     eyebrow: "Security",
     title: "Security by design, governance by default.",
     subtitle:
-      "Sunbeat separates public intake from operational systems and keeps sensitive actions behind controlled workflows.",
+      "Sunbeat keeps public intake separated from operational systems and treats sensitive actions as controlled workflow steps.",
     ctaSales: "Talk to sales",
     ctaPricing: "View pricing",
 
     trustStrip: [
-      "Public intake separated from operations",
-      "Server-side integrations",
-      "Human approval for irreversible actions",
+      "Public intake boundary",
+      "Server-side integration pattern",
+      "Human confirmation",
+      "Tenant-aware configuration",
     ],
 
     sections: [
       {
-        title: "Protected public intake",
+        title: "Public intake is not the backend",
+        body: "Submitters interact with the intake surface only — not Airtable, Drive or any internal service. Form structure and routing stay server-side.",
         items: [
-          "Public forms do not expose Airtable, Drive or internal automation details.",
-          "Submitters interact with the intake surface only, not the operational backend.",
-          "Form structure and routing stay server-side.",
+          "No Airtable credentials exposed to the browser",
+          "No Drive tokens in client code",
+          "Routing and schema validation run server-side",
         ],
       },
       {
-        title: "Server-side integrations",
+        title: "Secrets stay server-side",
+        body: "API keys, integration tokens and service credentials never reach client code. All integrations run through server-side services with least-privilege access.",
         items: [
-          "Integrations run through server-side services with least-privilege credentials.",
-          "Secrets are never exposed to the browser.",
-          "API keys and tokens stay out of client code.",
+          "Credentials scoped to least privilege",
+          "Tokens never sent to the browser",
+          "Integration calls proxied through server routes",
         ],
       },
       {
-        title: "Human approval for irreversible actions",
+        title: "AI is governed",
+        body: "AI can suggest, validate and draft operational context. It cannot approve requests, publish changes or execute irreversible actions without explicit human confirmation.",
         items: [
-          "AI can suggest, validate and draft context.",
-          "People confirm every irreversible action before it executes.",
-          "Automated publishing without review is not allowed by design.",
+          "AI suggests — humans confirm",
+          "No autonomous publishing",
+          "No autonomous approval",
         ],
       },
       {
-        title: "Tenant-aware configuration boundaries",
+        title: "Configuration boundaries",
+        body: "Workspaces, workflow settings, branding and field mappings are treated as tenant configuration boundaries. Each operation's context is scoped to their workspace.",
         items: [
-          "Workspaces, workflow settings, branding and mappings are treated as configuration boundaries.",
-          "Each tenant's operational context is scoped to their workspace.",
+          "Workspace-scoped settings",
+          "Branding and mappings isolated per tenant",
+          "No cross-workspace data leakage by design",
         ],
       },
     ],
 
-    guardrailsTitle: "Operational guardrails",
-    guardrails: [
-      "Secrets stay server-side",
-      "AI does not publish changes autonomously",
-      "Setup and proposals require review",
-      "Sensitive workflows remain protected",
-    ],
-
-    notClaimTitle: "What we do not claim",
-    notClaimIntro:
-      "We avoid inflated security claims. If a requirement matters for your organization, we document it clearly during setup.",
+    notClaimTitle: "No inflated security claims.",
+    notClaimBody:
+      "We do not claim certifications or guarantees that are not documented. If your organization needs a specific requirement, we review it explicitly during setup.",
     notClaimItems: [
-      "SOC 2 certified",
-      "HIPAA or GDPR certification",
-      "Unlimited or autonomous AI",
-      "Autonomous publishing without human review",
+      "No SOC 2 certification claim",
+      "No HIPAA certification claim",
+      "No autonomous AI approval",
+      "No autonomous publishing",
     ],
 
-    ctaHeadline: "Want to review security for your operation?",
+    ctaHeadline: "Review security for your operation.",
     ctaSubcopy:
       "We can walk through how Sunbeat handles data, access and integrations for your specific setup.",
   },
@@ -79,73 +79,100 @@ const COPY = {
     eyebrow: "Segurança",
     title: "Segurança por design, governança por padrão.",
     subtitle:
-      "A Sunbeat separa o intake público dos sistemas operacionais e mantém ações sensíveis dentro de fluxos controlados.",
+      "A Sunbeat mantém o intake público separado dos sistemas operacionais e trata ações sensíveis como etapas de workflow controladas.",
     ctaSales: "Falar com vendas",
     ctaPricing: "Ver planos",
 
     trustStrip: [
-      "Intake público separado das operações",
-      "Integrações server-side",
-      "Aprovação humana para ações irreversíveis",
+      "Limite de intake público",
+      "Padrão de integração server-side",
+      "Confirmação humana",
+      "Configuração por tenant",
     ],
 
     sections: [
       {
-        title: "Intake público protegido",
+        title: "O intake público não é o backend",
+        body: "Os solicitantes interagem apenas com a superfície de intake — não com o Airtable, Drive ou qualquer serviço interno. A estrutura dos formulários e o roteamento ficam no servidor.",
         items: [
-          "Formulários públicos não expõem Airtable, Drive ou detalhes de automação interna.",
-          "Os solicitantes interagem apenas com a superfície de intake, não com o backend operacional.",
-          "A estrutura e o roteamento dos formulários ficam no servidor.",
+          "Nenhuma credencial do Airtable exposta no navegador",
+          "Nenhum token do Drive em código cliente",
+          "Roteamento e validação de schema rodam no servidor",
         ],
       },
       {
-        title: "Integrações server-side",
+        title: "Secrets ficam no servidor",
+        body: "Chaves de API, tokens de integração e credenciais de serviço nunca chegam ao código cliente. Todas as integrações rodam por serviços server-side com acesso de menor privilégio.",
         items: [
-          "As integrações rodam por serviços server-side com credenciais de menor privilégio.",
-          "Secrets nunca são expostos ao navegador.",
-          "Chaves de API e tokens ficam fora do código cliente.",
+          "Credenciais com menor privilégio",
+          "Tokens nunca enviados ao navegador",
+          "Chamadas de integração proxiadas por rotas de servidor",
         ],
       },
       {
-        title: "Aprovação humana para ações irreversíveis",
+        title: "A IA é governada",
+        body: "A IA pode sugerir, validar e rascunhar contexto operacional. Ela não pode aprovar solicitações, publicar alterações ou executar ações irreversíveis sem confirmação humana explícita.",
         items: [
-          "A IA pode sugerir, validar e rascunhar contexto.",
-          "As pessoas confirmam toda ação irreversível antes de ser executada.",
-          "Publicação automatizada sem revisão não é permitida por design.",
+          "IA sugere — humanos confirmam",
+          "Sem publicação autônoma",
+          "Sem aprovação autônoma",
         ],
       },
       {
-        title: "Limites de configuração por tenant",
+        title: "Limites de configuração",
+        body: "Workspaces, configurações de workflow, branding e mapeamentos de campos são tratados como limites de configuração por tenant. O contexto de cada operação fica no escopo do seu workspace.",
         items: [
-          "Workspaces, configurações de workflow, branding e mapeamentos são tratados como limites de configuração.",
-          "O contexto operacional de cada tenant fica dentro do escopo do seu workspace.",
+          "Configurações com escopo por workspace",
+          "Branding e mapeamentos isolados por tenant",
+          "Sem vazamento de dados entre workspaces por design",
         ],
       },
     ],
 
-    guardrailsTitle: "Controles operacionais",
-    guardrails: [
-      "Secrets ficam no servidor",
-      "A IA não publica alterações de forma autônoma",
-      "Configurações e propostas exigem revisão",
-      "Workflows sensíveis permanecem protegidos",
-    ],
-
-    notClaimTitle: "O que não afirmamos",
-    notClaimIntro:
-      "Evitamos afirmações de segurança infladas. Se um requisito for importante para sua organização, documentamos com clareza durante o setup.",
+    notClaimTitle: "Sem afirmações de segurança infladas.",
+    notClaimBody:
+      "Não afirmamos certificações ou garantias que não estão documentadas. Se sua organização precisar de um requisito específico, revisamos explicitamente durante o setup.",
     notClaimItems: [
-      "Certificação SOC 2",
-      "Certificação HIPAA ou GDPR",
-      "IA ilimitada ou autônoma",
-      "Publicação autônoma sem revisão humana",
+      "Sem certificação SOC 2",
+      "Sem certificação HIPAA",
+      "Sem aprovação autônoma de IA",
+      "Sem publicação autônoma",
     ],
 
-    ctaHeadline: "Quer revisar segurança para sua operação?",
+    ctaHeadline: "Revise a segurança para sua operação.",
     ctaSubcopy:
       "Podemos detalhar como a Sunbeat lida com dados, acessos e integrações para o seu setup específico.",
   },
 };
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function DarkBtn({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-w-[132px] items-center justify-center rounded-full bg-[#111111] px-6 py-3 text-sm font-semibold leading-none !text-white transition-colors hover:bg-[#1D1D1D]"
+      style={{ color: "#ffffff" }}
+    >
+      <span className="relative z-10 !text-white" style={{ color: "#ffffff" }}>
+        {label}
+      </span>
+    </Link>
+  );
+}
+
+function LightBtn({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-w-[132px] items-center justify-center rounded-full border border-black/12 bg-white px-6 py-3 text-sm font-medium leading-none text-[#111111] transition-colors hover:bg-black/5"
+    >
+      {label}
+    </Link>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default async function SecurityPage() {
   const host = (await headers()).get("host") ?? "";
@@ -154,12 +181,12 @@ export default async function SecurityPage() {
 
   return (
     <MarketingPageChrome market={market}>
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pt-20 pb-16 md:pt-28">
+      {/* ── Hero ── */}
+      <section className="mx-auto max-w-6xl px-4 pt-20 pb-12 md:pt-28">
         <div className="text-xs font-semibold uppercase tracking-widest text-[#9B948D]">
           {c.eyebrow}
         </div>
-        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-[#111111] md:text-5xl leading-[1.12]">
+        <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.12] tracking-tight text-[#111111] md:text-5xl">
           {c.title}
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#5E5A54] md:text-lg">
@@ -167,7 +194,7 @@ export default async function SecurityPage() {
         </p>
       </section>
 
-      {/* Trust strip */}
+      {/* ── Trust strip ── */}
       <section className="mx-auto max-w-6xl px-4 pb-10">
         <div className="flex flex-wrap gap-3">
           {c.trustStrip.map((item) => (
@@ -182,22 +209,25 @@ export default async function SecurityPage() {
         </div>
       </section>
 
-      {/* Security sections */}
+      {/* ── Security sections ── */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:py-20">
         <div className="grid gap-5 sm:grid-cols-2">
           {c.sections.map((sec) => (
             <div
               key={sec.title}
-              className="rounded-[28px] border border-black/8 bg-white p-6 shadow-[0_10px_24px_rgba(20,16,10,0.06)]"
+              className="rounded-[28px] border border-black/8 bg-white p-7 shadow-[0_10px_24px_rgba(20,16,10,0.06)]"
             >
               <div className="text-sm font-semibold text-[#111111]">
                 {sec.title}
               </div>
-              <ul className="mt-3 flex flex-col gap-2.5">
+              <p className="mt-2 text-sm leading-relaxed text-[#5E5A54]">
+                {sec.body}
+              </p>
+              <ul className="mt-4 flex flex-col gap-2">
                 {sec.items.map((item) => (
                   <li key={item} className="flex items-start gap-3">
                     <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#9B948D]" />
-                    <span className="text-sm leading-relaxed text-[#5E5A54]">
+                    <span className="text-sm leading-relaxed text-[#7A746A]">
                       {item}
                     </span>
                   </li>
@@ -208,31 +238,14 @@ export default async function SecurityPage() {
         </div>
       </section>
 
-      {/* Operational guardrails */}
+      {/* ── No inflated claims ── */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:py-20">
-        <h2 className="text-2xl font-semibold tracking-tight text-[#111111] md:text-3xl">
-          {c.guardrailsTitle}
-        </h2>
-        <div className="mt-8 flex flex-wrap gap-3">
-          {c.guardrails.map((item) => (
-            <div
-              key={item}
-              className="rounded-2xl border border-black/8 bg-[#F8F4EC] px-5 py-3 text-sm font-medium text-[#5E5A54] shadow-[0_2px_6px_rgba(20,16,10,0.04)]"
-            >
-              {item}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* What we do not claim */}
-      <section className="mx-auto max-w-6xl px-4 py-16 md:py-20">
-        <div className="rounded-[28px] bg-[#111111] px-8 py-10 md:px-12 md:py-14 shadow-[0_10px_24px_rgba(20,16,10,0.12)]">
+        <div className="rounded-[28px] bg-[#111111] px-8 py-10 shadow-[0_10px_32px_rgba(20,16,10,0.14)] md:px-12 md:py-14">
           <h2 className="text-xl font-semibold text-[#FCFBF8] md:text-2xl">
             {c.notClaimTitle}
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#E5E0D8] md:text-base">
-            {c.notClaimIntro}
+            {c.notClaimBody}
           </p>
           <ul className="mt-8 flex flex-col gap-3">
             {c.notClaimItems.map((item) => (
@@ -247,7 +260,7 @@ export default async function SecurityPage() {
         </div>
       </section>
 
-      {/* CTA band */}
+      {/* ── CTA ── */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:py-20">
         <div className="rounded-[28px] border border-black/8 bg-[#F8F4EC] px-8 py-10 md:px-12 md:py-14">
           <h2 className="text-2xl font-semibold tracking-tight text-[#111111] md:text-3xl">
@@ -257,18 +270,8 @@ export default async function SecurityPage() {
             {c.ctaSubcopy}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/contact"
-              className="inline-flex min-w-[120px] items-center justify-center rounded-full bg-[#111111] px-6 py-3 text-sm font-semibold text-[#FCFBF8] hover:bg-[#1D1D1D] transition-colors"
-            >
-              {c.ctaSales}
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex min-w-[120px] items-center justify-center rounded-full border border-black/12 bg-white px-6 py-3 text-sm font-medium text-[#111111] hover:bg-black/5 transition-colors"
-            >
-              {c.ctaPricing}
-            </Link>
+            <DarkBtn href="/contact" label={c.ctaSales} />
+            <LightBtn href="/pricing" label={c.ctaPricing} />
           </div>
         </div>
       </section>

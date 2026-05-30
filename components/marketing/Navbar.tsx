@@ -56,9 +56,12 @@ export default function Navbar() {
           </Link>
           <Link
             href="/signup"
-            className="inline-flex rounded-full bg-[#111111] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1D1D1D] transition-colors"
+            className="inline-flex min-w-[120px] items-center justify-center rounded-full bg-[#111111] px-5 py-2 text-sm font-semibold !text-white transition-colors hover:bg-[#1D1D1D]"
+            style={{ color: "#ffffff" }}
           >
-            Get started
+            <span className="relative z-10 !text-white" style={{ color: "#ffffff" }}>
+              Get started
+            </span>
           </Link>
         </div>
       </div>
