@@ -49,6 +49,10 @@ const STEP_ORDER: FormStepKey[] = [
 type AutosaveState = "idle" | "saving" | "saved" | "error";
 type DraftNoticeType = "success" | "error";
 type UploadKind = "cover" | "audio" | "asset";
+type StepLabelItem = {
+  key: FormStepKey;
+  label: string;
+};
 
 function generateUuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -1824,95 +1828,27 @@ export default function ReleaseIntakePage({
 
   return (
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8" style={{ background: template.formTheme?.formBg ?? DEFAULT_FORM_THEME.formBg, "--form-primary": template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary } as React.CSSProperties}>
-      <div className="mx-auto max-w-4xl">
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            {currentStep !== "intro" && template.intro.logoUrl ? (
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-                <img
-                  src={template.intro.logoUrl}
-                  alt={template.intro.clientName}
-                  className="h-10 w-auto object-contain"
-                />
-              </div>
-            ) : null}
+      <div className="mx-auto max-w-5xl">
+        <StageHeader
+          autosaveLabel={autosaveLabel}
+          autosaveState={autosaveState}
+          badgeUrl={template.formBranding?.badgeUrl}
+          clientName={template.intro.clientName}
+          currentStep={currentStep}
+          currentStepIndex={currentStepIndex}
+          draftToken={draftToken}
+          editToken={editToken}
+          logoUrl={template.intro.logoUrl}
+          stepCount={STEP_ORDER.length}
+          stepDescription={currentStepMeta?.description}
+          stepTitle={currentStepMeta?.title}
+        />
 
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                {template.formBranding?.badgeUrl && <img src={template.formBranding.badgeUrl} alt="" className="h-4 w-4 object-contain" />}
-                {template.intro.clientName}
-              </div>
-              {currentStep !== "intro" ? (
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                  Formulário restrito ao time e aos parceiros autorizados. Preencha os dados do lançamento e envie para revisão da equipe.
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {autosaveLabel ? (
-              <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                {autosaveLabel}
-              </div>
-            ) : null}
-
-            {(editToken || draftToken) && (
-              <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                {editToken ? "Modo edição ativo" : "Rascunho carregado"}
-              </div>
-            )}
-          </div>
-        </header>
-
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex min-w-[720px] items-center gap-3 pb-1">
-            {stepLabels.map((item, index) => {
-              const active = item.key === currentStep;
-              const completed = index < currentStepIndex;
-
-              return (
-                <Fragment key={item.key}>
-                  <div className="flex min-w-[92px] flex-col items-center gap-2 text-center">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
-                        active
-                          ? "text-white"
-                          : completed
-                          ? "border-slate-300 bg-white text-slate-900"
-                          : "border-slate-200 bg-white text-slate-400"
-                      }`}
-                      style={active ? { background: "var(--form-primary)", borderColor: "var(--form-primary)" } : undefined}
-                    >
-                      {completed ? "✓" : index + 1}
-                    </div>
-
-                    <div
-                      className={`text-sm font-medium ${
-                        active
-                          ? "text-slate-900"
-                          : completed
-                          ? "text-slate-700"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {item.label}
-                    </div>
-                  </div>
-
-                  {index < stepLabels.length - 1 ? (
-                    <div
-                      className={`h-px min-w-[36px] flex-1 ${
-                        completed ? "" : "bg-slate-200"
-                      }`}
-                      style={completed ? { background: "var(--form-primary)" } : undefined}
-                    />
-                  ) : null}
-                </Fragment>
-              );
-            })}
-          </div>
-        </div>
+        <StepProgressShell
+          currentStep={currentStep}
+          currentStepIndex={currentStepIndex}
+          steps={stepLabels}
+        />
 
         <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-8">
           {currentStep === "intro" && (
@@ -2274,6 +2210,197 @@ export default function ReleaseIntakePage({
             </div>
           </footer>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+function StageHeader({
+  autosaveLabel,
+  autosaveState,
+  badgeUrl,
+  clientName,
+  currentStep,
+  currentStepIndex,
+  draftToken,
+  editToken,
+  logoUrl,
+  stepCount,
+  stepDescription,
+  stepTitle,
+}: {
+  autosaveLabel: string | null;
+  autosaveState: AutosaveState;
+  badgeUrl?: string | null;
+  clientName: string;
+  currentStep: FormStepKey;
+  currentStepIndex: number;
+  draftToken: string | null;
+  editToken: string | null;
+  logoUrl?: string | null;
+  stepCount: number;
+  stepDescription?: string;
+  stepTitle?: string;
+}) {
+  const isIntro = currentStep === "intro";
+  const stageNumber = Math.max(currentStepIndex + 1, 1);
+
+  return (
+    <header className="mb-5 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+      <div className="grid gap-6 px-5 py-5 sm:px-7 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="flex items-start gap-4">
+          {!isIntro && logoUrl ? (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+              <img
+                src={logoUrl}
+                alt={clientName}
+                className="h-10 w-auto object-contain"
+              />
+            </div>
+          ) : null}
+
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {badgeUrl ? (
+                  <img src={badgeUrl} alt="" className="h-4 w-4 object-contain" />
+                ) : null}
+                {clientName}
+              </div>
+              <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Etapa {stageNumber} de {stepCount}
+              </div>
+            </div>
+
+            <h1 className="mt-4 max-w-3xl text-2xl font-semibold text-slate-950 sm:text-3xl">
+              {isIntro ? "Release intake guiado" : stepTitle ?? "Release intake"}
+            </h1>
+
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              {isIntro
+                ? "Um fluxo protegido para reunir dados, arquivos e contexto do lançamento com checkpoints claros antes do envio."
+                : stepDescription ||
+                  "Formulário restrito ao time e aos parceiros autorizados. Preencha os dados do lançamento e envie para revisão da equipe."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <AutosaveBadge
+            label={autosaveLabel}
+            state={autosaveState}
+            stateLabel="Autosave"
+          />
+
+          {(editToken || draftToken) && (
+            <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+              {editToken ? "Modo edição ativo" : "Rascunho carregado"}
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function AutosaveBadge({
+  label,
+  state,
+  stateLabel,
+}: {
+  label: string | null;
+  state: AutosaveState;
+  stateLabel: string;
+}) {
+  if (!label) return null;
+
+  const toneClass =
+    state === "error"
+      ? "bg-rose-500"
+      : state === "saving"
+      ? "bg-amber-500"
+      : state === "saved"
+      ? "bg-emerald-500"
+      : "bg-slate-400";
+
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+      <span className={`h-2 w-2 rounded-full ${toneClass}`} />
+      <span className="sr-only">{stateLabel}: </span>
+      {label}
+    </div>
+  );
+}
+
+function StepProgressShell({
+  currentStep,
+  currentStepIndex,
+  steps,
+}: {
+  currentStep: FormStepKey;
+  currentStepIndex: number;
+  steps: StepLabelItem[];
+}) {
+  return (
+    <div className="mb-5 rounded-[24px] border border-slate-200 bg-white/80 px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="overflow-x-auto">
+        <div className="flex min-w-[720px] items-center gap-3 pb-1">
+          {steps.map((item, index) => {
+            const active = item.key === currentStep;
+            const completed = index < currentStepIndex;
+
+            return (
+              <Fragment key={item.key}>
+                <div className="flex min-w-[92px] flex-col items-center gap-2 text-center">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
+                      active
+                        ? "text-white"
+                        : completed
+                        ? "border-slate-300 bg-white text-slate-900"
+                        : "border-slate-200 bg-white text-slate-400"
+                    }`}
+                    style={
+                      active
+                        ? {
+                            background: "var(--form-primary)",
+                            borderColor: "var(--form-primary)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {completed ? "✓" : index + 1}
+                  </div>
+
+                  <div
+                    className={`text-sm font-medium ${
+                      active
+                        ? "text-slate-900"
+                        : completed
+                        ? "text-slate-700"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {item.label}
+                  </div>
+                </div>
+
+                {index < steps.length - 1 ? (
+                  <div
+                    className={`h-px min-w-[36px] flex-1 ${
+                      completed ? "" : "bg-slate-200"
+                    }`}
+                    style={
+                      completed
+                        ? { background: "var(--form-primary)" }
+                        : undefined
+                    }
+                  />
+                ) : null}
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
