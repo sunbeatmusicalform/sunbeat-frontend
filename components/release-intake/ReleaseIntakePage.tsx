@@ -614,6 +614,10 @@ export default function ReleaseIntakePage({
     () => splitMultilineText(template.intro.introText),
     [template.intro.introText]
   );
+  const introHeaderDescription = useMemo(
+    () => splitMultilineText(template.intro.introText)[0] ?? "",
+    [template.intro.introText]
+  );
   const requestedRenderer = useMemo(
     () => resolveWorkflowRenderer(workflowType),
     [workflowType]
@@ -1838,6 +1842,8 @@ export default function ReleaseIntakePage({
           currentStepIndex={currentStepIndex}
           draftToken={draftToken}
           editToken={editToken}
+          formTitle={template.intro.formTitle}
+          introDescription={introHeaderDescription}
           logoUrl={template.intro.logoUrl}
           stepCount={STEP_ORDER.length}
           stepDescription={currentStepMeta?.description}
@@ -2224,6 +2230,8 @@ function StageHeader({
   currentStepIndex,
   draftToken,
   editToken,
+  formTitle,
+  introDescription,
   logoUrl,
   stepCount,
   stepDescription,
@@ -2237,6 +2245,8 @@ function StageHeader({
   currentStepIndex: number;
   draftToken: string | null;
   editToken: string | null;
+  formTitle?: string;
+  introDescription?: string;
   logoUrl?: string | null;
   stepCount: number;
   stepDescription?: string;
@@ -2273,14 +2283,14 @@ function StageHeader({
             </div>
 
             <h1 className="mt-4 max-w-3xl text-2xl font-semibold text-slate-950 sm:text-3xl">
-              {isIntro ? "Release intake guiado" : stepTitle ?? "Release intake"}
+              {isIntro ? (formTitle || "Formulário de lançamento") : stepTitle ?? "Formulário de lançamento"}
             </h1>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
               {isIntro
-                ? "Um fluxo protegido para reunir dados, arquivos e contexto do lançamento com checkpoints claros antes do envio."
+                ? (introDescription || "Preencha as informações do lançamento.")
                 : stepDescription ||
-                  "Formulário restrito ao time e aos parceiros autorizados. Preencha os dados do lançamento e envie para revisão da equipe."}
+                  "Preencha os dados do lançamento e envie para revisão da equipe."}
             </p>
           </div>
         </div>

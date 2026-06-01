@@ -46,9 +46,9 @@ export function createLegacyReleaseIntakeTemplate(args?: {
       : "Recebemos seu envio com sucesso. Nossa equipe dar\u00e1 continuidade ao fluxo.",
     intro: {
       clientName: isAtabaque ? "Atabaque" : workspaceSlug,
-      formTitle: "Formul\u00e1rio de lan\u00e7amento",
+      formTitle: isAtabaque ? "Formul\u00e1rio de lan\u00e7amento de projetos musicais" : "Formul\u00e1rio de lan\u00e7amento",
       introText: isAtabaque
-        ? "Preencha o formul\u00e1rio abaixo para compartilhar os dados do lan\u00e7amento com a equipe da Atabaque.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado."
+        ? "Formul\u00e1rio restrito ao time e aos parceiros autorizados da Atabaque. Preencha os dados do lan\u00e7amento para que a equipe possa revisar informa\u00e7\u00f5es, faixas, capa, materiais, prazos e pr\u00f3ximos passos.\n\nSe precisar pausar, voc\u00ea pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado."
         : "Preencha as informa\u00e7\u00f5es abaixo para iniciar o cadastro do seu lan\u00e7amento.\n\nVoc\u00ea pode salvar rascunho a qualquer momento.",
       logoUrl: isAtabaque ? "/atabaque-mark.svg" : "",
       bannerUrl: "",
