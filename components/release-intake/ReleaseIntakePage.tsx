@@ -614,9 +614,25 @@ export default function ReleaseIntakePage({
     () => splitMultilineText(template.intro.introText),
     [template.intro.introText]
   );
+
+  // Identity guard: Atabaque-specific copy must override any DB-driven branding value
+  // that may come from /api/workspaces/atabaque/workflow-config at runtime.
+  const isAtabaque =
+    workspaceSlug === "atabaque" ||
+    template.workspaceSlug === "atabaque" ||
+    template.intro.clientName === "Atabaque";
+
+  const effectiveIntroTitle = isAtabaque
+    ? "Formulário de lançamento de projetos musicais"
+    : template.intro.formTitle;
+
+  const effectiveIntroText = isAtabaque
+    ? "Formulário restrito ao time e aos parceiros autorizados da Atabaque. Preencha os dados do lançamento para que a equipe possa revisar informações, faixas, capa, materiais, prazos e próximos passos.\n\nSe precisar pausar, você pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado."
+    : template.intro.introText;
+
   const introHeaderDescription = useMemo(
-    () => splitMultilineText(template.intro.introText)[0] ?? "",
-    [template.intro.introText]
+    () => splitMultilineText(effectiveIntroText)[0] ?? "",
+    [effectiveIntroText]
   );
   const requestedRenderer = useMemo(
     () => resolveWorkflowRenderer(workflowType),
@@ -1842,7 +1858,7 @@ export default function ReleaseIntakePage({
           currentStepIndex={currentStepIndex}
           draftToken={draftToken}
           editToken={editToken}
-          formTitle={template.intro.formTitle}
+          formTitle={effectiveIntroTitle}
           introDescription={introHeaderDescription}
           logoUrl={template.intro.logoUrl}
           stepCount={STEP_ORDER.length}
@@ -1861,8 +1877,8 @@ export default function ReleaseIntakePage({
             <IntroStep
               clientName={template.intro.clientName}
               logoUrl={template.intro.logoUrl}
-              title={template.intro.formTitle}
-              text={template.intro.introText}
+              title={effectiveIntroTitle}
+              text={effectiveIntroText}
             />
           )}
 
