@@ -1745,6 +1745,21 @@ export default function ReleaseIntakePage({
     );
   }
 
+  function renderProjectFieldBlock(
+    fieldKey: string,
+    options?: { className?: string }
+  ) {
+    const renderedField = renderProjectField(fieldKey);
+
+    if (!renderedField) return null;
+
+    return (
+      <FieldBlock className={options?.className}>
+        {renderedField}
+      </FieldBlock>
+    );
+  }
+
   function renderMarketingField(fieldKey: string) {
     const field = getFieldsForStep("marketing").find((item) => item.key === fieldKey);
     if (!field) return null;
@@ -1882,51 +1897,77 @@ export default function ReleaseIntakePage({
           )}
 
           {currentStep === "identification" && (
-            <div className="grid gap-7">
-              {currentStepMeta?.fields.map((field) => (
-                <FormFieldRenderer
-                  key={field.key}
-                  field={field}
-                  value={getStringFieldValue(values.identification, field.key)}
-                  error={errors[`identification.${field.key}`]}
-                  onChange={(value) =>
-                    setIdentificationField(
-                      field.key as keyof ReleaseIntakeFormValues["identification"],
-                      value
-                    )
-                  }
-                />
-              ))}
+            <div className="grid gap-5">
+              <SectionIntro
+                eyebrow="Base do Projeto"
+                title="Identificação e escopo inicial"
+                description="Comece pelo responsável pelo envio e pela identidade comercial do lançamento. Esses dados preservam o rascunho, orientam a equipe e seguem para o mesmo payload ativo."
+              />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {currentStepMeta?.fields.map((field) => (
+                  <FieldBlock
+                    key={field.key}
+                    className={
+                      field.key === "project_title" ? "md:col-span-2" : undefined
+                    }
+                  >
+                    <FormFieldRenderer
+                      field={field}
+                      value={getStringFieldValue(values.identification, field.key)}
+                      error={errors[`identification.${field.key}`]}
+                      onChange={(value) =>
+                        setIdentificationField(
+                          field.key as keyof ReleaseIntakeFormValues["identification"],
+                          value
+                        )
+                      }
+                    />
+                  </FieldBlock>
+                ))}
+              </div>
             </div>
           )}
 
           {currentStep === "release" && (
-            <div className="grid gap-7">
-              {renderProjectField("release_date")}
+            <div className="grid gap-5">
+              <SectionIntro
+                eyebrow="Base do Projeto"
+                title="Dados principais do lançamento"
+                description="Organize data, gênero, vídeo e materiais de apoio antes das faixas. Esta etapa ainda usa os mesmos campos, handlers e contratos do fluxo ativo."
+              />
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderProjectField("genre")}
-                {renderProjectField("explicit_content")}
+              {renderProjectFieldBlock("release_date")}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderProjectFieldBlock("genre")}
+                {renderProjectFieldBlock("explicit_content")}
               </div>
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderProjectField("has_video_asset")}
-                {renderProjectField("tiktok_snippet")}
+              <ProjectHelperNote>
+                Dados de vídeo e trecho social ajudam a planejar lançamento e
+                comunicação, mas continuam opcionais quando o material ainda não
+                estiver fechado.
+              </ProjectHelperNote>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderProjectFieldBlock("has_video_asset")}
+                {renderProjectFieldBlock("tiktok_snippet")}
               </div>
 
               {values.project.has_video_asset === "yes" ? (
-                <div className="grid gap-7 md:grid-cols-2">
-                  {renderProjectField("video_link")}
-                  {renderProjectField("video_release_date")}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {renderProjectFieldBlock("video_link")}
+                  {renderProjectFieldBlock("video_release_date")}
                 </div>
               ) : null}
 
-              {renderProjectField("cover_file")}
-              {renderProjectField("cover_link")}
+              {renderProjectFieldBlock("cover_file")}
+              {renderProjectFieldBlock("cover_link")}
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderProjectField("promo_assets_link")}
-                {renderProjectField("presskit_link")}
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderProjectFieldBlock("promo_assets_link")}
+                {renderProjectFieldBlock("presskit_link")}
               </div>
             </div>
           )}
@@ -2402,6 +2443,54 @@ function StepProgressShell({
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SectionIntro({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 px-5 py-5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {eyebrow}
+      </div>
+      <h3 className="mt-2 text-xl font-semibold text-slate-950">{title}</h3>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function FieldBlock({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${
+        className ?? ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ProjectHelperNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+      {children}
     </div>
   );
 }
