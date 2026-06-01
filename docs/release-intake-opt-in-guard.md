@@ -29,8 +29,8 @@ The active runtime still works this way:
 
 Future runtime wiring should follow this fallback-first flow:
 
-1. If the workflow is not `release_intake`, use the active renderer.
-2. If the global guard is not explicitly enabled, use the active renderer.
+1. If the global guard is not explicitly enabled, use the active renderer.
+2. If the workflow is not `release_intake`, use the active renderer.
 3. If the workspace is not allowlisted, use the active renderer.
 4. If the workspace is `atabaque` and there is no human approval after smoke, use the active renderer.
 5. Only if every check passes, allow a future schema renderer opt-in.
