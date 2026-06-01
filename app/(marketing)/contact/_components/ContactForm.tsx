@@ -25,10 +25,12 @@ const FORM_COPY = {
       { value: "other", label: "Other" },
     ],
     labelMessage: "Context",
+    messageHint: "Share enough context for us to understand your operation. No sensitive data is required.",
     placeholderMessage:
       "Describe your operational context: type of content, volume, tools you already use...",
     submitIdle: "Send message",
     submitBusy: "Sending...",
+    submitNote: "We'll use the email you provide to follow up.",
     errorFallback: "Something went wrong. Please try again.",
     successTitle: "Message received",
     successBody:
@@ -53,10 +55,12 @@ const FORM_COPY = {
       { value: "other", label: "Outro" },
     ],
     labelMessage: "Contexto",
+    messageHint: "Compartilhe contexto suficiente para entendermos sua operação. Não é necessário enviar dados sensíveis.",
     placeholderMessage:
       "Descreva seu contexto operacional: tipo de conteúdo, volume de lançamentos, ferramentas que você já usa...",
     submitIdle: "Enviar mensagem",
     submitBusy: "Enviando...",
+    submitNote: "Usaremos o e-mail informado para retornar.",
     errorFallback: "Erro inesperado. Tente novamente.",
     successTitle: "Mensagem recebida",
     successBody:
@@ -207,6 +211,9 @@ export default function ContactForm({ market = "global" }: { market?: Market }) 
             className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
             {c.labelMessage}
           </label>
+          <p className="mb-2 text-xs leading-relaxed text-[#9B948D]">
+            {c.messageHint}
+          </p>
           <textarea id="message" name="message" required rows={4}
             placeholder={c.placeholderMessage}
             className="w-full resize-none rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm leading-7 text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition" />
@@ -220,7 +227,7 @@ export default function ContactForm({ market = "global" }: { market?: Market }) 
         )}
 
         {/* Submit */}
-        <div className="pt-2">
+        <div className="pt-2 flex flex-col gap-2">
           <button
             type="submit"
             disabled={state === "submitting"}
@@ -245,6 +252,7 @@ export default function ContactForm({ market = "global" }: { market?: Market }) 
               </span>
             )}
           </button>
+          <p className="text-xs text-[#9B948D]">{c.submitNote}</p>
         </div>
       </form>
     </div>
