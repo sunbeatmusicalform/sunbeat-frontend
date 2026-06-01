@@ -162,6 +162,129 @@ function getApiMessage(
   return text;
 }
 
+const SUBMIT_VALIDATION_MESSAGE =
+  "Não foi possível enviar o formulário. Revise os campos obrigatórios destacados e tente novamente.";
+
+function getApiValidationDetailItems(data: Record<string, unknown> | null) {
+  const detail = data?.detail;
+
+  if (Array.isArray(detail)) {
+    return detail.filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === "object" && !Array.isArray(item)
+    );
+  }
+
+  return [];
+}
+
+function getValidationPath(item: Record<string, unknown>) {
+  const loc = item.loc;
+
+  if (!Array.isArray(loc)) {
+    return "";
+  }
+
+  return loc
+    .map((part) => String(part))
+    .filter((part) => part !== "body" && part !== "payload" && part !== "values")
+    .join(".");
+}
+
+function normalizeValidationPath(path: string) {
+  const normalized = path
+    .replace(/^identification\./, "identification.")
+    .replace(/^project\./, "project.")
+    .replace(/^tracks\.(\d+)\./, "tracks.$1.");
+
+  return normalized;
+}
+
+function getHumanValidationMessage(path: string) {
+  const trackMatch = path.match(/^tracks\.(\d+)\.(.+)$/);
+
+  if (path === "identification.submitter_email") {
+    return "E-mail do responsável inválido.";
+  }
+
+  if (trackMatch) {
+    const trackNumber = Number(trackMatch[1]) + 1;
+    const field = trackMatch[2];
+
+    if (field === "title") {
+      return `Faixa ${trackNumber}: nome da faixa obrigatório.`;
+    }
+
+    if (field === "primary_artists") {
+      return `Faixa ${trackNumber}: artistas principais obrigatório.`;
+    }
+
+    if (field === "authors") {
+      return `Faixa ${trackNumber}: autor(es) obrigatório.`;
+    }
+  }
+
+  return "Revise os campos obrigatórios antes de enviar.";
+}
+
+function getApiValidationSummary(data: Record<string, unknown> | null) {
+  const details = getApiValidationDetailItems(data);
+  const fieldErrors: Record<string, string> = {};
+  const messages: string[] = [];
+
+  details.forEach((item) => {
+    const path = normalizeValidationPath(getValidationPath(item));
+    const message = getHumanValidationMessage(path);
+
+    if (path) {
+      fieldErrors[path] = message;
+    }
+
+    if (!messages.includes(message)) {
+      messages.push(message);
+    }
+  });
+
+  if (messages.length === 0 && details.length > 0) {
+    messages.push("Revise os campos obrigatórios antes de enviar.");
+  }
+
+  return { fieldErrors, messages };
+}
+
+function getClientValidationMessages(validation: Record<string, string>) {
+  const messages = Object.keys(validation).map((path) =>
+    getHumanValidationMessage(path)
+  );
+
+  return Array.from(new Set(messages)).slice(0, 6);
+}
+
+function hasTechnicalValidationText(message: string) {
+  const normalized = message.toLowerCase();
+
+  return [
+    "pydantic",
+    "\"detail\"",
+    "\"loc\"",
+    "\"ctx\"",
+    "\"url\"",
+    "string_to_short",
+    "value_error",
+  ].some((term) => normalized.includes(term));
+}
+
+function getSubmitApiErrorMessage(
+  data: Record<string, unknown> | null,
+  raw: string
+) {
+  const message = getApiMessage(data, raw, SUBMIT_VALIDATION_MESSAGE);
+
+  return hasTechnicalValidationText(message)
+    ? SUBMIT_VALIDATION_MESSAGE
+    : message;
+}
+
 function normalizeDateInputValue(value: unknown) {
   if (typeof value !== "string") {
     return "";
@@ -584,6 +707,7 @@ export default function ReleaseIntakePage({
 
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrorDetails, setSubmitErrorDetails] = useState<string[]>([]);
   const [isSubmissionComplete, setIsSubmissionComplete] = useState(false);
 
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
@@ -610,11 +734,6 @@ export default function ReleaseIntakePage({
       })),
     [template.steps]
   );
-  const introParagraphs = useMemo(
-    () => splitMultilineText(template.intro.introText),
-    [template.intro.introText]
-  );
-
   // Identity guard: Atabaque-specific copy must override any DB-driven branding value
   // that may come from /api/workspaces/atabaque/workflow-config at runtime.
   const isAtabaque =
@@ -921,6 +1040,7 @@ export default function ReleaseIntakePage({
   function clearMessages() {
     setSubmitMessage(null);
     setSubmitError(null);
+    setSubmitErrorDetails([]);
   }
 
   function resetAfterSubmission() {
@@ -938,6 +1058,7 @@ export default function ReleaseIntakePage({
     setUploadingFields({});
     setSubmitMessage(null);
     setSubmitError(null);
+    setSubmitErrorDetails([]);
     setIsSubmissionComplete(false);
 
     if (typeof window !== "undefined") {
@@ -1681,6 +1802,8 @@ export default function ReleaseIntakePage({
     const validation = validateBeforeSubmit();
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
+      setSubmitError(SUBMIT_VALIDATION_MESSAGE);
+      setSubmitErrorDetails(getClientValidationMessages(validation));
       return;
     }
 
@@ -1713,7 +1836,25 @@ export default function ReleaseIntakePage({
       const data = parseJsonResponseText(raw);
 
       if (!response.ok) {
-        throw new Error(getApiMessage(data, raw, "Falha no envio."));
+        const validationSummary = getApiValidationSummary(data);
+
+        if (
+          validationSummary.messages.length > 0 ||
+          Object.keys(validationSummary.fieldErrors).length > 0
+        ) {
+          if (Object.keys(validationSummary.fieldErrors).length > 0) {
+            setErrors((prev) => ({
+              ...prev,
+              ...validationSummary.fieldErrors,
+            }));
+          }
+
+          setSubmitError(SUBMIT_VALIDATION_MESSAGE);
+          setSubmitErrorDetails(validationSummary.messages.slice(0, 6));
+          return;
+        }
+
+        throw new Error(getSubmitApiErrorMessage(data, raw));
       }
 
       setSubmitMessage(
@@ -1724,6 +1865,7 @@ export default function ReleaseIntakePage({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setSubmitError(error?.message ?? "Falha ao enviar o formulário.");
+      setSubmitErrorDetails([]);
     } finally {
       setLoadingSubmit(false);
     }
@@ -1848,13 +1990,11 @@ export default function ReleaseIntakePage({
             {workspaceSlug}
           </div>
           <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
-            Workflow ainda nao renderizavel nesta tela
+            Formulário indisponível nesta tela
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            O workflow <strong>{workflowType}</strong> ja esta registrado
-            na base multi-workflow, mas ainda nao foi conectado a um renderer
-            proprio. O fluxo legado da Atabaque segue protegido em
-            <strong> release_intake / legacy_v1</strong>.
+            Este formulário não está disponível neste endereço. Acesse o link
+            correto enviado pela equipe responsável.
           </p>
         </div>
       </div>
@@ -1892,8 +2032,6 @@ export default function ReleaseIntakePage({
             <IntroStep
               clientName={template.intro.clientName}
               logoUrl={template.intro.logoUrl}
-              title={effectiveIntroTitle}
-              text={effectiveIntroText}
             />
           )}
 
@@ -1921,9 +2059,9 @@ export default function ReleaseIntakePage({
           {currentStep === "identification" && (
             <div className="grid gap-5">
               <SectionIntro
-                eyebrow="Base do Projeto"
-                title="Identificação e escopo inicial"
-                description="Comece pelo responsável pelo envio e pela identidade comercial do lançamento. Esses dados preservam o rascunho, orientam a equipe e seguem para o mesmo payload ativo."
+                eyebrow="Identificação"
+                title="Responsável e projeto"
+                description="Informe quem está preenchendo e identifique o projeto musical."
               />
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -1954,9 +2092,9 @@ export default function ReleaseIntakePage({
           {currentStep === "release" && (
             <div className="grid gap-5">
               <SectionIntro
-                eyebrow="Base do Projeto"
+                eyebrow="Projeto"
                 title="Dados principais do lançamento"
-                description="Organize data, gênero, vídeo e materiais de apoio antes das faixas. Esta etapa ainda usa os mesmos campos, handlers e contratos do fluxo ativo."
+                description="Informe data, gênero, conteúdo, vídeo, capa e materiais disponíveis."
               />
 
               {renderProjectFieldBlock("release_date")}
@@ -1965,12 +2103,6 @@ export default function ReleaseIntakePage({
                 {renderProjectFieldBlock("genre")}
                 {renderProjectFieldBlock("explicit_content")}
               </div>
-
-              <ProjectHelperNote>
-                Dados de vídeo e trecho social ajudam a planejar lançamento e
-                comunicação, mas continuam opcionais quando o material ainda não
-                estiver fechado.
-              </ProjectHelperNote>
 
               <div className="grid gap-4 md:grid-cols-2">
                 {renderProjectFieldBlock("has_video_asset")}
@@ -2174,7 +2306,14 @@ export default function ReleaseIntakePage({
 
           {submitError ? (
             <div className="mt-7 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {submitError}
+              <p>{submitError}</p>
+              {submitErrorDetails.length > 0 ? (
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {submitErrorDetails.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
 
@@ -2513,27 +2652,13 @@ function FieldBlock({
   );
 }
 
-function ProjectHelperNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-      {children}
-    </div>
-  );
-}
-
 function IntroStep({
   clientName,
   logoUrl,
-  title,
-  text,
 }: {
   clientName: string;
   logoUrl?: string;
-  title: string;
-  text: string;
 }) {
-  const paragraphs = splitMultilineText(text);
-
   return (
     <div className="max-w-2xl">
       <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-5 py-6 sm:px-6 sm:py-7">
@@ -2551,13 +2676,18 @@ function IntroStep({
         </div>
 
         <h3 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-slate-900 sm:text-[34px]">
-          {title}
+          Antes de começar
         </h3>
 
         <div className="mt-4 grid gap-4 text-[15px] leading-7 text-slate-600">
-          {paragraphs.map((paragraph, index) => (
-            <p key={`${paragraph}-${index}`}>{paragraph}</p>
-          ))}
+          <p>
+            Tenha em mãos os dados do projeto, faixas, capa e materiais de apoio
+            disponíveis.
+          </p>
+          <p>
+            Você pode salvar o rascunho e continuar depois pelo link enviado ao
+            e-mail informado.
+          </p>
         </div>
 
         <p className="mt-5 text-sm leading-6 text-slate-500">
