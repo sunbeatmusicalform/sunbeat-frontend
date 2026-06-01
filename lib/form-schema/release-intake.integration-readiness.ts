@@ -149,9 +149,13 @@ export const releaseIntakeIntegrationReadiness = [
   {
     area: "feature_flag",
     status: "needs_opt_in_guard",
-    evidence: ["No real feature flag exists yet by design."],
+    evidence: [
+      "docs/release-intake-opt-in-guard.md",
+      "lib/form-schema/release-intake.opt-in-guard.ts",
+      "No real feature flag exists yet by design.",
+    ],
     risk: "high",
-    nextPr: "Create default-false opt-in guard without enabling Atabaque.",
+    nextPr: "Wire a default-false runtime guard without enabling Atabaque.",
     acceptanceCriteria: [
       "Default false in all environments.",
       "Workspace allowlist required.",
@@ -164,6 +168,7 @@ export const releaseIntakeIntegrationReadiness = [
     evidence: [
       "app/intake/[workspaceSlug]/page.tsx still renders ReleaseIntakePage",
       "lib/form-engine/workflow-registry.ts still maps release_intake to the active renderer",
+      "release-intake.opt-in-guard.ts requires explicit Atabaque approval but is not imported by runtime.",
     ],
     risk: "high",
     nextPr: "Guarded renderer selection experiment for a non-production workspace.",
@@ -176,7 +181,10 @@ export const releaseIntakeIntegrationReadiness = [
   {
     area: "workspace_tenant_guard",
     status: "needs_opt_in_guard",
-    evidence: ["No workspace rollout guard exists for schema runtime activation."],
+    evidence: [
+      "release-intake.opt-in-guard.ts models explicit workspace allowlist input.",
+      "No workspace rollout guard is wired into runtime activation.",
+    ],
     risk: "high",
     nextPr: "Workspace allowlist and internal-only query override design.",
     acceptanceCriteria: [
@@ -303,6 +311,13 @@ export const releaseIntakeOptInGuardrails = [
     id: "no_publish_action",
     requirement: "Setup AI or schema preview cannot publish runtime changes.",
     reason: "Irreversible actions require a separate human-gated path.",
+  },
+  {
+    id: "pure_helper_only",
+    requirement:
+      "The opt-in decision helper must remain pure until a separate runtime PR wires it.",
+    reason:
+      "Readiness/design can document guard behavior without importing active renderer or route code.",
   },
 ] as const satisfies readonly ReleaseIntakeOptInGuardrail[];
 
