@@ -2685,8 +2685,8 @@ function IntroStep({
             disponíveis.
           </p>
           <p>
-            Você pode salvar o rascunho e continuar depois pelo link enviado ao
-            e-mail informado.
+            Se precisar pausar, você pode salvar o rascunho e continuar depois
+            pelo link enviado ao e-mail informado.
           </p>
         </div>
 
