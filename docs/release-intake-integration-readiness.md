@@ -68,6 +68,10 @@ Future activation should be staged as separate PRs. The recommended guard model 
 
 This PR intentionally does not create that flag. The next implementation PR should create the smallest possible default-false guard and prove that disabled behavior renders the current runtime.
 
+See `docs/release-intake-opt-in-guard.md` for the default-false opt-in guard design and helper contract.
+
+The helper in `lib/form-schema/release-intake.opt-in-guard.ts` is pure and declarative. It is not imported by active runtime paths and does not read env, cookies, headers, database state or runtime config.
+
 ## Future Integration Touchpoints
 
 All items below are future work. They are not changed by this readiness PR.
