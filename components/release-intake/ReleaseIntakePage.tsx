@@ -106,6 +106,26 @@ function formatReviewValue(value?: string) {
   }
 }
 
+function formatPendingRequiredCount(count: number) {
+  if (count === 1) {
+    return "1 obrigatório pendente";
+  }
+
+  return `${count} obrigatórios pendentes`;
+}
+
+function getTrackDisplayTitle(track: TrackInput, index: number) {
+  return track.title.trim() || `Faixa ${track.order_number || index + 1}`;
+}
+
+function getTrackArtistSummary(track: TrackInput) {
+  return track.primary_artists.trim() || "Artistas principais pendentes";
+}
+
+function getTrackAudioSummary(track: TrackInput) {
+  return track.audio_file?.file_name ? "Áudio anexado" : "Áudio não anexado";
+}
+
 function parseJsonResponseText(raw: string) {
   if (!raw) {
     return null;
@@ -2127,21 +2147,12 @@ export default function ReleaseIntakePage({
           )}
 
           {currentStep === "tracks" && (
-            <div className="grid gap-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-lg font-semibold text-slate-900">Faixas</div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addTrack}
-                  disabled={!canAddMoreTracks(releaseType, values.tracks.length)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  + Adicionar faixa
-                </button>
-              </div>
+            <div className="grid gap-6">
+              <SectionIntro
+                eyebrow="Faixas"
+                title="Dados das músicas"
+                description="Cadastre as faixas do projeto, revise créditos, artistas, ISRC e arquivos de áudio disponíveis."
+              />
 
               {errors["tracks"] ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -2149,83 +2160,135 @@ export default function ReleaseIntakePage({
                 </div>
               ) : null}
 
-              <div className="grid gap-3">
-                {values.tracks.map((track, index) => {
-                  const pendingRequiredCount = getTrackPendingRequiredCount(
-                    track,
-                    trackFields
-                  );
-
-                  return (
-                    <button
-                      key={track.local_id}
-                      type="button"
-                      onClick={() => setActiveTrackId(track.local_id)}
-                      className={`rounded-xl border p-4 text-left transition ${
-                        activeTrack?.local_id === track.local_id
-                          ? "bg-slate-50"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                          Faixa {track.order_number || index + 1}
-                        </div>
-
-                        {pendingRequiredCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
-                            {pendingRequiredCount}{" "}
-                            {pendingRequiredCount === 1
-                              ? "obrigatório pendente"
-                              : "obrigatórios pendentes"}
-                          </span>
-                        ) : null}
+              <div className="grid gap-5 lg:grid-cols-[minmax(240px,330px)_1fr] lg:items-start">
+                <aside className="rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Lista de faixas
                       </div>
-
                       <div className="mt-1 text-sm font-medium text-slate-900">
-                        {track.title || "Faixa sem título"}
+                        {values.tracks.length}{" "}
+                        {values.tracks.length === 1 ? "faixa" : "faixas"}
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
 
-              {activeTrack ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
-                  <TrackEditor
-                    track={activeTrack}
-                    trackFields={trackFields}
-                    index={values.tracks.findIndex(
-                      (track) => track.local_id === activeTrack.local_id
-                    )}
-                    totalTracks={values.tracks.length}
-                    errors={errors}
-                    canMoveUp={
-                      values.tracks.findIndex(
+                    <button
+                      type="button"
+                      onClick={addTrack}
+                      disabled={!canAddMoreTracks(releaseType, values.tracks.length)}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      + Adicionar
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {values.tracks.map((track, index) => {
+                      const pendingRequiredCount = getTrackPendingRequiredCount(
+                        track,
+                        trackFields
+                      );
+                      const isActive = activeTrack?.local_id === track.local_id;
+
+                      return (
+                        <button
+                          key={track.local_id}
+                          type="button"
+                          onClick={() => setActiveTrackId(track.local_id)}
+                          style={
+                            isActive
+                              ? { borderColor: "var(--form-primary)" }
+                              : undefined
+                          }
+                          className={`rounded-2xl border px-4 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition ${
+                            isActive
+                              ? "bg-white"
+                              : "border-slate-200 bg-white/80 hover:bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                Faixa {track.order_number || index + 1}
+                              </div>
+                              <div className="mt-1 truncate text-sm font-semibold text-slate-950">
+                                {getTrackDisplayTitle(track, index)}
+                              </div>
+                            </div>
+
+                            {isActive ? (
+                              <span className="shrink-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+                                Ativa
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-3 grid gap-1.5 text-xs leading-5 text-slate-600">
+                            <span>{getTrackArtistSummary(track)}</span>
+                            <span>{getTrackAudioSummary(track)}</span>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            {track.is_focus_track ? (
+                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                                Faixa foco
+                              </span>
+                            ) : null}
+
+                            {pendingRequiredCount > 0 ? (
+                              <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+                                {formatPendingRequiredCount(pendingRequiredCount)}
+                              </span>
+                            ) : (
+                              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                Obrigatórios completos
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                {activeTrack ? (
+                  <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-5 sm:py-5">
+                    <TrackEditor
+                      track={activeTrack}
+                      trackFields={trackFields}
+                      index={values.tracks.findIndex(
                         (track) => track.local_id === activeTrack.local_id
-                      ) > 0
-                    }
-                    canMoveDown={
-                      activeTrackIndex < values.tracks.length - 1
-                    }
-                    audioUploading={
-                      activeTrackIndex >= 0
-                        ? Boolean(
-                            uploadingFields[`tracks.${activeTrackIndex}.audio_file`]
-                          )
-                        : false
-                    }
-                    onChange={(patch) => updateTrack(activeTrack.local_id, patch)}
-                    onAudioChange={(event) =>
-                      handleTrackAudio(activeTrack.local_id, event)
-                    }
-                    onSetFocus={() => setFocusTrack(activeTrack.local_id)}
-                    onMoveUp={() => moveTrack(activeTrack.local_id, "up")}
-                    onMoveDown={() => moveTrack(activeTrack.local_id, "down")}
-                    onRemove={() => removeTrack(activeTrack.local_id)}
-                  />
-                </div>
-              ) : null}
+                      )}
+                      totalTracks={values.tracks.length}
+                      errors={errors}
+                      canMoveUp={
+                        values.tracks.findIndex(
+                          (track) => track.local_id === activeTrack.local_id
+                        ) > 0
+                      }
+                      canMoveDown={
+                        activeTrackIndex < values.tracks.length - 1
+                      }
+                      audioUploading={
+                        activeTrackIndex >= 0
+                          ? Boolean(
+                              uploadingFields[`tracks.${activeTrackIndex}.audio_file`]
+                            )
+                          : false
+                      }
+                      onChange={(patch) => updateTrack(activeTrack.local_id, patch)}
+                      onAudioChange={(event) =>
+                        handleTrackAudio(activeTrack.local_id, event)
+                      }
+                      onSetFocus={() => setFocusTrack(activeTrack.local_id)}
+                      onMoveUp={() => moveTrack(activeTrack.local_id, "up")}
+                      onMoveDown={() => moveTrack(activeTrack.local_id, "down")}
+                      onRemove={() => removeTrack(activeTrack.local_id)}
+                    />
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
 
@@ -2882,6 +2945,7 @@ function TrackEditor({
 }) {
   const prefix = `tracks.${index}`;
   const pendingRequiredCount = getTrackPendingRequiredCount(track, trackFields);
+  const displayTitle = getTrackDisplayTitle(track, index);
 
   const titleField = getTrackFieldMeta(trackFields, "title", {
     label: "Nome da Faixa (Título da Música)",
@@ -3004,58 +3068,74 @@ function TrackEditor({
 
   return (
     <div className="grid gap-7">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
-            Faixa {track.order_number} de {totalTracks}
-          </div>
-          <div className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-slate-900">
-            {track.title || "Editor de faixa"}
-          </div>
-          {pendingRequiredCount > 0 ? (
-            <div className="mt-3 inline-flex items-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[12px] font-semibold text-red-700">
-              {pendingRequiredCount}{" "}
-              {pendingRequiredCount === 1
-                ? "campo obrigatório pendente"
-                : "campos obrigatórios pendentes"}
+      <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Faixa {track.order_number} de {totalTracks}
             </div>
-          ) : null}
-        </div>
+            <h3 className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-slate-950">
+              {displayTitle}
+            </h3>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm leading-6 text-slate-600">
+              <span>{getTrackArtistSummary(track)}</span>
+              <span>{getTrackAudioSummary(track)}</span>
+            </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onSetFocus}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-          >
-            Definir faixa foco
-          </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {track.is_focus_track ? (
+                <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-semibold text-slate-700">
+                  Faixa foco
+                </span>
+              ) : null}
 
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={!canMoveUp}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-40"
-          >
-            Subir
-          </button>
+              {pendingRequiredCount > 0 ? (
+                <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[12px] font-semibold text-red-700">
+                  {formatPendingRequiredCount(pendingRequiredCount)}
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+                  Obrigatórios completos
+                </span>
+              )}
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={!canMoveDown}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-40"
-          >
-            Descer
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onSetFocus}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            >
+              Definir faixa foco
+            </button>
 
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
-            Remover
-          </button>
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-40"
+            >
+              Subir
+            </button>
+
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-40"
+            >
+              Descer
+            </button>
+
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            >
+              Remover
+            </button>
+          </div>
         </div>
       </div>
 
