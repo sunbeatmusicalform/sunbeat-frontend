@@ -122,13 +122,13 @@ const COPY: Record<Market, Copy> = {
     navCta: "Get started",
     // Hero
     heroEyebrow: "Intelligent infrastructure for creative markets",
-    heroTitle: "Run creative work like an operation, not an inbox.",
+    heroTitle: "Organize creative requests and connect them to your team's workflow.",
     heroSub:
-      "Sunbeat is the infrastructure layer that turns forms, briefs and incoming work into structured workflows, operational context and execution your whole team can see.",
+      "Receive briefs, files and requests in one place. Sunbeat organizes tasks, tracks status and connects the flow with Airtable, Google Drive, Notion, Gmail, Google Workspace, Slack, Asana and Google Sheets.",
     heroPrimary: "Start free →",
     heroSecondary: "View pricing",
     heroSupportLine:
-      "No credit card to start. Built on a live label operation — running real release pipelines in production today.",
+      "Built for creative teams that need to organize requests, files, approvals and delivery in one clear flow.",
     // Trust strip
     trustLabel: "Built for operations that…",
     trustItems: [
@@ -240,13 +240,13 @@ const COPY: Record<Market, Copy> = {
     // Hero
     heroEyebrow: "Infraestrutura inteligente para mercados criativos",
     heroTitle:
-      "Toque sua operação criativa como operação — não como caixa de entrada.",
+      "Organize demandas criativas e conecte tudo ao seu fluxo de trabalho.",
     heroSub:
-      "A Sunbeat é a camada de infraestrutura que transforma formulários, briefings e entrada de demandas em workflow, contexto operacional e execução que todo o time enxerga.",
+      "Receba briefings, arquivos e pedidos em um só lugar. A Sunbeat organiza tarefas, acompanha status e conecta o fluxo com Airtable, Google Drive, Slack, Asana e Google Sheets.",
     heroPrimary: "Começar grátis →",
     heroSecondary: "Ver planos",
     heroSupportLine:
-      "Sem cartão para começar. Construída sobre uma operação real de label — rodando pipelines de lançamento em produção hoje.",
+      "Ideal para equipes criativas que precisam organizar pedidos, arquivos, aprovações e entregas em um só fluxo.",
     // Trust strip
     trustLabel: "Feita para operações que…",
     trustItems: [
