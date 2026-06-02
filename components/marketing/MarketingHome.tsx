@@ -240,13 +240,13 @@ const COPY: Record<Market, Copy> = {
     // Hero
     heroEyebrow: "Infraestrutura inteligente para mercados criativos",
     heroTitle:
-      "Toque sua operação criativa como operação — não como caixa de entrada.",
+      "Organize demandas criativas e conecte tudo ao seu fluxo de trabalho.",
     heroSub:
-      "A Sunbeat é a camada de infraestrutura que transforma formulários, briefings e entrada de demandas em workflow, contexto operacional e execução que todo o time enxerga.",
+      "Receba briefings, arquivos e pedidos em um só lugar. A Sunbeat organiza tarefas, acompanha status e conecta o fluxo com Airtable, Google Drive, Slack, Asana e Google Sheets.",
     heroPrimary: "Começar grátis →",
     heroSecondary: "Ver planos",
     heroSupportLine:
-      "Sem cartão para começar. Construída sobre uma operação real de label — rodando pipelines de lançamento em produção hoje.",
+      "Ideal para equipes criativas que precisam organizar pedidos, arquivos, aprovações e entregas em um só fluxo.",
     // Trust strip
     trustLabel: "Feita para operações que…",
     trustItems: [
