@@ -122,13 +122,13 @@ const COPY: Record<Market, Copy> = {
     navCta: "Get started",
     // Hero
     heroEyebrow: "Intelligent infrastructure for creative markets",
-    heroTitle: "Run creative work like an operation, not an inbox.",
+    heroTitle: "Organize creative requests and connect them to your team's workflow.",
     heroSub:
-      "Sunbeat is the infrastructure layer that turns forms, briefs and incoming work into structured workflows, operational context and execution your whole team can see.",
+      "Receive briefs, files and requests in one place. Sunbeat organizes tasks, tracks status and connects the flow with Airtable, Google Drive, Notion, Gmail, Google Workspace, Slack, Asana and Google Sheets.",
     heroPrimary: "Start free →",
     heroSecondary: "View pricing",
     heroSupportLine:
-      "No credit card to start. Built on a live label operation — running real release pipelines in production today.",
+      "Built for creative teams that need to organize requests, files, approvals and delivery in one clear flow.",
     // Trust strip
     trustLabel: "Built for operations that…",
     trustItems: [
