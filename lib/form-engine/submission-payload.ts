@@ -30,6 +30,15 @@ type TrackRequiredError = {
   message: string;
 };
 
+const ESSENTIAL_RELEASE_INTAKE_TRACK_FIELDS = new Set<keyof TrackInput>([
+  "title",
+  "primary_artists",
+  "artist_profiles_status",
+  "authors",
+  "has_isrc",
+  "phonographic_producer",
+]);
+
 export type WorkflowDraftPayload =
   | ReleaseIntakeDraftPayload
   | RightsClearanceDraftPayload
@@ -79,7 +88,13 @@ function isTrackFieldVisible(trackFields: FormField[], key: keyof TrackInput) {
 }
 
 function isTrackFieldRequired(trackFields: FormField[], key: keyof TrackInput) {
-  return Boolean(getTrackField(trackFields, key)?.required);
+  const field = getTrackField(trackFields, key);
+
+  if (!field) {
+    return false;
+  }
+
+  return Boolean(field.required || ESSENTIAL_RELEASE_INTAKE_TRACK_FIELDS.has(key));
 }
 
 export function getTrackRequiredErrors(
@@ -102,6 +117,16 @@ export function getTrackRequiredErrors(
     errors.push({
       field: "primary_artists",
       message: "Preencha os artistas principais.",
+    });
+  }
+
+  if (
+    isTrackFieldRequired(trackFields, "artist_profiles_status") &&
+    !track.artist_profiles_status
+  ) {
+    errors.push({
+      field: "artist_profiles_status",
+      message: "Selecione o status de perfil dos artistas.",
     });
   }
 
