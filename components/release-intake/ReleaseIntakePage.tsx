@@ -2006,6 +2006,8 @@ export default function ReleaseIntakePage({
       : autosaveState === "error"
       ? "Erro ao salvar"
       : null;
+  const reviewValidationErrors =
+    currentStep === "review_submit" ? validateBeforeSubmit() : {};
 
   if (isLoadingTemplate) {
     return (
@@ -2360,7 +2362,11 @@ export default function ReleaseIntakePage({
                 />
               </div>
             ) : (
-              <ReviewStep values={values} template={template} />
+              <ReviewStep
+                values={values}
+                template={template}
+                validationErrors={reviewValidationErrors}
+              />
             )
           ) : null}
 
@@ -3529,12 +3535,51 @@ function TrackSelectField({
   );
 }
 
+type ReviewPendingItem = {
+  fieldPath: string;
+  message: string;
+  section: "Identificação" | "Projeto" | "Faixas" | "Marketing";
+};
+
+function getReviewPendingSection(fieldPath: string): ReviewPendingItem["section"] {
+  if (fieldPath.startsWith("identification.")) {
+    return "Identificação";
+  }
+
+  if (fieldPath.startsWith("project.")) {
+    return "Projeto";
+  }
+
+  if (fieldPath.startsWith("tracks")) {
+    return "Faixas";
+  }
+
+  return "Marketing";
+}
+
+function getReviewPendingItems(validationErrors: Record<string, string>) {
+  return Object.entries(validationErrors).map(([fieldPath, message]) => ({
+    fieldPath,
+    message,
+    section: getReviewPendingSection(fieldPath),
+  }));
+}
+
+function getPendingCountForSection(
+  items: ReviewPendingItem[],
+  section: ReviewPendingItem["section"]
+) {
+  return items.filter((item) => item.section === section).length;
+}
+
 function ReviewStep({
   values,
   template,
+  validationErrors,
 }: {
   values: ReleaseIntakeFormValues;
   template: ReleaseIntakeTemplate;
+  validationErrors: Record<string, string>;
 }) {
   function hasReviewField(stepKey: FormStepKey, fieldKey: string) {
     const step = template.steps.find((item) => item.key === stepKey);
@@ -3614,9 +3659,70 @@ function ReviewStep({
     return true;
   }
 
+  const pendingItems = getReviewPendingItems(validationErrors);
+  const pendingCount = pendingItems.length;
+
   return (
     <div className="grid gap-6">
-      <ReviewSection title="Identificação">
+      <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 px-5 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Revisão
+            </div>
+            <h3 className="mt-2 text-xl font-semibold text-slate-950">
+              Revisão antes do envio
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Confira as informações do projeto, faixas e divulgação antes de
+              enviar para a equipe da Atabaque.
+            </p>
+          </div>
+
+          <span
+            className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+              pendingCount > 0
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {pendingCount > 0
+              ? `${pendingCount} pendência(s)`
+              : "Pronto para envio"}
+          </span>
+        </div>
+
+        <div
+          className={`mt-4 rounded-2xl border px-4 py-3 text-sm leading-6 ${
+            pendingCount > 0
+              ? "border-red-200 bg-white text-red-700"
+              : "border-emerald-200 bg-white text-emerald-700"
+          }`}
+        >
+          {pendingCount > 0 ? (
+            <>
+              <p className="font-medium">
+                Revise os campos obrigatórios pendentes antes de enviar.
+              </p>
+              <ul className="mt-2 grid gap-1 text-sm">
+                {pendingItems.map((item) => (
+                  <li key={item.fieldPath}>
+                    <span className="font-medium">{item.section}:</span>{" "}
+                    {item.message}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            "Informações principais completas para envio."
+          )}
+        </div>
+      </div>
+
+      <ReviewSection
+        title="Identificação"
+        pendingCount={getPendingCountForSection(pendingItems, "Identificação")}
+      >
         {hasReviewField("identification", "submitter_name") ? (
           <ReviewItem
             label="Nome do Responsável"
@@ -3643,7 +3749,10 @@ function ReviewStep({
         ) : null}
       </ReviewSection>
 
-      <ReviewSection title="Projeto">
+      <ReviewSection
+        title="Projeto"
+        pendingCount={getPendingCountForSection(pendingItems, "Projeto")}
+      >
         {isProjectReviewFieldVisible("release_date") ? (
           <ReviewItem label="Data de Lançamento" value={values.project.release_date} />
         ) : null}
@@ -3699,7 +3808,99 @@ function ReviewStep({
         ) : null}
       </ReviewSection>
 
-      <ReviewSection title="Marketing">
+      <ReviewSection
+        title="Faixas"
+        pendingCount={getPendingCountForSection(pendingItems, "Faixas")}
+      >
+        <div className="grid gap-4">
+          {values.tracks.map((track) => (
+            <div
+              key={track.local_id}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-4"
+            >
+              <div className="text-sm font-semibold text-slate-900">
+                Faixa {track.order_number}: {track.title || "Sem título"}
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {isTrackReviewFieldVisible("primary_artists", track) ? (
+                  <ReviewItem label="Artistas principais" value={track.primary_artists} />
+                ) : null}
+                {isTrackReviewFieldVisible("featured_artists", track) ? (
+                  <ReviewItem label="Feats" value={track.featured_artists} />
+                ) : null}
+                {isTrackReviewFieldVisible("authors", track) ? (
+                  <ReviewItem label="Autores" value={track.authors} />
+                ) : null}
+                {isTrackReviewFieldVisible("interpreters", track) ? (
+                  <ReviewItem label="Intérpretes" value={track.interpreters} />
+                ) : null}
+                {isTrackReviewFieldVisible("publishers", track) ? (
+                  <ReviewItem label="Editoras" value={track.publishers} />
+                ) : null}
+                {isTrackReviewFieldVisible("producers_musicians", track) ? (
+                  <ReviewItem
+                    label="Produtores / Músicos"
+                    value={track.producers_musicians}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("phonographic_producer", track) ? (
+                  <ReviewItem
+                    label="Produtor Fonográfico"
+                    value={track.phonographic_producer}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("artist_profiles_status", track) ? (
+                  <ReviewItem label="Status de perfil" value={track.artist_profiles_status} />
+                ) : null}
+                {isTrackReviewFieldVisible("artist_profile_names_to_create", track) ? (
+                  <ReviewItem
+                    label="Perfis a criar"
+                    value={track.artist_profile_names_to_create}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("existing_profile_links", track) ? (
+                  <ReviewItem
+                    label="Links de perfil existentes"
+                    value={track.existing_profile_links}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("has_isrc", track) ? (
+                  <ReviewItem label="Tem ISRC" value={track.has_isrc} />
+                ) : null}
+                {isTrackReviewFieldVisible("isrc_code", track) ? (
+                  <ReviewItem label="Código ISRC" value={track.isrc_code} />
+                ) : null}
+                {isTrackReviewFieldVisible("explicit_content", track) ? (
+                  <ReviewItem
+                    label="Conteúdo explícito"
+                    value={track.explicit_content}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("tiktok_snippet", track) ? (
+                  <ReviewItem
+                    label="Trecho TikTok"
+                    value={track.tiktok_snippet}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("audio_file", track) ? (
+                  <ReviewItem
+                    label="Áudio"
+                    value={track.audio_file?.file_name}
+                  />
+                ) : null}
+                {isTrackReviewFieldVisible("lyrics", track) ? (
+                  <ReviewItem label="Letra" value={track.lyrics} />
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </ReviewSection>
+
+      <ReviewSection
+        title="Marketing"
+        pendingCount={getPendingCountForSection(pendingItems, "Marketing")}
+      >
         {isMarketingReviewFieldVisible("marketing_numbers") ? (
           <ReviewItem
             label="Números e Resultados"
@@ -3795,89 +3996,17 @@ function ReviewStep({
         ) : null}
       </ReviewSection>
 
-      <ReviewSection title="Faixas">
-        <div className="grid gap-4">
-          {values.tracks.map((track) => (
-            <div
-              key={track.local_id}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-4"
-            >
-              <div className="text-sm font-semibold text-slate-900">
-                Faixa {track.order_number}: {track.title || "Sem título"}
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {isTrackReviewFieldVisible("primary_artists", track) ? (
-                  <ReviewItem label="Artistas principais" value={track.primary_artists} />
-                ) : null}
-                {isTrackReviewFieldVisible("featured_artists", track) ? (
-                  <ReviewItem label="Feats" value={track.featured_artists} />
-                ) : null}
-                {isTrackReviewFieldVisible("authors", track) ? (
-                  <ReviewItem label="Autores" value={track.authors} />
-                ) : null}
-                {isTrackReviewFieldVisible("interpreters", track) ? (
-                  <ReviewItem label="Intérpretes" value={track.interpreters} />
-                ) : null}
-                {isTrackReviewFieldVisible("publishers", track) ? (
-                  <ReviewItem label="Editoras" value={track.publishers} />
-                ) : null}
-                {isTrackReviewFieldVisible("producers_musicians", track) ? (
-                  <ReviewItem
-                    label="Produtores / Músicos"
-                    value={track.producers_musicians}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("phonographic_producer", track) ? (
-                  <ReviewItem
-                    label="Produtor Fonográfico"
-                    value={track.phonographic_producer}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("artist_profiles_status", track) ? (
-                  <ReviewItem label="Status de perfil" value={track.artist_profiles_status} />
-                ) : null}
-                {isTrackReviewFieldVisible("artist_profile_names_to_create", track) ? (
-                  <ReviewItem
-                    label="Perfis a criar"
-                    value={track.artist_profile_names_to_create}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("existing_profile_links", track) ? (
-                  <ReviewItem
-                    label="Links de perfil existentes"
-                    value={track.existing_profile_links}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("has_isrc", track) ? (
-                  <ReviewItem label="Tem ISRC" value={track.has_isrc} />
-                ) : null}
-                {isTrackReviewFieldVisible("isrc_code", track) ? (
-                  <ReviewItem label="Código ISRC" value={track.isrc_code} />
-                ) : null}
-                {isTrackReviewFieldVisible("explicit_content", track) ? (
-                  <ReviewItem
-                    label="Conteúdo explícito"
-                    value={track.explicit_content}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("tiktok_snippet", track) ? (
-                  <ReviewItem
-                    label="Trecho TikTok"
-                    value={track.tiktok_snippet}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("audio_file", track) ? (
-                  <ReviewItem
-                    label="Áudio"
-                    value={track.audio_file?.file_name}
-                  />
-                ) : null}
-                {isTrackReviewFieldVisible("lyrics", track) ? (
-                  <ReviewItem label="Letra" value={track.lyrics} />
-                ) : null}
-              </div>
-            </div>
-          ))}
+      <ReviewSection title="Envio" pendingCount={pendingCount}>
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+          <div className="text-sm font-semibold text-slate-900">
+            {pendingCount > 0
+              ? "Revise as pendências antes de enviar."
+              : "Informações principais completas para envio."}
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Quando enviar, a equipe da Atabaque receberá os dados para análise e
+            próximos passos.
+          </p>
         </div>
       </ReviewSection>
     </div>
@@ -3924,14 +4053,27 @@ function SubmissionCompleteStep({
 
 function ReviewSection({
   title,
+  pendingCount = 0,
   children,
 }: {
   title: string;
+  pendingCount?: number;
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-      <div className="mb-4 text-lg font-semibold text-slate-900">{title}</div>
+    <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-lg font-semibold text-slate-900">{title}</div>
+        <span
+          className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+            pendingCount > 0
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {pendingCount > 0 ? `${pendingCount} pendente(s)` : "Completo"}
+        </span>
+      </div>
       <div className="grid gap-3">{children}</div>
     </div>
   );
@@ -3939,8 +4081,8 @@ function ReviewSection({
 
 function ReviewItem({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-      <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
         {label}
       </div>
       <div className="mt-2 text-sm leading-7 text-slate-800">
