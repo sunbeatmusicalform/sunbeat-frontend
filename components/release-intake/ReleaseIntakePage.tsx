@@ -1983,6 +1983,21 @@ export default function ReleaseIntakePage({
     );
   }
 
+  function renderMarketingFieldBlock(
+    fieldKey: string,
+    options?: { className?: string }
+  ) {
+    const renderedField = renderMarketingField(fieldKey);
+
+    if (!renderedField) return null;
+
+    return (
+      <FieldBlock className={options?.className}>
+        {renderedField}
+      </FieldBlock>
+    );
+  }
+
   const autosaveLabel =
     autosaveState === "saving"
       ? "Salvando rascunho"
@@ -2293,43 +2308,43 @@ export default function ReleaseIntakePage({
           )}
 
           {currentStep === "marketing" && (
-            <div className="grid gap-7">
-              {renderMarketingField("marketing_numbers")}
-              {renderMarketingField("marketing_focus")}
-              {renderMarketingField("marketing_objectives")}
+            <div className="grid gap-4">
+              {renderMarketingFieldBlock("marketing_numbers")}
+              {renderMarketingFieldBlock("marketing_focus")}
+              {renderMarketingFieldBlock("marketing_objectives")}
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderMarketingField("has_marketing_budget")}
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderMarketingFieldBlock("has_marketing_budget")}
                 {values.marketing.has_marketing_budget === "yes"
-                  ? renderMarketingField("marketing_budget")
+                  ? renderMarketingFieldBlock("marketing_budget")
                   : null}
               </div>
 
-              <div className="grid gap-7 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 {["ep", "album"].includes(releaseType)
-                  ? renderMarketingField("focus_track_name")
+                  ? renderMarketingFieldBlock("focus_track_name")
                   : null}
-                {renderMarketingField("date_flexibility")}
+                {renderMarketingFieldBlock("date_flexibility")}
               </div>
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderMarketingField("has_special_guests")}
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderMarketingFieldBlock("has_special_guests")}
                 {values.marketing.has_special_guests === "yes"
-                  ? renderMarketingField("feat_will_promote")
+                  ? renderMarketingFieldBlock("feat_will_promote")
                   : null}
               </div>
 
               {values.marketing.has_special_guests === "yes"
-                ? renderMarketingField("special_guests_bio")
+                ? renderMarketingFieldBlock("special_guests_bio")
                 : null}
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderMarketingField("promotion_participants")}
-                {renderMarketingField("influencers_brands_partners")}
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderMarketingFieldBlock("promotion_participants")}
+                {renderMarketingFieldBlock("influencers_brands_partners")}
               </div>
 
-              {renderMarketingField("general_notes")}
-              {renderMarketingField("additional_files")}
+              {renderMarketingFieldBlock("general_notes")}
+              {renderMarketingFieldBlock("additional_files")}
             </div>
           )}
 
