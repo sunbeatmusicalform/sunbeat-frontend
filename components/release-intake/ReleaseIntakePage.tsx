@@ -1983,6 +1983,21 @@ export default function ReleaseIntakePage({
     );
   }
 
+  function renderMarketingFieldBlock(
+    fieldKey: string,
+    options?: { className?: string }
+  ) {
+    const renderedField = renderMarketingField(fieldKey);
+
+    if (!renderedField) return null;
+
+    return (
+      <FieldBlock className={options?.className}>
+        {renderedField}
+      </FieldBlock>
+    );
+  }
+
   const autosaveLabel =
     autosaveState === "saving"
       ? "Salvando rascunho"
@@ -2293,43 +2308,88 @@ export default function ReleaseIntakePage({
           )}
 
           {currentStep === "marketing" && (
-            <div className="grid gap-7">
-              {renderMarketingField("marketing_numbers")}
-              {renderMarketingField("marketing_focus")}
-              {renderMarketingField("marketing_objectives")}
+            <div className="grid gap-6">
+              <SectionIntro
+                eyebrow="Divulgação"
+                title="Comunicação e próximos passos"
+                description="Informe foco de divulgação, objetivos, orçamento, convidados e materiais que ajudam a equipe a planejar a comunicação do lançamento."
+              />
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderMarketingField("has_marketing_budget")}
-                {values.marketing.has_marketing_budget === "yes"
-                  ? renderMarketingField("marketing_budget")
-                  : null}
+              <div className="grid gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Estratégia
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Contexto para orientar narrativa, foco e objetivos da campanha.
+                  </p>
+                </div>
+                <div className="grid gap-4">
+                  {renderMarketingFieldBlock("marketing_numbers")}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {renderMarketingFieldBlock("marketing_focus")}
+                    {renderMarketingFieldBlock("marketing_objectives")}
+                  </div>
+                </div>
               </div>
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {["ep", "album"].includes(releaseType)
-                  ? renderMarketingField("focus_track_name")
-                  : null}
-                {renderMarketingField("date_flexibility")}
+              <div className="grid gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Orçamento e agenda
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Informe recursos disponíveis e margem para ajustar o plano.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {renderMarketingFieldBlock("has_marketing_budget")}
+                  {values.marketing.has_marketing_budget === "yes"
+                    ? renderMarketingFieldBlock("marketing_budget")
+                    : null}
+                  {["ep", "album"].includes(releaseType)
+                    ? renderMarketingFieldBlock("focus_track_name")
+                    : null}
+                  {renderMarketingFieldBlock("date_flexibility")}
+                </div>
               </div>
 
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderMarketingField("has_special_guests")}
+              <div className="grid gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Participações e promoção
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Mapeie quem pode participar da divulgação e apoiar o alcance.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {renderMarketingFieldBlock("has_special_guests")}
+                  {values.marketing.has_special_guests === "yes"
+                    ? renderMarketingFieldBlock("feat_will_promote")
+                    : null}
+                </div>
                 {values.marketing.has_special_guests === "yes"
-                  ? renderMarketingField("feat_will_promote")
+                  ? renderMarketingFieldBlock("special_guests_bio")
                   : null}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {renderMarketingFieldBlock("promotion_participants")}
+                  {renderMarketingFieldBlock("influencers_brands_partners")}
+                </div>
               </div>
 
-              {values.marketing.has_special_guests === "yes"
-                ? renderMarketingField("special_guests_bio")
-                : null}
-
-              <div className="grid gap-7 md:grid-cols-2">
-                {renderMarketingField("promotion_participants")}
-                {renderMarketingField("influencers_brands_partners")}
+              <div className="grid gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Arquivos e notas
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Acrescente observações e materiais que ajudem a equipe a seguir.
+                  </p>
+                </div>
+                {renderMarketingFieldBlock("general_notes")}
+                {renderMarketingFieldBlock("additional_files")}
               </div>
-
-              {renderMarketingField("general_notes")}
-              {renderMarketingField("additional_files")}
             </div>
           )}
 
