@@ -84,6 +84,20 @@ function splitMultilineText(value: string) {
 function formatReviewValue(value?: string) {
   if (!value) return "-";
 
+  const dateTimeMatch = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/
+  );
+  if (dateTimeMatch) {
+    const [, year, month, day, hours, minutes] = dateTimeMatch;
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
+
+  const dateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateMatch) {
+    const [, year, month, day] = dateMatch;
+    return `${day}/${month}/${year}`;
+  }
+
   switch (value) {
     case "yes":
       return "Sim";
@@ -2579,7 +2593,7 @@ function StageHeader({
           <AutosaveBadge
             label={autosaveLabel}
             state={autosaveState}
-            stateLabel="Autosave"
+            stateLabel="Salvamento automático"
           />
 
           {(editToken || draftToken) && (
