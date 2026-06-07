@@ -36,6 +36,7 @@ import type {
 } from "@/lib/form-engine/types";
 import { DEFAULT_FORM_THEME } from "@/lib/form-engine/types";
 import type { TrackInput } from "@/lib/form-engine/track-types";
+import type { PeopleRegistryLookupItem } from "@/lib/people-registry/types";
 
 const STEP_ORDER: FormStepKey[] = [
   "intro",
@@ -53,6 +54,9 @@ type StepLabelItem = {
   key: FormStepKey;
   label: string;
 };
+
+const PEOPLE_LOOKUP_MIN_QUERY_LENGTH = 2;
+const PEOPLE_LOOKUP_LIMIT = 5;
 
 function generateUuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -79,6 +83,50 @@ function splitMultilineText(value: string) {
     .split(/\n+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function getLookupQuerySegment(value: string) {
+  const commaIndex = value.lastIndexOf(",");
+  const segment = commaIndex >= 0 ? value.slice(commaIndex + 1) : value;
+  return segment.trim();
+}
+
+function normalizeLookupSegment(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function replaceLookupQuerySegment(value: string, displayName: string) {
+  const trimmedName = displayName.trim();
+  const commaIndex = value.lastIndexOf(",");
+
+  if (commaIndex < 0) {
+    return trimmedName;
+  }
+
+  const previousNames = value.slice(0, commaIndex + 1).trimEnd();
+  return `${previousNames} ${trimmedName}`.trimStart();
+}
+
+function isPeopleLookupItem(value: unknown): value is PeopleRegistryLookupItem {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === "string" &&
+    item.id.startsWith("people_lookup_") &&
+    typeof item.displayName === "string" &&
+    item.displayName.trim().length > 0 &&
+    Array.isArray(item.roles) &&
+    item.source === "people_registry" &&
+    (item.confidence === "exact" || item.confidence === "partial")
+  );
 }
 
 function formatReviewValue(value?: string) {
@@ -2287,6 +2335,7 @@ export default function ReleaseIntakePage({
                   <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-5 sm:py-5">
                     <TrackEditor
                       track={activeTrack}
+                      workspaceSlug={workspaceSlug}
                       trackFields={trackFields}
                       index={values.tracks.findIndex(
                         (track) => track.local_id === activeTrack.local_id
@@ -2949,6 +2998,7 @@ function FileField({
 
 function TrackEditor({
   track,
+  workspaceSlug,
   trackFields,
   index,
   totalTracks,
@@ -2964,6 +3014,7 @@ function TrackEditor({
   onRemove,
 }: {
   track: TrackInput;
+  workspaceSlug: string;
   trackFields: FormField[];
   index: number;
   totalTracks: number;
@@ -3195,14 +3246,29 @@ function TrackEditor({
 
       <div className="grid gap-7 md:grid-cols-2">
         {primaryArtistsField.visible ? (
-          <TrackInputField
-            label={primaryArtistsField.label}
-            value={track.primary_artists}
-            required={primaryArtistsField.required}
-            error={errors[`${prefix}.primary_artists`]}
-            onChange={(value) => onChange({ primary_artists: value })}
-            helpText={primaryArtistsField.helperText}
-          />
+          <div>
+            <TrackInputField
+              label={primaryArtistsField.label}
+              value={track.primary_artists}
+              required={primaryArtistsField.required}
+              error={errors[`${prefix}.primary_artists`]}
+              onChange={(value) => onChange({ primary_artists: value })}
+              helpText={primaryArtistsField.helperText}
+            />
+            <PeopleLookupSuggestions
+              value={track.primary_artists}
+              roles="artista"
+              workspaceSlug={workspaceSlug}
+              onApply={(displayName) =>
+                onChange({
+                  primary_artists: replaceLookupQuerySegment(
+                    track.primary_artists,
+                    displayName
+                  ),
+                })
+              }
+            />
+          </div>
         ) : null}
         {featuredArtistsField.visible ? (
           <TrackInputField
@@ -3467,6 +3533,125 @@ function TrackInputField({
           {error}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PeopleLookupSuggestions({
+  value,
+  roles,
+  workspaceSlug,
+  onApply,
+}: {
+  value: string;
+  roles: string;
+  workspaceSlug: string;
+  onApply: (displayName: string) => void;
+}) {
+  const [lookupResult, setLookupResult] = useState<{
+    query: string;
+    items: PeopleRegistryLookupItem[];
+  }>({ query: "", items: [] });
+  const [suppressedSegment, setSuppressedSegment] = useState("");
+  const query = getLookupQuerySegment(value);
+  const normalizedQuery = normalizeLookupSegment(query);
+
+  useEffect(() => {
+    if (
+      query.length < PEOPLE_LOOKUP_MIN_QUERY_LENGTH ||
+      normalizedQuery === suppressedSegment
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const url = new URL(
+          `/api/workspaces/${encodeURIComponent(workspaceSlug)}/people-lookup`,
+          window.location.origin
+        );
+        url.searchParams.set("query", query);
+        url.searchParams.set("roles", roles);
+        url.searchParams.set("limit", String(PEOPLE_LOOKUP_LIMIT));
+
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          setLookupResult({ query, items: [] });
+          return;
+        }
+
+        const data: unknown = await response.json();
+        const responseItems =
+          data &&
+          typeof data === "object" &&
+          Array.isArray((data as { items?: unknown }).items)
+            ? (data as { items: unknown[] }).items
+            : [];
+
+        setLookupResult({
+          query,
+          items: responseItems
+            .filter(isPeopleLookupItem)
+            .slice(0, PEOPLE_LOOKUP_LIMIT),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setLookupResult({ query, items: [] });
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [normalizedQuery, query, roles, suppressedSegment, workspaceSlug]);
+
+  const items =
+    query.length >= PEOPLE_LOOKUP_MIN_QUERY_LENGTH &&
+    normalizedQuery !== suppressedSegment &&
+    lookupResult.query === query
+      ? lookupResult.items.filter(
+          (item) => normalizeLookupSegment(item.displayName) !== normalizedQuery
+        )
+      : [];
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+        Sugestões do cadastro
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => {
+              setLookupResult({ query: "", items: [] });
+              setSuppressedSegment(normalizeLookupSegment(item.displayName));
+              onApply(item.displayName);
+            }}
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 transition hover:border-slate-400"
+          >
+            <span>{item.displayName}</span>
+            <span className="ml-2 text-xs font-normal text-slate-500">
+              Usar este nome
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
