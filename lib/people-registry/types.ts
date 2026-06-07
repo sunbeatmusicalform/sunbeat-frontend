@@ -114,6 +114,22 @@ export type PeopleRegistrySubmitResult =
     }
   | { ok: false; status: "error"; message: string };
 
+// Public read-only lookup response. Keep this shape sanitized.
+export type PeopleRegistryLookupConfidence = "exact" | "partial";
+
+export type PeopleRegistryLookupItem = {
+  id: string;
+  displayName: string;
+  roles: string[];
+  source: "people_registry";
+  confidence: PeopleRegistryLookupConfidence;
+};
+
+export type PeopleRegistryLookupResponse = {
+  ok: true;
+  items: PeopleRegistryLookupItem[];
+};
+
 // ─── Profile config (fundação multi-tenant) ──────────────────────────────────
 
 export type RoleOption = {
