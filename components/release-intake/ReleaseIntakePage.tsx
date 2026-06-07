@@ -91,6 +91,15 @@ function getLookupQuerySegment(value: string) {
   return segment.trim();
 }
 
+function normalizeLookupSegment(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
 function replaceLookupQuerySegment(value: string, displayName: string) {
   const trimmedName = displayName.trim();
   const commaIndex = value.lastIndexOf(",");
@@ -3543,10 +3552,15 @@ function PeopleLookupSuggestions({
     query: string;
     items: PeopleRegistryLookupItem[];
   }>({ query: "", items: [] });
+  const [suppressedSegment, setSuppressedSegment] = useState("");
   const query = getLookupQuerySegment(value);
+  const normalizedQuery = normalizeLookupSegment(query);
 
   useEffect(() => {
-    if (query.length < PEOPLE_LOOKUP_MIN_QUERY_LENGTH) {
+    if (
+      query.length < PEOPLE_LOOKUP_MIN_QUERY_LENGTH ||
+      normalizedQuery === suppressedSegment
+    ) {
       return;
     }
 
@@ -3599,12 +3613,15 @@ function PeopleLookupSuggestions({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query, roles, workspaceSlug]);
+  }, [normalizedQuery, query, roles, suppressedSegment, workspaceSlug]);
 
   const items =
     query.length >= PEOPLE_LOOKUP_MIN_QUERY_LENGTH &&
+    normalizedQuery !== suppressedSegment &&
     lookupResult.query === query
-      ? lookupResult.items
+      ? lookupResult.items.filter(
+          (item) => normalizeLookupSegment(item.displayName) !== normalizedQuery
+        )
       : [];
 
   if (items.length === 0) {
@@ -3621,7 +3638,11 @@ function PeopleLookupSuggestions({
           <button
             key={item.id}
             type="button"
-            onClick={() => onApply(item.displayName)}
+            onClick={() => {
+              setLookupResult({ query: "", items: [] });
+              setSuppressedSegment(normalizeLookupSegment(item.displayName));
+              onApply(item.displayName);
+            }}
             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 transition hover:border-slate-400"
           >
             <span>{item.displayName}</span>
