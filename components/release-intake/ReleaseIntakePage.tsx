@@ -37,6 +37,7 @@ import type {
 import { DEFAULT_FORM_THEME } from "@/lib/form-engine/types";
 import type { TrackInput } from "@/lib/form-engine/track-types";
 import type { PeopleRegistryLookupItem } from "@/lib/people-registry/types";
+import type { ReleaseIntakeSubmitterHistoryLookupItem } from "@/lib/form-engine/submitter-history-lookup";
 
 const STEP_ORDER: FormStepKey[] = [
   "intro",
@@ -126,6 +127,25 @@ function isPeopleLookupItem(value: unknown): value is PeopleRegistryLookupItem {
     Array.isArray(item.roles) &&
     item.source === "people_registry" &&
     (item.confidence === "exact" || item.confidence === "partial")
+  );
+}
+
+function isPrimaryArtistHistoryLookupItem(
+  value: unknown
+): value is ReleaseIntakeSubmitterHistoryLookupItem {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.value === "string" &&
+    item.value.trim().length > 0 &&
+    item.field === "primary_artists" &&
+    item.source === "submitter_history" &&
+    typeof item.count === "number" &&
+    Number.isFinite(item.count) &&
+    item.count > 0
   );
 }
 
@@ -2336,6 +2356,8 @@ export default function ReleaseIntakePage({
                     <TrackEditor
                       track={activeTrack}
                       workspaceSlug={workspaceSlug}
+                      draftToken={draftToken}
+                      editToken={editToken}
                       trackFields={trackFields}
                       index={values.tracks.findIndex(
                         (track) => track.local_id === activeTrack.local_id
@@ -2999,6 +3021,8 @@ function FileField({
 function TrackEditor({
   track,
   workspaceSlug,
+  draftToken,
+  editToken,
   trackFields,
   index,
   totalTracks,
@@ -3015,6 +3039,8 @@ function TrackEditor({
 }: {
   track: TrackInput;
   workspaceSlug: string;
+  draftToken: string | null;
+  editToken: string | null;
   trackFields: FormField[];
   index: number;
   totalTracks: number;
@@ -3259,6 +3285,8 @@ function TrackEditor({
               value={track.primary_artists}
               roles="artista"
               workspaceSlug={workspaceSlug}
+              draftToken={draftToken}
+              editToken={editToken}
               onApply={(displayName) =>
                 onChange({
                   primary_artists: replaceLookupQuerySegment(
@@ -3541,20 +3569,43 @@ function PeopleLookupSuggestions({
   value,
   roles,
   workspaceSlug,
+  draftToken,
+  editToken,
   onApply,
 }: {
   value: string;
   roles: string;
   workspaceSlug: string;
+  draftToken: string | null;
+  editToken: string | null;
   onApply: (displayName: string) => void;
 }) {
   const [lookupResult, setLookupResult] = useState<{
     query: string;
     items: PeopleRegistryLookupItem[];
   }>({ query: "", items: [] });
+  const [historyResult, setHistoryResult] = useState<{
+    query: string;
+    items: ReleaseIntakeSubmitterHistoryLookupItem[];
+  }>({ query: "", items: [] });
   const [suppressedSegment, setSuppressedSegment] = useState("");
   const query = getLookupQuerySegment(value);
   const normalizedQuery = normalizeLookupSegment(query);
+  const cleanDraftToken = draftToken?.trim() || "";
+  const cleanEditToken = editToken?.trim() || "";
+  const historyTokenName =
+    cleanDraftToken && !cleanEditToken
+      ? "draftToken"
+      : cleanEditToken && !cleanDraftToken
+      ? "editToken"
+      : "";
+  const historyTokenValue =
+    historyTokenName === "draftToken"
+      ? cleanDraftToken
+      : historyTokenName === "editToken"
+      ? cleanEditToken
+      : "";
+  const canUseHistoryLookup = Boolean(historyTokenName && historyTokenValue);
 
   useEffect(() => {
     if (
@@ -3615,37 +3666,163 @@ function PeopleLookupSuggestions({
     };
   }, [normalizedQuery, query, roles, suppressedSegment, workspaceSlug]);
 
-  const items =
+  useEffect(() => {
+    if (
+      !canUseHistoryLookup ||
+      query.length < PEOPLE_LOOKUP_MIN_QUERY_LENGTH ||
+      normalizedQuery === suppressedSegment
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const url = new URL(
+          `/api/workspaces/${encodeURIComponent(
+            workspaceSlug
+          )}/release-intake/history-lookup`,
+          window.location.origin
+        );
+        url.searchParams.set("field", "primary_artists");
+        url.searchParams.set("query", query);
+        url.searchParams.set("limit", String(PEOPLE_LOOKUP_LIMIT));
+        url.searchParams.set(historyTokenName, historyTokenValue);
+
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          setHistoryResult({ query, items: [] });
+          return;
+        }
+
+        const data: unknown = await response.json();
+        const responseItems =
+          data &&
+          typeof data === "object" &&
+          Array.isArray((data as { items?: unknown }).items)
+            ? (data as { items: unknown[] }).items
+            : [];
+
+        setHistoryResult({
+          query,
+          items: responseItems
+            .filter(isPrimaryArtistHistoryLookupItem)
+            .slice(0, PEOPLE_LOOKUP_LIMIT),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setHistoryResult({ query, items: [] });
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [
+    canUseHistoryLookup,
+    historyTokenName,
+    historyTokenValue,
+    normalizedQuery,
+    query,
+    suppressedSegment,
+    workspaceSlug,
+  ]);
+
+  const historyItems =
+    canUseHistoryLookup &&
+    query.length >= PEOPLE_LOOKUP_MIN_QUERY_LENGTH &&
+    normalizedQuery !== suppressedSegment &&
+    historyResult.query === query
+      ? historyResult.items.filter(
+          (item) => normalizeLookupSegment(item.value) !== normalizedQuery
+        )
+      : [];
+  const historyNames = new Set(
+    historyItems.map((item) => normalizeLookupSegment(item.value))
+  );
+  const peopleItems =
     query.length >= PEOPLE_LOOKUP_MIN_QUERY_LENGTH &&
     normalizedQuery !== suppressedSegment &&
     lookupResult.query === query
       ? lookupResult.items.filter(
-          (item) => normalizeLookupSegment(item.displayName) !== normalizedQuery
+          (item) =>
+            normalizeLookupSegment(item.displayName) !== normalizedQuery &&
+            !historyNames.has(normalizeLookupSegment(item.displayName))
         )
       : [];
 
-  if (items.length === 0) {
+  if (historyItems.length === 0 && peopleItems.length === 0) {
     return null;
+  }
+
+  function applySuggestion(displayName: string) {
+    setLookupResult({ query: "", items: [] });
+    setHistoryResult({ query: "", items: [] });
+    setSuppressedSegment(normalizeLookupSegment(displayName));
+    onApply(displayName);
   }
 
   return (
     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+      <div className="space-y-3">
+        {historyItems.length > 0 ? (
+          <SuggestionGroup
+            label="Usado antes por este e-mail"
+            items={historyItems.map((item, index) => ({
+              key: `history:${index}:${item.value}`,
+              value: item.value,
+            }))}
+            onApply={applySuggestion}
+          />
+        ) : null}
+
+        {peopleItems.length > 0 ? (
+          <SuggestionGroup
+            label="Sugestões do cadastro"
+            items={peopleItems.map((item) => ({
+              key: item.id,
+              value: item.displayName,
+            }))}
+            onApply={applySuggestion}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SuggestionGroup({
+  label,
+  items,
+  onApply,
+}: {
+  label: string;
+  items: Array<{ key: string; value: string }>;
+  onApply: (displayName: string) => void;
+}) {
+  return (
+    <div>
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-        Sugestões do cadastro
+        {label}
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
         {items.map((item) => (
           <button
-            key={item.id}
+            key={item.key}
             type="button"
-            onClick={() => {
-              setLookupResult({ query: "", items: [] });
-              setSuppressedSegment(normalizeLookupSegment(item.displayName));
-              onApply(item.displayName);
-            }}
+            onClick={() => onApply(item.value)}
             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 transition hover:border-slate-400"
           >
-            <span>{item.displayName}</span>
+            <span>{item.value}</span>
             <span className="ml-2 text-xs font-normal text-slate-500">
               Usar este nome
             </span>
