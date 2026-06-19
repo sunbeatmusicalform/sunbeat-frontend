@@ -1,26 +1,108 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from "react";
+import type {
+  SetupCopilotProposalAction,
+  SetupCopilotActionRisk,
+  SetupCopilotActionType,
+  SetupCopilotProposal,
+} from "@/lib/ai/setup-copilot";
+import type {
+  SetupAIActionAuditEntry,
+  SetupAIActionAuditOperation,
+  SetupAIActionAuditStatus,
+} from "@/lib/setup-ai/action-audit";
 
 type Message = {
   role: "user" | "assistant" | "error";
   content: string;
+  proposal?: SetupCopilotProposal | null;
+  meta?: {
+    provider?: string;
+    model?: string;
+    usedFallback?: boolean;
+    budgetAlert?: BudgetAlert | null;
+  };
 };
 
 type Props = {
   workspaceSlug: string;
 };
 
+type BudgetAlert = {
+  pct_used?: number;
+  used_brl?: number;
+  limit_brl?: number;
+  plan_id?: string;
+  alert_threshold?: number;
+};
+
+type CopilotResponse = {
+  ok?: boolean;
+  text?: string;
+  error?: string;
+  proposal?: SetupCopilotProposal | null;
+  used_fallback?: boolean;
+  provider?: string;
+  model?: string;
+  budget_alert?: BudgetAlert | null;
+};
+
+type ActionRunState = {
+  loading?: "preview_patch" | "apply_patch";
+  error?: string | null;
+  preview?: unknown;
+  applied?: unknown;
+};
+
+type AuditResponse = {
+  ok?: boolean;
+  data?: SetupAIActionAuditEntry[];
+  error?: string;
+  warning?: string;
+};
+
 export default function SetupCopilotWidget({ workspaceSlug }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [actionStates, setActionStates] = useState<Record<string, ActionRunState>>({});
+  const [auditEntries, setAuditEntries] = useState<SetupAIActionAuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditMessage, setAuditMessage] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const loadAuditLog = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const res = await fetch(
+        `/api/workspaces/${encodeURIComponent(workspaceSlug)}/setup-ai/audit?limit=8`,
+        { cache: "no-store" }
+      );
+      const data = (await res.json()) as AuditResponse;
+
+      if (!res.ok || !data.ok) {
+        setAuditMessage(data?.error ?? "Nao foi possivel carregar auditoria.");
+        return;
+      }
+
+      setAuditEntries(data.data ?? []);
+      setAuditMessage(data.warning ?? null);
+    } catch {
+      setAuditMessage("Erro de rede ao carregar auditoria.");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [workspaceSlug]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    void loadAuditLog();
+  }, [loadAuditLog]);
 
   async function handleSend() {
     const trimmed = input.trim();
@@ -37,7 +119,7 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, workspaceSlug }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as CopilotResponse;
 
       if (!res.ok || !data.ok) {
         setMessages((prev) => [
@@ -52,7 +134,17 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.text ?? "" },
+          {
+            role: "assistant",
+            content: data.text ?? "",
+            proposal: data.proposal ?? null,
+            meta: {
+              provider: data.provider,
+              model: data.model,
+              usedFallback: data.used_fallback,
+              budgetAlert: data.budget_alert,
+            },
+          },
         ]);
       }
     } catch {
@@ -73,6 +165,79 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  }
+
+  async function runAirtableAction(
+    action: SetupCopilotProposalAction,
+    operation: "preview_patch" | "apply_patch"
+  ) {
+    const payload = buildAirtableActionPayload(action);
+    if (!payload) {
+      setActionStates((prev) => ({
+        ...prev,
+        [action.id]: {
+          ...prev[action.id],
+          error:
+            "A proposta precisa indicar workflow_type e patch Airtable antes de executar.",
+        },
+      }));
+      return;
+    }
+
+    setActionStates((prev) => ({
+      ...prev,
+      [action.id]: { ...prev[action.id], loading: operation, error: null },
+    }));
+
+    try {
+      const res = await fetch(
+        `/api/workspaces/${encodeURIComponent(workspaceSlug)}/setup-ai/airtable`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...payload,
+            operation,
+            ...(operation === "apply_patch" ? { confirm_apply: true } : {}),
+          }),
+        }
+      );
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setActionStates((prev) => ({
+          ...prev,
+          [action.id]: {
+            ...prev[action.id],
+            loading: undefined,
+            error: data?.error ?? "Nao foi possivel executar a action.",
+          },
+        }));
+        return;
+      }
+
+      setActionStates((prev) => ({
+        ...prev,
+        [action.id]: {
+          ...prev[action.id],
+          loading: undefined,
+          error: null,
+          ...(operation === "preview_patch"
+            ? { preview: data }
+            : { applied: data }),
+        },
+      }));
+      void loadAuditLog();
+    } catch {
+      setActionStates((prev) => ({
+        ...prev,
+        [action.id]: {
+          ...prev[action.id],
+          loading: undefined,
+          error: "Erro de rede ao executar action.",
+        },
+      }));
     }
   }
 
@@ -108,7 +273,17 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
                   }`}
                 >
                   {msg.role === "assistant" ? (
-                    <AssistantText content={msg.content} />
+                    <div className="grid gap-3">
+                      <AssistantText content={msg.content} />
+                      {msg.proposal && (
+                        <SetupProposalCard
+                          proposal={msg.proposal}
+                          actionStates={actionStates}
+                          onRunAirtableAction={runAirtableAction}
+                        />
+                      )}
+                      {msg.meta && <AssistantMeta meta={msg.meta} />}
+                    </div>
                   ) : (
                     msg.content
                   )}
@@ -148,8 +323,15 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
         </button>
       </div>
 
+      <SetupActionAuditPanel
+        entries={auditEntries}
+        loading={auditLoading}
+        message={auditMessage}
+        onRefresh={loadAuditLog}
+      />
+
       <p className="text-xs text-white/30">
-        Setup Copilot · lê a configuração do workspace · não modifica dados
+        Setup Copilot · sugere configurações · aplicação sempre exige revisão humana
       </p>
     </div>
   );
@@ -157,15 +339,424 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
 
 // Render assistant text — preserves newlines, no markdown parser needed
 function AssistantText({ content }: { content: string }) {
+  const lines = (content || "Sem resposta textual. Revise a proposta abaixo.").split("\n");
+
   return (
     <>
-      {content.split("\n").map((line, i) => (
+      {lines.map((line, i) => (
         <span key={i}>
           {line}
-          {i < content.split("\n").length - 1 && <br />}
+          {i < lines.length - 1 && <br />}
         </span>
       ))}
     </>
+  );
+}
+
+function actionTypeLabel(type: SetupCopilotActionType) {
+  const labels: Record<SetupCopilotActionType, string> = {
+    draft_form_schema: "Formulário",
+    draft_table_schema: "Tabela",
+    configure_airtable: "Airtable",
+    adjust_field: "Campo",
+    create_workflow: "Workflow",
+    review_sync: "Sync",
+    clarify: "Clarificar",
+  };
+  return labels[type];
+}
+
+function riskStyle(risk: SetupCopilotActionRisk) {
+  if (risk === "high") {
+    return "border-red-300/30 bg-red-300/10 text-red-100";
+  }
+  if (risk === "medium") {
+    return "border-amber-300/30 bg-amber-300/10 text-amber-100";
+  }
+  return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function textValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+const AIRTABLE_DIRECT_PATCH_KEYS = new Set([
+  "base_id_override",
+  "table_override",
+  "company_registry_table_override",
+  "people_registry_table_override",
+  "merge_keys",
+  "field_map",
+]);
+
+function buildAirtableActionPayload(action: SetupCopilotProposalAction) {
+  const patch = action.patch;
+  if (!isRecord(patch)) {
+    return null;
+  }
+
+  const workflowType =
+    action.target.workflowType ||
+    textValue(patch.workflow_type) ||
+    textValue(patch.workflowType);
+
+  if (!workflowType) {
+    return null;
+  }
+
+  const payload: {
+    workflow_type: string;
+    airtable_sync_enabled?: boolean;
+    airtable?: Record<string, unknown>;
+  } = {
+    workflow_type: workflowType,
+  };
+
+  if (typeof patch.airtable_sync_enabled === "boolean") {
+    payload.airtable_sync_enabled = patch.airtable_sync_enabled;
+  }
+
+  if (isRecord(patch.airtable)) {
+    payload.airtable = patch.airtable;
+  } else {
+    const airtablePatch: Record<string, unknown> = {};
+    Object.entries(patch).forEach(([key, value]) => {
+      if (AIRTABLE_DIRECT_PATCH_KEYS.has(key)) {
+        airtablePatch[key] = value;
+      }
+    });
+    if (Object.keys(airtablePatch).length > 0) {
+      payload.airtable = airtablePatch;
+    }
+  }
+
+  if (
+    !("airtable_sync_enabled" in payload) &&
+    Object.keys(payload.airtable ?? {}).length === 0
+  ) {
+    return null;
+  }
+
+  return payload;
+}
+
+function SetupProposalCard({
+  proposal,
+  actionStates,
+  onRunAirtableAction,
+}: {
+  proposal: SetupCopilotProposal;
+  actionStates: Record<string, ActionRunState>;
+  onRunAirtableAction: (
+    action: SetupCopilotProposalAction,
+    operation: "preview_patch" | "apply_patch"
+  ) => void;
+}) {
+  return (
+    <div className="rounded-[18px] border border-amber-300/20 bg-amber-300/[0.08] p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100">
+          Review only
+        </span>
+        <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          Confiança {proposal.confidence}
+        </span>
+      </div>
+
+      <div className="mt-3 text-sm font-semibold text-white">{proposal.title}</div>
+      <p className="mt-2 text-xs leading-6 text-white/62">{proposal.summary}</p>
+
+      <div className="mt-4 grid gap-2">
+        {proposal.actions.map((action) => (
+          <div
+            key={action.id}
+            className="rounded-[16px] border border-white/10 bg-black/20 p-3"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                {actionTypeLabel(action.type)}
+              </span>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${riskStyle(action.risk)}`}
+              >
+                Risco {action.risk}
+              </span>
+            </div>
+            <div className="mt-2 text-sm font-semibold text-white/90">
+              {action.title}
+            </div>
+            <p className="mt-1 text-xs leading-6 text-white/58">
+              {action.description}
+            </p>
+            {action.warnings.length > 0 && (
+              <div className="mt-2 grid gap-1">
+                {action.warnings.map((warning) => (
+                  <div key={warning} className="text-[11px] leading-5 text-amber-100/75">
+                    {warning}
+                  </div>
+                ))}
+              </div>
+            )}
+            <ActionControls
+              action={action}
+              state={actionStates[action.id]}
+              onRunAirtableAction={onRunAirtableAction}
+            />
+          </div>
+        ))}
+      </div>
+
+      {proposal.nextQuestions.length > 0 && (
+        <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.04] p-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
+            Perguntas pendentes
+          </div>
+          <div className="mt-2 grid gap-1.5">
+            {proposal.nextQuestions.map((question) => (
+              <div key={question} className="text-xs leading-5 text-white/64">
+                {question}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 text-[11px] leading-5 text-white/38">
+        {proposal.governance.reason}
+      </div>
+    </div>
+  );
+}
+
+function ActionControls({
+  action,
+  state,
+  onRunAirtableAction,
+}: {
+  action: SetupCopilotProposalAction;
+  state: ActionRunState | undefined;
+  onRunAirtableAction: (
+    action: SetupCopilotProposalAction,
+    operation: "preview_patch" | "apply_patch"
+  ) => void;
+}) {
+  if (action.type !== "configure_airtable") {
+    return null;
+  }
+
+  const canRun = Boolean(buildAirtableActionPayload(action));
+  const hasPreview = Boolean(state?.preview);
+  const previewLoading = state?.loading === "preview_patch";
+  const applyLoading = state?.loading === "apply_patch";
+
+  return (
+    <div className="mt-3 rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!canRun || previewLoading || applyLoading}
+          onClick={() => onRunAirtableAction(action, "preview_patch")}
+          className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {previewLoading ? "Gerando preview..." : "Preview Airtable"}
+        </button>
+        <button
+          type="button"
+          disabled={!canRun || !hasPreview || previewLoading || applyLoading}
+          onClick={() => onRunAirtableAction(action, "apply_patch")}
+          className="rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/15 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {applyLoading ? "Aplicando..." : "Aplicar com confirmacao"}
+        </button>
+      </div>
+
+      {!canRun && (
+        <p className="mt-2 text-[11px] leading-5 text-white/42">
+          Esta action ainda precisa de `workflowType` e patch Airtable para
+          executar.
+        </p>
+      )}
+
+      {state?.error && (
+        <p className="mt-2 text-[11px] leading-5 text-red-200">{state.error}</p>
+      )}
+
+      {state?.preview ? (
+        <ResultPreview label="Preview recebido" value={state.preview} />
+      ) : null}
+
+      {state?.applied ? (
+        <ResultPreview label="Aplicacao confirmada" value={state.applied} />
+      ) : null}
+    </div>
+  );
+}
+
+function ResultPreview({ label, value }: { label: string; value: unknown }) {
+  return (
+    <details className="mt-3 rounded-[12px] border border-white/10 bg-black/20 p-3">
+      <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">
+        {label}
+      </summary>
+      <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-white/62">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    </details>
+  );
+}
+
+function operationLabel(operation: SetupAIActionAuditOperation) {
+  const labels: Record<SetupAIActionAuditOperation, string> = {
+    read: "Leitura",
+    preview_patch: "Preview",
+    apply_patch: "Aplicacao",
+  };
+  return labels[operation];
+}
+
+function auditStatusLabel(status: SetupAIActionAuditStatus) {
+  const labels: Record<SetupAIActionAuditStatus, string> = {
+    requested: "Solicitado",
+    succeeded: "Concluido",
+    failed: "Falhou",
+    blocked: "Bloqueado",
+  };
+  return labels[status];
+}
+
+function auditStatusStyle(status: SetupAIActionAuditStatus) {
+  if (status === "succeeded") {
+    return "border-emerald-300/25 bg-emerald-300/10 text-emerald-100";
+  }
+  if (status === "failed" || status === "blocked") {
+    return "border-red-300/25 bg-red-300/10 text-red-100";
+  }
+  return "border-amber-300/25 bg-amber-300/10 text-amber-100";
+}
+
+function formatAuditDate(value: string | null) {
+  if (!value) {
+    return "--";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function SetupActionAuditPanel({
+  entries,
+  loading,
+  message,
+  onRefresh,
+}: {
+  entries: SetupAIActionAuditEntry[];
+  loading: boolean;
+  message: string | null;
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="rounded-[20px] border border-white/10 bg-white/[0.035] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+            Auditoria Setup AI
+          </div>
+          <div className="mt-1 text-sm font-semibold text-white/82">
+            Ultimas acoes revisaveis
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {loading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </div>
+
+      {message && (
+        <p className="mt-3 rounded-[14px] border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100/82">
+          {message}
+        </p>
+      )}
+
+      {entries.length === 0 ? (
+        <p className="mt-3 text-xs leading-6 text-white/38">
+          Nenhuma action registrada ainda para este workspace.
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {entries.map((entry) => (
+            <div
+              key={entry.id}
+              className="rounded-[14px] border border-white/10 bg-black/18 px-3 py-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${auditStatusStyle(entry.status)}`}
+                >
+                  {auditStatusLabel(entry.status)}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                  {operationLabel(entry.operation)}
+                </span>
+                <span className="font-mono text-[10px] text-white/30">
+                  {formatAuditDate(entry.created_at)}
+                </span>
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/58">
+                <span>{entry.workflow_type}</span>
+                {entry.requested_by_email && <span>{entry.requested_by_email}</span>}
+                {entry.dry_run === true && <span>dry-run</span>}
+                {entry.confirmed === true && <span>confirmado</span>}
+              </div>
+
+              {entry.error_message && (
+                <p className="mt-2 text-[11px] leading-5 text-red-200/82">
+                  {entry.error_message}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AssistantMeta({
+  meta,
+}: {
+  meta: NonNullable<Message["meta"]>;
+}) {
+  const budgetAlert = meta.budgetAlert;
+
+  return (
+    <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.12em] text-white/35">
+      {meta.provider && <span>{meta.provider}</span>}
+      {meta.model && <span>{meta.model}</span>}
+      {meta.usedFallback && <span>fallback</span>}
+      {budgetAlert && (
+        <span>
+          budget {budgetAlert.pct_used}% de R${budgetAlert.limit_brl}
+        </span>
+      )}
+    </div>
   );
 }
 

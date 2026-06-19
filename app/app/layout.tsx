@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/app/app/logout-button";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { isSunbeatTablesEnabled } from "@/lib/features/sunbeat-tables";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 
 // ─── Nav structure ───────────────────────────────────────────────────────────
@@ -32,6 +33,17 @@ const navSections = [
           </svg>
         ),
         description: "Entradas e rascunhos",
+      },
+      {
+        label: "Tables",
+        href: "/app/tables",
+        icon: (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M4 5h16M4 10h16M4 15h16M4 20h16M8 5v15M16 5v15" />
+          </svg>
+        ),
+        description: "Read model operacional",
       },
     ],
   },
@@ -121,6 +133,17 @@ const navSections = [
         description: "Identidade e personalização",
       },
       {
+        label: "AI Copilot",
+        href: "/app/settings/ai-guide",
+        icon: (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M12 3v3m0 12v3m9-9h-3M6 12H3m14.121-5.121-2.121 2.121M9 15l-2.121 2.121m0-10.242L9 9m6 6 2.121 2.121M12 8a4 4 0 100 8 4 4 0 000-8z" />
+          </svg>
+        ),
+        description: "Setup e governança IA",
+      },
+      {
         label: "Plano",
         href: "/app/settings/plan",
         icon: (
@@ -184,6 +207,13 @@ export default async function AppLayout({
     enterprise: "#111111",
   };
   const planColor = planColors[planId] ?? "#111111";
+  const enabledNavSections = navSections.map((section) => ({
+    ...section,
+    items: section.items.filter(
+      (item) =>
+        item.href !== "/app/tables" || isSunbeatTablesEnabled(workspaceSlug)
+    ),
+  }));
 
   return (
     <div className="min-h-screen bg-[#F4F1EA] text-[#111111]">
@@ -240,7 +270,7 @@ export default async function AppLayout({
 
             {/* Navigation */}
             <div className="mt-5 flex-1">
-              {navSections.map((section) => (
+              {enabledNavSections.map((section) => (
                 <div key={section.section} className="mb-5">
                   <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8D867B]">
                     {section.section}

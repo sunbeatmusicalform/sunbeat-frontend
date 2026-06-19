@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getBackendApiBaseUrl } from "@/lib/server/backend-api";
 import { loadWorkspaceConfigReadModel } from "@/lib/workspace-config/read-model";
+import {
+  buildSetupCopilotStructuredMessage,
+  inferSetupCopilotProposal,
+  parseSetupCopilotProposal,
+  stripSetupCopilotProposalBlock,
+} from "@/lib/ai/setup-copilot";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +34,8 @@ function buildWorkspaceContextString(config: unknown): string {
         const be = c.billingAndEntitlements as Record<string, unknown> | undefined;
         if (!be || be["state"] !== "loaded") return be;
         // Redactar contractInfo — contém monthly_value_brl, setup_fee_paid_brl, etc.
-        const { contractInfo: _redacted, ...safeEntitlements } = be as {
-          contractInfo: unknown;
-          [k: string]: unknown;
-        };
+        const safeEntitlements = { ...be };
+        delete safeEntitlements.contractInfo;
         return safeEntitlements;
       })(),
       // Omit integrationSettings (may contain sensitive tokens)
@@ -90,6 +94,8 @@ export async function POST(req: Request) {
     }
   }
 
+  const structuredMessage = buildSetupCopilotStructuredMessage(message);
+
   // 4. Forward to backend /ai/copilot
   let backendBase: string;
   try {
@@ -109,7 +115,7 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message,
+        message: structuredMessage,
         workspace_context: workspaceContextString ?? null,
         workspace_slug: workspaceSlug || null,   // V2: usage log + budget_alert
         secret: copilotSecret || null,
@@ -142,9 +148,23 @@ export async function POST(req: Request) {
     );
   }
 
+  const rawText = (data as { text?: string }).text ?? "";
+  const parsedProposal = parseSetupCopilotProposal({
+    text: rawText,
+    workspaceSlug,
+    userMessage: message,
+  });
+  const fallbackProposal =
+    parsedProposal ??
+    inferSetupCopilotProposal({
+      userMessage: message,
+      workspaceSlug,
+    });
+
   return NextResponse.json({
     ok: true,
-    text: (data as { text?: string }).text ?? "",
+    text: stripSetupCopilotProposalBlock(rawText),
+    proposal: fallbackProposal,
     used_fallback: (data as { used_fallback?: boolean }).used_fallback ?? false,
     provider: (data as { provider?: string }).provider ?? "",
     model: (data as { model?: string }).model ?? "",

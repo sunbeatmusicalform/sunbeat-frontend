@@ -148,7 +148,7 @@ const WORKFLOW_REGISTRY: Record<string, WorkflowRegistryEntry> = {
     renderer: "company_registry",
     templateFactory: "company_registry",
     payloadBuilder: "company_registry",
-    publicPathPrefix: null,
+    publicPathPrefix: "/company",
     capabilities: {
       steps: [
         { label: "Boas-vindas" },
