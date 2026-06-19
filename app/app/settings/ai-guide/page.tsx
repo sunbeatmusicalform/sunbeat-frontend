@@ -1,282 +1,35 @@
-import Link from "next/link";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 import SetupCopilotWidget from "@/components/admin/SetupCopilotWidget";
-
-const guidePrinciples = [
-  {
-    title: "Field-aware responses",
-    description:
-      "The assistant should know the current field name, its purpose and its allowed values.",
-  },
-  {
-    title: "Step-aware context",
-    description:
-      "Guidance should change depending on whether the user is in release details, assets, credits or review.",
-  },
-  {
-    title: "Workspace-specific rules",
-    description:
-      "Each client may want different instructions, examples, terminology and operational constraints.",
-  },
-  {
-    title: "Short operational answers",
-    description:
-      "The guide should help complete the form, not drift into generic long-form conversation.",
-  },
-];
-
-const inputSignals = [
-  "field_name",
-  "field_label",
-  "field_type",
-  "field_description",
-  "helper_text",
-  "validation_rules",
-  "current_step",
-  "workspace_prompt",
-  "client_tone",
-];
-
-const responseModes = [
-  {
-    mode: "Inline hint",
-    description:
-      "Short answer under the field when the user needs quick clarification.",
-  },
-  {
-    mode: "Right-side assistant panel",
-    description:
-      "Persistent contextual help area showing examples and completion guidance.",
-  },
-  {
-    mode: "Validation support",
-    description:
-      "Explain why an entry may be invalid and what a correct input should look like.",
-  },
-];
 
 export default async function AIGuideSettingsPage() {
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
 
   return (
-    <div className="grid gap-6">
-      {/* ── Setup Copilot ──────────────────────────────────────── */}
+    <div>
       <section className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)] md:p-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2.5 rounded-full border border-[#E2D8C8] bg-[#FBF7EF] px-3.5 py-2 text-xs font-semibold text-[#3B332A]">
-            <span className="sunbeat-dot" />
-            Setup Copilot
-          </span>
-          <span className="rounded-full border border-[#E2D8C8] bg-[#F8F3EA] px-3 py-2 text-xs font-medium text-[#746A5F]">
-            Workspace configuration assistant · review-only
-          </span>
-        </div>
-
-        <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-[#16120F] md:text-4xl">
-          Pergunte sobre a configuração
-          <span className="block text-[#6D6258]">do seu workspace.</span>
-        </h1>
-
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[#625A51]">
-          O Setup Copilot lê a configuração atual do workspace, responde perguntas
-          sobre workflows, branding, integrações e campos do formulário, e agora
-          prepara propostas estruturadas para revisão humana antes de qualquer
-          aplicação.
-        </p>
-
-        <div className="mt-7">
-          <SetupCopilotWidget workspaceSlug={workspaceSlug} />
-        </div>
-      </section>
-
-      {/* ── AI Guide reference ────────────────────────────────── */}
-      <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <div className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)] md:p-8">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="grid gap-6 xl:grid-cols-[0.86fr_1.14fr]">
+          <div>
             <span className="inline-flex items-center gap-2.5 rounded-full border border-[#E2D8C8] bg-[#FBF7EF] px-3.5 py-2 text-xs font-semibold text-[#3B332A]">
               <span className="sunbeat-dot" />
-              AI Guide Configuration
+              Setup Copilot
             </span>
-            <span className="rounded-full border border-[#E2D8C8] bg-[#F8F3EA] px-3 py-2 text-xs font-medium text-[#746A5F]">
-              Contextual assistance layer
-            </span>
-          </div>
 
-          <h1 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-[#16120F] md:text-5xl">
-            AI that supports completion,
-            <span className="block text-[#6D6258]">not generic conversation.</span>
-          </h1>
+            <h1 className="mt-5 max-w-xl text-3xl font-semibold tracking-[-0.04em] text-[#16120F] md:text-4xl">
+              Configure o workspace com revisão humana.
+            </h1>
 
-          <p className="mt-5 max-w-2xl text-base leading-8 text-[#625A51]">
-            The Sunbeat assistant should behave like a guided operational layer inside the
-            Release Intake. It exists to reduce doubt, improve data quality and help users
-            finish the form correctly.
-          </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <MetricCard value="Contextual" label="field + step aware" />
-            <MetricCard value="Reliable" label="short operational answers" />
-            <MetricCard value="Configurable" label="workspace prompt logic" />
-          </div>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/app/settings/fields"
-              className="sunbeat-button sunbeat-button-primary"
-            >
-              Open field config
-            </Link>
-            <Link
-              href="/app/release-intake"
-              className="sunbeat-button border border-[#D9CDBD] bg-white text-[#2B241D] shadow-[0_8px_22px_rgba(52,43,32,0.08)] hover:bg-[#F8F3EA]"
-            >
-              Preview intake
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)] md:p-8">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#91877A]">
-            Strategy
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold text-[#16120F]">
-            Shine Brighter, Work Smarter.
-          </h2>
-
-          <div className="mt-5 grid gap-3">
-            <div className="rounded-[22px] border border-[#E4D9C9] bg-[#FBF7EF] p-4">
-              <div className="text-sm font-semibold text-[#2B241D]">User-facing value</div>
-              <p className="mt-2 text-sm leading-7 text-[#6A6157]">
-                Guidance feels premium when it is precise, contextual and calm.
-              </p>
-            </div>
-
-            <div className="rounded-[22px] border border-[#E4D9C9] bg-[#FBF7EF] p-4">
-              <div className="text-sm font-semibold text-[#2B241D]">Operational value</div>
-              <p className="mt-2 text-sm leading-7 text-[#6A6157]">
-                Smarter assistance means fewer errors, fewer follow-ups and better submissions.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-[24px] border border-emerald-200 bg-emerald-50 p-4">
-            <div className="text-sm font-semibold text-emerald-900">Recommended role</div>
-            <p className="mt-2 text-sm leading-7 text-emerald-800">
-              Treat the AI guide as a completion assistant, not as a standalone chatbot product.
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[#625A51]">
+              Faça perguntas sobre workflows, branding, integrações e campos. O
+              Copilot responde em modo consultivo e só prepara mudanças para
+              revisão; nenhuma aplicação acontece sem confirmação.
             </p>
           </div>
-        </div>
-      </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
-        <div className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#91877A]">
-            Core principles
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold text-[#16120F]">
-            How the guide should behave
-          </h2>
-
-          <div className="mt-6 grid gap-4">
-            {guidePrinciples.map((item) => (
-              <div
-                key={item.title}
-                className="rounded-[24px] border border-[#E4D9C9] bg-[#FBF7EF] p-5"
-              >
-                <div className="text-lg font-semibold text-[#2B241D]">{item.title}</div>
-                <p className="mt-3 text-sm leading-7 text-[#6A6157]">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#91877A]">
-            Prompt inputs
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold text-[#16120F]">
-            Recommended runtime context
-          </h2>
-
-          <div className="mt-6 space-y-3">
-            {inputSignals.map((item) => (
-              <div
-                key={item}
-                className="rounded-[20px] border border-[#E4D9C9] bg-[#FBF7EF] px-4 py-4 font-mono text-sm text-[#4C4238]"
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-[24px] border border-blue-200 bg-blue-50 p-4">
-            <div className="text-sm font-semibold text-blue-900">Implementation note</div>
-            <p className="mt-2 text-sm leading-7 text-blue-800">
-              Keep the AI prompt grounded in actual field configuration so the assistant stays
-              aligned with workspace logic.
-            </p>
+          <div>
+            <SetupCopilotWidget workspaceSlug={workspaceSlug} />
           </div>
         </div>
       </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#91877A]">
-            UX patterns
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold text-[#16120F]">
-            Recommended response modes
-          </h2>
-
-          <div className="mt-6 grid gap-4">
-            {responseModes.map((item) => (
-              <div
-                key={item.mode}
-                className="rounded-[24px] border border-[#E4D9C9] bg-[#FBF7EF] p-5"
-              >
-                <div className="text-lg font-semibold text-[#2B241D]">{item.mode}</div>
-                <p className="mt-3 text-sm leading-7 text-[#6A6157]">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[32px] border border-[#DED7CB] bg-white p-7 shadow-[0_18px_50px_rgba(52,43,32,0.08)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#91877A]">
-            Workspace prompt direction
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold text-[#16120F]">
-            What the client should be able to configure
-          </h2>
-
-          <div className="mt-6 grid gap-3">
-            {[
-              "Tone of voice for guidance",
-              "Examples specific to the label workflow",
-              "Terms that should be preferred",
-              "Rules around codes, credits and delivery",
-              "What to do when the user is unsure",
-              "Fallback copy when no answer is available",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-[22px] border border-[#E4D9C9] bg-[#FBF7EF] px-4 py-4 text-sm text-[#4C4238]"
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function MetricCard({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-[24px] border border-[#E4D9C9] bg-[#FBF7EF] p-5">
-      <div className="text-2xl font-semibold text-[#2B241D]">{value}</div>
-      <div className="mt-2 text-sm text-[#6A6157]">{label}</div>
     </div>
   );
 }

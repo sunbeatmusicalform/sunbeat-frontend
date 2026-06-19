@@ -62,6 +62,17 @@ type AuditResponse = {
   warning?: string;
 };
 
+function formatCopilotError(error: string | undefined) {
+  if (error?.toLowerCase().includes("copilot secret")) {
+    return "Copilot aguardando token interno do backend. Os formulários seguem operando normalmente.";
+  }
+
+  return (
+    error ??
+    "O copilot não está disponível no momento. Verifique a configuração da IA no backend."
+  );
+}
+
 export default function SetupCopilotWidget({ workspaceSlug }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -126,9 +137,7 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
           ...prev,
           {
             role: "error",
-            content:
-              data?.error ??
-              "O copilot não está disponível no momento. Verifique se AI_GATEWAY_ENABLED está ativo no backend.",
+            content: formatCopilotError(data?.error),
           },
         ]);
       } else {
@@ -247,10 +256,10 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
     <div className="flex flex-col gap-4">
       {/* Message history */}
       <div
-        className={`min-h-[200px] rounded-[24px] border border-[#E2D8C8] bg-[#F8F3EA] p-5 ${
+        className={`min-h-[172px] rounded-[24px] border border-[#E2D8C8] bg-[#F8F3EA] p-5 ${
           isEmpty ? "flex items-center justify-center" : ""
         }`}
-        style={{ maxHeight: "420px", overflowY: "auto" }}
+        style={{ maxHeight: "360px", overflowY: "auto" }}
       >
         {isEmpty ? (
           <p className="text-center text-sm text-[#776D62]">
@@ -268,7 +277,7 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
                     msg.role === "user"
                       ? "bg-[#2B241D] text-white shadow-[0_8px_24px_rgba(43,36,29,0.16)]"
                       : msg.role === "error"
-                        ? "border border-red-200 bg-red-50 text-red-800"
+                        ? "border border-amber-200 bg-amber-50 text-amber-900"
                         : "border border-[#E2D8C8] bg-white text-[#2B241D]"
                   }`}
                 >
@@ -330,9 +339,7 @@ export default function SetupCopilotWidget({ workspaceSlug }: Props) {
         onRefresh={loadAuditLog}
       />
 
-      <p className="text-xs text-[#81776B]">
-        Setup Copilot · sugere configurações · aplicação sempre exige revisão humana
-      </p>
+      <p className="text-xs text-[#81776B]">Sugestões dependem de revisão humana.</p>
     </div>
   );
 }
@@ -667,6 +674,22 @@ function SetupActionAuditPanel({
   message: string | null;
   onRefresh: () => void;
 }) {
+  if (entries.length === 0 && !message) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2D8C8] bg-[#FBF7EF] px-4 py-3">
+        <span className="text-xs text-[#81776B]">Auditoria: nenhuma ação registrada.</span>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="rounded-xl border border-[#D9CDBD] bg-white px-3 py-2 text-xs font-semibold text-[#4C4238] transition hover:bg-[#F8F3EA] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {loading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <section className="rounded-[20px] border border-[#E2D8C8] bg-[#FBF7EF] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
