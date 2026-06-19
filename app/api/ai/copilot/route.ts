@@ -107,7 +107,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const copilotSecret = process.env.AI_COPILOT_SECRET ?? "";
+  const copilotSecret =
+    process.env.BACKEND_INTERNAL_ADMIN_TOKEN?.trim() ||
+    process.env.INTERNAL_ADMIN_TOKEN?.trim() ||
+    process.env.AI_COPILOT_SECRET?.trim() ||
+    "";
 
   let upstream: Response;
   try {
