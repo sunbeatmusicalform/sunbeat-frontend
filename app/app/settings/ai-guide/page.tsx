@@ -68,7 +68,7 @@ export default async function AIGuideSettingsPage() {
             Setup Copilot
           </span>
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/50">
-            Workspace configuration assistant · read-only
+            Workspace configuration assistant · review-only
           </span>
         </div>
 
@@ -78,9 +78,10 @@ export default async function AIGuideSettingsPage() {
         </h1>
 
         <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55">
-          O Setup Copilot lê a configuração atual do workspace e responde perguntas
-          sobre workflows, branding, integrações e campos do formulário. Ele não
-          modifica dados — apenas orienta.
+          O Setup Copilot lê a configuração atual do workspace, responde perguntas
+          sobre workflows, branding, integrações e campos do formulário, e agora
+          prepara propostas estruturadas para revisão humana antes de qualquer
+          aplicação.
         </p>
 
         <div className="mt-7">
