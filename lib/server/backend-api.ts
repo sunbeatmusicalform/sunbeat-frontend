@@ -12,10 +12,13 @@ export function getBackendApiBaseUrl() {
 export function getBackendInternalAdminHeaders(): Record<string, string> {
   const token =
     process.env.BACKEND_INTERNAL_ADMIN_TOKEN?.trim() ||
-    process.env.INTERNAL_ADMIN_TOKEN?.trim();
+    process.env.INTERNAL_ADMIN_TOKEN?.trim() ||
+    process.env.AI_COPILOT_SECRET?.trim();
 
   if (!token) {
-    throw new Error("BACKEND_INTERNAL_ADMIN_TOKEN or INTERNAL_ADMIN_TOKEN is not set");
+    throw new Error(
+      "BACKEND_INTERNAL_ADMIN_TOKEN, INTERNAL_ADMIN_TOKEN or AI_COPILOT_SECRET is not set"
+    );
   }
 
   return {
