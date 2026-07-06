@@ -146,6 +146,16 @@ export default async function AppHome() {
           ctaStyle="primary"
         />
 
+        {/* Gantt operacional */}
+        <QuickCard
+          tag="Sunbeat Tables"
+          title="Gantt operacional"
+          description="Acompanhe projetos, macroáreas e prazos em uma linha do tempo interna."
+          href="/app/gantt"
+          cta="Abrir Gantt"
+          ctaStyle="secondary"
+        />
+
         {/* Editar campos */}
         <QuickCard
           tag="Configuração"

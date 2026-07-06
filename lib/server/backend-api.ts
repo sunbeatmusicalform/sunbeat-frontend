@@ -9,6 +9,20 @@ export function getBackendApiBaseUrl() {
   return apiUrl.replace(/\/+$/, "");
 }
 
+export function getBackendInternalAdminHeaders(): Record<string, string> {
+  const token =
+    process.env.BACKEND_INTERNAL_ADMIN_TOKEN?.trim() ||
+    process.env.INTERNAL_ADMIN_TOKEN?.trim();
+
+  if (!token) {
+    throw new Error("BACKEND_INTERNAL_ADMIN_TOKEN or INTERNAL_ADMIN_TOKEN is not set");
+  }
+
+  return {
+    "X-Admin-Token": token,
+  };
+}
+
 export function parseJsonSafely(text: string) {
   if (!text) return null;
 
