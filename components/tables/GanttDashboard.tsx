@@ -41,7 +41,8 @@ type GanttResponse = {
     projects: string[];
   };
   warnings?: string[];
-  error?: { message?: string };
+  error?: { message?: string } | string;
+  detail?: { message?: string } | string;
 };
 
 type UiState =
@@ -109,6 +110,18 @@ function sourceLabel(source: string) {
   return source || "Fonte não informada";
 }
 
+function responseErrorMessage(data: GanttResponse) {
+  const error = data.error;
+  if (typeof error === "string" && error.trim()) return error;
+  if (typeof error === "object" && error?.message) return error.message;
+
+  const detail = data.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (typeof detail === "object" && detail?.message) return detail.message;
+
+  return "Não foi possível carregar o Gantt.";
+}
+
 function buildTicks(start: Date, end: Date, scale: Scale) {
   const step = scale === "days" ? 7 : scale === "weeks" ? 14 : 30;
   const ticks: Date[] = [];
@@ -167,7 +180,7 @@ export default function GanttDashboard({ workspaceSlug }: { workspaceSlug: strin
       .then(async (response) => {
         const data = (await response.json()) as GanttResponse;
         if (!response.ok || !data.ok) {
-          throw new Error(data.error?.message || "Não foi possível carregar o Gantt.");
+          throw new Error(responseErrorMessage(data));
         }
         if (alive) setUiState({ type: "ready", data });
       })

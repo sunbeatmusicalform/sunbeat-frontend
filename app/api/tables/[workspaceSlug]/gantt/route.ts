@@ -5,16 +5,48 @@ import {
   getErrorMessage,
 } from "@/lib/server/backend-api";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import {
+  canAccessWorkspace,
+  listAccessibleWorkspacesForUser,
+} from "@/lib/workspace-access";
 
 type RouteContext = { params: Promise<{ workspaceSlug: string }> };
 
-async function requireUser() {
+async function requireWorkspaceUser(workspaceSlug: string) {
   const supabase = await createSupabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return user;
+  if (!user) {
+    return {
+      response: NextResponse.json(
+        { ok: false, error: { message: "Não autenticado." } },
+        { status: 401 }
+      ),
+    };
+  }
+
+  const workspaces = await listAccessibleWorkspacesForUser({
+    userId: user.id,
+    email: user.email ?? null,
+    metadataWorkspaceSlug: user.user_metadata?.workspace_slug,
+  });
+
+  if (!canAccessWorkspace({ workspaceSlug, workspaces })) {
+    return {
+      response: NextResponse.json(
+        { ok: false, error: { message: "Workspace não disponível para este usuário." } },
+        { status: 403 }
+      ),
+    };
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return { user, accessToken: session?.access_token ?? null };
 }
 
 async function proxyJson(upstream: Response) {
@@ -29,15 +61,12 @@ async function proxyJson(upstream: Response) {
 }
 
 export async function GET(req: Request, { params }: RouteContext) {
-  const user = await requireUser();
-  if (!user) {
-    return NextResponse.json(
-      { ok: false, error: { message: "Não autenticado." } },
-      { status: 401 }
-    );
+  const { workspaceSlug } = await params;
+  const access = await requireWorkspaceUser(workspaceSlug);
+  if ("response" in access) {
+    return access.response;
   }
 
-  const { workspaceSlug } = await params;
   let base: string;
   let adminHeaders: Record<string, string>;
   try {
@@ -61,7 +90,12 @@ export async function GET(req: Request, { params }: RouteContext) {
   try {
     const upstream = await fetch(upstreamUrl.toString(), {
       method: "GET",
-      headers: { "Content-Type": "application/json", ...adminHeaders },
+      headers: {
+        "Content-Type": "application/json",
+        ...adminHeaders,
+        ...(access.accessToken ? { Authorization: `Bearer ${access.accessToken}` } : {}),
+      },
+      cache: "no-store",
     });
     return proxyJson(upstream);
   } catch (error: unknown) {
