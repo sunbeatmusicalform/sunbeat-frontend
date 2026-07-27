@@ -809,7 +809,7 @@ function IntroStep({
         </div>
 
         <p className="mt-5 text-sm leading-6 text-slate-500">
-          Clique em <strong>Comecar</strong> para seguir para o preenchimento.
+          Clique em <strong>Começar</strong> para seguir para o preenchimento.
         </p>
       </div>
     </div>
@@ -828,14 +828,14 @@ function SubmissionCompleteStep({
       <div className="rounded-[28px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-8 shadow-sm">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">
-            Envio concluido
+            Envio concluído
           </p>
           <h3 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
             Obrigado pelo preenchimento.
           </h3>
           <p className="mt-4 text-base leading-7 text-slate-600">{message}</p>
           <p className="mt-3 text-sm leading-6 text-slate-500">
-            Se voce quiser registrar outra solicitacao, pode iniciar um novo
+            Se você quiser registrar outra solicitação, pode iniciar um novo
             preenchimento agora.
           </p>
 
@@ -2159,8 +2159,8 @@ export default function RightsClearancePage({
               </div>
               {currentStep !== "intro" ? (
                 <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                  Formulario restrito ao time e aos parceiros autorizados. Preencha
-                  os dados do pedido de clearance e envie para revisao da equipe.
+                  Formulário restrito ao time e aos parceiros autorizados. Preencha
+                  os dados do pedido de clearance e envie para revisão da equipe.
                 </p>
               ) : null}
             </div>
@@ -2175,7 +2175,7 @@ export default function RightsClearancePage({
 
             {(editToken || draftToken) && (
               <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                {editToken ? "Modo edicao ativo" : "Rascunho carregado"}
+                {editToken ? "Modo edição ativo" : "Rascunho carregado"}
               </div>
             )}
           </div>
@@ -2453,8 +2453,8 @@ export default function RightsClearancePage({
                           />
                         ) : (
                           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-500">
-                            Se a faixa ainda nao possui ISRC, podemos seguir sem o
-                            codigo neste momento.
+                            Se a faixa ainda não possui ISRC, podemos seguir sem o
+                            código neste momento.
                           </div>
                         )}
                       </div>
@@ -2850,7 +2850,7 @@ export default function RightsClearancePage({
                   className="rounded-xl border px-6 py-3 text-sm font-medium text-white"
                   style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
                 >
-                  {currentStep === "intro" ? "Comecar" : "Continuar"}
+                  {currentStep === "intro" ? "Começar" : "Continuar"}
                 </button>
               )}
             </div>

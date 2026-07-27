@@ -921,7 +921,7 @@ export default function CompanyRegistryPage({
             {template.intro.highlights && template.intro.highlights.length > 0 && (
               <div className="rounded-2xl border border-slate-200 bg-white p-6">
                 <p className="mb-4 text-[13px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                  O que sera preenchido
+                  O que será preenchido
                 </p>
                 <ul className="space-y-3">
                   {template.intro.highlights.map((h) => (
@@ -940,7 +940,7 @@ export default function CompanyRegistryPage({
               onClick={goNext}
               className="w-full rounded-2xl px-6 py-4 text-[15px] font-semibold text-white transition active:scale-[0.99]" style={{ background: template.formTheme?.primary ?? DEFAULT_FORM_THEME.primary }}
             >
-              Comecar cadastro
+              Começar cadastro
             </button>
           </div>
         )}

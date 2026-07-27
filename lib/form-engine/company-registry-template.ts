@@ -49,29 +49,29 @@ export function createCompanyRegistryTemplate(args?: {
     version: 1,
     slogan: "",
     successMessage:
-      "Cadastro recebido com sucesso. A equipe da Atabaque entrara em contato para finalizar a parceria.",
+      "Cadastro recebido com sucesso. A equipe da Atabaque entrará em contato para finalizar a parceria.",
     intro: {
       clientName: "Atabaque",
       formTitle: "Cadastro de empresa",
       introText:
-        "Preencha o formulario abaixo para iniciar o cadastro como cliente da Atabaque.\n\nAs informacoes fornecidas serao utilizadas para formalizar a parceria contratual, financeira e operacional.\n\nSe precisar pausar, voce pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
+        "Preencha o formulário abaixo para iniciar o cadastro como cliente da Atabaque.\n\nAs informações fornecidas serão utilizadas para formalizar a parceria contratual, financeira e operacional.\n\nSe precisar pausar, você pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
       highlights: [
         "Dados da empresa",
-        "Responsaveis (legal, contrato, financeiro)",
-        "Dados bancarios",
+        "Responsáveis (legal, contrato, financeiro)",
+        "Dados bancários",
       ],
     },
     steps: [
       {
         key: "intro",
         title: "Boas-vindas",
-        description: "Introducao ao formulario de cadastro.",
+        description: "Introdução ao formulário de cadastro.",
         fields: [],
       },
       {
         key: "company_data",
         title: "Dados da empresa",
-        description: "Identificacao fiscal e endereco da empresa ou pessoa fisica.",
+        description: "Identificação fiscal e endereço da empresa ou pessoa física.",
         fields: [
           {
             key: "document_type",
@@ -83,7 +83,7 @@ export function createCompanyRegistryTemplate(args?: {
           {
             key: "document_number",
             type: "text",
-            label: "Numero do documento (CPF ou CNPJ)",
+            label: "Número do documento (CPF ou CNPJ)",
             required: true,
             placeholder: "000.000.000-00 ou 00.000.000/0001-00",
           },
@@ -92,21 +92,21 @@ export function createCompanyRegistryTemplate(args?: {
             type: "text",
             label: "Nome fantasia",
             required: true,
-            placeholder: "Nome pelo qual a empresa e conhecida",
+            placeholder: "Nome pelo qual a empresa é conhecida",
           },
           {
             key: "legal_name",
             type: "text",
-            label: "Razao social",
+            label: "Razão social",
             required: true,
-            placeholder: "Razao social completa conforme registro",
+            placeholder: "Razão social completa conforme registro",
           },
           {
             key: "address",
             type: "text",
-            label: "Endereco (logradouro, numero, complemento)",
+            label: "Endereço (logradouro, número, complemento)",
             required: true,
-            placeholder: "Rua, numero, complemento",
+            placeholder: "Rua, número, complemento",
           },
           {
             key: "city",
@@ -133,16 +133,16 @@ export function createCompanyRegistryTemplate(args?: {
       },
       {
         key: "legal_representative",
-        title: "Responsavel legal",
+        title: "Responsável legal",
         description:
-          "Dados do responsavel legal pela empresa. Pode ser o socio-administrador ou representante autorizado.",
+          "Dados do responsável legal pela empresa. Pode ser o sócio-administrador ou representante autorizado.",
         fields: [
           {
             key: "name",
             type: "text",
             label: "Nome completo",
             required: true,
-            placeholder: "Nome do responsavel legal",
+            placeholder: "Nome do responsável legal",
           },
           {
             key: "phone",
@@ -162,14 +162,14 @@ export function createCompanyRegistryTemplate(args?: {
       },
       {
         key: "contract_representative",
-        title: "Responsavel pelo contrato",
+        title: "Responsável pelo contrato",
         description:
-          "Quem assina ou acompanha os contratos firmados com a Atabaque. Pode ser o mesmo responsavel legal.",
+          "Quem assina ou acompanha os contratos firmados com a Atabaque. Pode ser o mesmo responsável legal.",
         fields: [
           {
             key: "same_as_legal",
             type: "select",
-            label: "Mesmo que o responsavel legal?",
+            label: "Mesmo que o responsável legal?",
             required: true,
             options: yesNoOptions,
           },
@@ -178,7 +178,7 @@ export function createCompanyRegistryTemplate(args?: {
             type: "text",
             label: "Nome completo",
             required: false,
-            placeholder: "Nome do responsavel pelo contrato",
+            placeholder: "Nome do responsável pelo contrato",
           },
           {
             key: "phone",
@@ -198,21 +198,21 @@ export function createCompanyRegistryTemplate(args?: {
       },
       {
         key: "financial_representative",
-        title: "Responsavel financeiro",
+        title: "Responsável financeiro",
         description:
-          "Quem recebe os boletos, faturas e repasses financeiros. Pode ser o mesmo responsavel legal ou do contrato.",
+          "Quem recebe os boletos, faturas e repasses financeiros. Pode ser o mesmo responsável legal ou do contrato.",
         fields: [
           {
             key: "same_as_legal",
             type: "select",
-            label: "Mesmo que o responsavel legal?",
+            label: "Mesmo que o responsável legal?",
             required: true,
             options: yesNoOptions,
           },
           {
             key: "same_as_contract",
             type: "select",
-            label: "Mesmo que o responsavel pelo contrato?",
+            label: "Mesmo que o responsável pelo contrato?",
             required: true,
             options: yesNoOptions,
           },
@@ -221,7 +221,7 @@ export function createCompanyRegistryTemplate(args?: {
             type: "text",
             label: "Nome completo",
             required: false,
-            placeholder: "Nome do responsavel financeiro",
+            placeholder: "Nome do responsável financeiro",
           },
           {
             key: "phone",
@@ -241,9 +241,9 @@ export function createCompanyRegistryTemplate(args?: {
       },
       {
         key: "banking_data",
-        title: "Dados bancarios",
+        title: "Dados bancários",
         description:
-          "Informacoes da conta bancaria para repasses e transferencias.",
+          "Informações da conta bancária para repasses e transferências.",
         fields: [
           {
             key: "bank_name",
@@ -255,7 +255,7 @@ export function createCompanyRegistryTemplate(args?: {
           {
             key: "agency",
             type: "text",
-            label: "Agencia",
+            label: "Agência",
             required: true,
             placeholder: "0000",
           },
@@ -278,15 +278,15 @@ export function createCompanyRegistryTemplate(args?: {
             type: "text",
             label: "Chave Pix (opcional)",
             required: false,
-            placeholder: "CPF, CNPJ, e-mail, telefone ou chave aleatoria",
+            placeholder: "CPF, CNPJ, e-mail, telefone ou chave aleatória",
           },
         ],
       },
       {
         key: "review_submit",
-        title: "Revisao e envio",
+        title: "Revisão e envio",
         description:
-          "Revise as informacoes antes de enviar o formulario.",
+          "Revise as informações antes de enviar o formulário.",
         fields: [],
       },
     ],

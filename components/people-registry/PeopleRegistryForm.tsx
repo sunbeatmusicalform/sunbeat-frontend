@@ -1978,7 +1978,7 @@ export default function PeopleRegistryForm({
 
         {/* Rodapé */}
         <p className="mt-6 text-center text-[12px] text-slate-500">
-          Sunbeat · People Registry · {profile.clientLabel} · {profile.formVersion}
+          Sunbeat · People Registry · {profile.clientLabel}
         </p>
       </div>
     </div>
