@@ -97,6 +97,10 @@ function getApiMessage(
   return text;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 function inferClearanceFormatFromScope(
   clearanceScope: Record<string, unknown>
 ): ClearanceFormat | "" {
@@ -1502,10 +1506,10 @@ export default function RightsClearancePage({
         ...values.assets_references.supporting_files,
         ...uploaded,
       ]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setFieldError(
         "assets_references.supporting_files",
-        error?.message || "Nao foi possivel enviar os arquivos."
+        getErrorMessage(error, "Nao foi possivel enviar os arquivos.")
       );
     } finally {
       event.target.value = "";
@@ -1657,10 +1661,13 @@ export default function RightsClearancePage({
         }
 
         setCurrentStep("review_submit");
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Edit submission load failed", error);
         setSubmitError(
-          error?.message || "Nao foi possivel carregar a submissao para edicao."
+          getErrorMessage(
+            error,
+            "Nao foi possivel carregar a submissao para edicao."
+          )
         );
       }
     }
@@ -1830,10 +1837,10 @@ export default function RightsClearancePage({
 
       showDraftNotice("Rascunho salvo com sucesso.", "success");
       setAutosaveState("saved");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       showDraftNotice(
-        error?.message || "Nao foi possivel salvar o rascunho.",
+        getErrorMessage(error, "Nao foi possivel salvar o rascunho."),
         "error"
       );
     }
@@ -1918,10 +1925,13 @@ export default function RightsClearancePage({
       } else {
         showDraftNotice("Link do rascunho enviado por email com sucesso.", "success");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       showDraftNotice(
-        error?.message || "Nao foi possivel enviar o link do rascunho por email.",
+        getErrorMessage(
+          error,
+          "Nao foi possivel enviar o link do rascunho por email."
+        ),
         "error"
       );
     } finally {
@@ -1975,8 +1985,8 @@ export default function RightsClearancePage({
           "Seu formulario foi enviado com sucesso. O time da Atabaque dara continuidade a analise de clearance."
       );
       setIsSubmissionComplete(true);
-    } catch (error: any) {
-      setSubmitError(error?.message ?? "Falha ao enviar o formulario.");
+    } catch (error: unknown) {
+      setSubmitError(getErrorMessage(error, "Falha ao enviar o formulario."));
     } finally {
       setLoadingSubmit(false);
     }

@@ -124,7 +124,7 @@ const COPY: Record<Market, Copy> = {
     heroEyebrow: "Intelligent infrastructure for creative markets",
     heroTitle: "Organize creative requests and connect them to your team's workflow.",
     heroSub:
-      "Receive briefs, files and requests in one place. Sunbeat organizes tasks, tracks status and connects the flow with Airtable, Google Drive, Notion, Gmail, Google Workspace, Slack, Asana and Google Sheets.",
+      "Receive briefs, files and requests in one place. Sunbeat organizes tasks, tracks status and connects the flow with Airtable, Google Drive and operational email.",
     heroPrimary: "Start free →",
     heroSecondary: "View pricing",
     heroSupportLine:
@@ -242,7 +242,7 @@ const COPY: Record<Market, Copy> = {
     heroTitle:
       "Organize demandas criativas e conecte tudo ao seu fluxo de trabalho.",
     heroSub:
-      "Receba briefings, arquivos e pedidos em um só lugar. A Sunbeat organiza tarefas, acompanha status e conecta o fluxo com Airtable, Google Drive, Slack, Asana e Google Sheets.",
+      "Receba briefings, arquivos e pedidos em um só lugar. A Sunbeat organiza tarefas, acompanha status e conecta o fluxo com Airtable, Google Drive e e-mail operacional.",
     heroPrimary: "Começar grátis →",
     heroSecondary: "Ver planos",
     heroSupportLine:
@@ -396,16 +396,16 @@ const PLANS: PlanConfig[] = [
       "500 submissões/mês",
       "2 formulários",
       "Upload: áudio 50 MB, capa 20 MB",
-      "Airtable nativo (sync bidirecional)",
-      "Field mapping visual",
+      "Entrega estruturada no Airtable",
+      "Configuração de campos por workflow",
       "Suporte por e-mail prioritário",
     ],
     featuresEn: [
       "500 submissions/mo",
       "2 forms",
       "Upload: audio 50 MB, cover 20 MB",
-      "Native Airtable (2-way sync)",
-      "Visual field mapping",
+      "Structured delivery to Airtable",
+      "Field configuration per workflow",
       "Priority email support",
     ],
     badge: "Mais popular",
@@ -445,8 +445,8 @@ const PLANS: PlanConfig[] = [
 
 // ─── Integration pills ────────────────────────────────────────────────────────
 
-const INTEGRATIONS = ["Airtable", "Google Drive", "Google Sheets", "Webhooks", "API"];
-const INTEGRATIONS_PT = ["Airtable", "Google Drive", "Google Sheets", "Webhooks", "API", "Automações"];
+const INTEGRATIONS = ["Airtable", "Google Drive", "Operational email", "API"];
+const INTEGRATIONS_PT = ["Airtable", "Google Drive", "E-mail operacional", "API", "Automações"];
 const INTEGRATIONS_EN = [...INTEGRATIONS, "Automations"];
 
 // ─── Component ────────────────────────────────────────────────────────────────

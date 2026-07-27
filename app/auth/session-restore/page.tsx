@@ -30,8 +30,10 @@ export default function SessionRestorePage() {
     const next = params.get("next") ?? "/app";
 
     if (!at || !rt) {
-      setErrorMsg("Token de sessão ausente. Por favor, faça login novamente.");
-      setStatus("error");
+      queueMicrotask(() => {
+        setErrorMsg("Token de sessão ausente. Por favor, faça login novamente.");
+        setStatus("error");
+      });
       return;
     }
 
