@@ -45,6 +45,17 @@ const navSections = [
         ),
         description: "Read model operacional",
       },
+      {
+        label: "Inbox de partes",
+        href: "/app/people-links",
+        icon: (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M8 7V5a4 4 0 118 0v2m-9 4h10m-8 4h6M5 7h14l-1 14H6L5 7z" />
+          </svg>
+        ),
+        description: "Links inteligentes de cadastro",
+      },
     ],
   },
   {

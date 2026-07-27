@@ -11,6 +11,9 @@ import type {
   PeopleRegistryProfileConfig,
   PeopleRegistryFormValues,
   PeopleRegistryApiPayload,
+  PeopleRegistryInvite,
+  PeopleRegistryInviteContext,
+  PeopleRegistryInviteParticipation,
   PeopleRegistrySubmitResult,
   PartyKind,
 } from "@/lib/people-registry/types";
@@ -26,16 +29,6 @@ type StepKey =
   | "additional_info"
   | "review_submit";
 
-const STEP_ORDER: StepKey[] = [
-  "intro",
-  "identification",
-  "contact",
-  "address",
-  "banking",
-  "additional_info",
-  "review_submit",
-];
-
 // Mapeamento showSections → StepKey (para steps opcionais)
 const SECTION_STEP_MAP = {
   contact:       "contact"        as StepKey,
@@ -43,6 +36,13 @@ const SECTION_STEP_MAP = {
   banking:       "banking"        as StepKey,
   additionalInfo:"additional_info" as StepKey,
 } as const;
+
+type InviteVisibleSection = keyof typeof SECTION_STEP_MAP;
+
+const DEFAULT_INVITE_VISIBLE_SECTIONS: InviteVisibleSection[] = [
+  "contact",
+  "additionalInfo",
+];
 
 const STEP_LABELS: Record<Exclude<StepKey, "intro">, string> = {
   identification: "Identificação",
@@ -52,6 +52,42 @@ const STEP_LABELS: Record<Exclude<StepKey, "intro">, string> = {
   additional_info: "Informações",
   review_submit: "Revisão",
 };
+
+type InviteParticipationValues = {
+  confirmation_status: "confirmado" | "em_negociacao";
+  musical_role: string;
+  remuneration_type: string;
+  participation_percent: string;
+  fixed_amount: string;
+  notes: string;
+};
+
+const REMUNERATION_OPTIONS = [
+  "Percentual",
+  "Valor fixo",
+  "Percentual + valor fixo",
+  "A definir",
+];
+
+const MUSICAL_ROLE_OPTIONS = [
+  "Intérprete / Artista",
+  "Autor / Compositor",
+  "Produtor musical",
+  "Produtor fonográfico",
+  "Editora",
+  "Gravadora / Selo",
+  "Empresário / Responsável",
+];
+
+const INVITE_ROLE_ALIASES: Array<{ match: string[]; role: string }> = [
+  { match: ["interprete", "intérprete", "artista", "artist"], role: "interprete" },
+  { match: ["autor", "compositor", "composer", "lyricist", "letrista"], role: "compositor" },
+  { match: ["produtor musical", "producer"], role: "produtor" },
+  { match: ["produtor fonografico", "produtor fonográfico"], role: "produtor" },
+  { match: ["editora", "publisher"], role: "editora" },
+  { match: ["gravadora", "selo", "label"], role: "gravadora" },
+  { match: ["responsavel", "responsável", "manager", "contato"], role: "contato" },
+];
 
 // ─── Estado inicial ───────────────────────────────────────────────────────────
 
@@ -82,6 +118,202 @@ function createInitialFormValues(): PeopleRegistryFormValues {
     manager_name: "",
     label_name: "",
     notes_internal: "",
+  };
+}
+
+function createInitialInviteParticipation(): InviteParticipationValues {
+  return {
+    confirmation_status: "confirmado",
+    musical_role: "",
+    remuneration_type: "A definir",
+    participation_percent: "",
+    fixed_amount: "",
+    notes: "",
+  };
+}
+
+function normalizeText(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function firstContextValue(
+  context: PeopleRegistryInviteContext | null,
+  keys: string[]
+): string {
+  if (!context) return "";
+  for (const key of keys) {
+    const value = normalizeText(context[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
+  if (!normalized) return undefined;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatContextNumber(value: unknown): string {
+  if (typeof value === "number") return String(value);
+  return normalizeText(value);
+}
+
+function resolveInviteVisibleSections(
+  context: PeopleRegistryInviteContext | null,
+  isInviteMode: boolean
+): Set<InviteVisibleSection> | null {
+  if (!isInviteMode) return null;
+
+  const raw = context?.visible_sections;
+  const requested = Array.isArray(raw)
+    ? raw.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+  const source = requested.length > 0
+    ? requested
+    : DEFAULT_INVITE_VISIBLE_SECTIONS;
+  const allowed = new Set<InviteVisibleSection>();
+
+  source.forEach((item) => {
+    if (item in SECTION_STEP_MAP) {
+      allowed.add(item as InviteVisibleSection);
+    }
+  });
+
+  if (allowed.size === 0) {
+    DEFAULT_INVITE_VISIBLE_SECTIONS.forEach((item) => allowed.add(item));
+  }
+
+  return allowed;
+}
+
+function resolveInviteRole(
+  rawRole: string,
+  profile: PeopleRegistryProfileConfig
+): string | null {
+  const normalized = rawRole.toLowerCase();
+  const exact = profile.availableRoles.find((role) => role.value === rawRole);
+  if (exact) return exact.value;
+
+  const byLabel = profile.availableRoles.find((role) =>
+    normalized.includes(role.label.toLowerCase())
+  );
+  if (byLabel) return byLabel.value;
+
+  const alias = INVITE_ROLE_ALIASES.find((item) =>
+    item.match.some((match) => normalized.includes(match))
+  );
+  if (!alias) return null;
+
+  return profile.availableRoles.some((role) => role.value === alias.role)
+    ? alias.role
+    : null;
+}
+
+function resolveMusicalRoleOption(rawRole: string): string {
+  const normalized = rawRole.toLowerCase();
+  if (!normalized) return "";
+  if (normalized.includes("artista") || normalized.includes("intérprete") || normalized.includes("interprete")) {
+    return "Intérprete / Artista";
+  }
+  if (normalized.includes("autor") || normalized.includes("compositor")) {
+    return "Autor / Compositor";
+  }
+  if (normalized.includes("fonograf")) {
+    return "Produtor fonográfico";
+  }
+  if (normalized.includes("produtor")) {
+    return "Produtor musical";
+  }
+  if (normalized.includes("editora")) {
+    return "Editora";
+  }
+  if (normalized.includes("gravadora") || normalized.includes("selo")) {
+    return "Gravadora / Selo";
+  }
+  if (normalized.includes("respons")) {
+    return "Empresário / Responsável";
+  }
+  return rawRole;
+}
+
+function resolveRemunerationOption(rawValue: string): string {
+  const normalized = rawValue.toLowerCase();
+  if (!normalized) return "A definir";
+
+  const exact = REMUNERATION_OPTIONS.find((option) => option.toLowerCase() === normalized);
+  if (exact) return exact;
+
+  const hasPercent = normalized.includes("percent");
+  const hasFixed = normalized.includes("fix") || normalized.includes("valor");
+  if (hasPercent && hasFixed) return "Percentual + valor fixo";
+  if (hasPercent) return "Percentual";
+  if (hasFixed) return "Valor fixo";
+  return "A definir";
+}
+
+function resolveRemunerationSource(rawValue: string): string {
+  const normalized = rawValue.toLowerCase();
+  if (normalized === "label" || normalized.includes("cliente")) return "cliente/label";
+  if (normalized === "gestor" || normalized.includes("henrique")) return "gestor";
+  return rawValue;
+}
+
+function parseRemunerationIndication(rawValue: string): {
+  remunerationType: string;
+  participationPercent: string;
+  fixedAmount: string;
+} {
+  const raw = rawValue.trim();
+  const normalized = raw.toLowerCase();
+  const percentMatch = raw.match(/(\d+(?:[,.]\d+)?)\s*%/);
+  const explicitCurrencyMatch = raw.match(/r\$\s*(\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:[,.]\d+)?)/i);
+  const looseNumberMatch = raw.match(/(\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:[,.]\d+)?)/);
+  const hasPercent = Boolean(percentMatch);
+  const hasFixed = Boolean(explicitCurrencyMatch) || normalized.includes("valor") || (Boolean(looseNumberMatch) && !hasPercent);
+  const fixedMatch = explicitCurrencyMatch ?? (!hasPercent ? looseNumberMatch : null);
+
+  return {
+    remunerationType: hasPercent && hasFixed
+      ? "Percentual + valor fixo"
+      : hasPercent
+      ? "Percentual"
+      : hasFixed
+      ? "Valor fixo"
+      : "A definir",
+    participationPercent: percentMatch?.[1]?.replace(",", ".") ?? "",
+    fixedAmount: hasFixed && fixedMatch?.[1]
+      ? fixedMatch[1].replace(/\./g, "").replace(",", ".")
+      : "",
+  };
+}
+
+function formatInviteRemuneration(values: InviteParticipationValues): string {
+  const parts = [values.remuneration_type || "A definir"];
+  if (values.participation_percent.trim()) {
+    parts.push(`${values.participation_percent.trim()}%`);
+  }
+  if (values.fixed_amount.trim()) {
+    parts.push(`R$ ${values.fixed_amount.trim()}`);
+  }
+  return parts.join(" · ");
+}
+
+function buildInviteParticipationPayload(
+  values: InviteParticipationValues
+): PeopleRegistryInviteParticipation {
+  return {
+    confirmation_status: values.confirmation_status,
+    ...(values.musical_role.trim() ? { musical_role: values.musical_role.trim() } : {}),
+    ...(values.remuneration_type.trim() ? { remuneration_type: values.remuneration_type.trim() } : {}),
+    ...(parseOptionalNumber(values.participation_percent) !== undefined
+      ? { participation_percent: parseOptionalNumber(values.participation_percent) }
+      : {}),
+    ...(parseOptionalNumber(values.fixed_amount) !== undefined
+      ? { fixed_amount: parseOptionalNumber(values.fixed_amount) }
+      : {}),
+    ...(values.notes.trim() ? { notes: values.notes.trim() } : {}),
   };
 }
 
@@ -225,6 +457,115 @@ async function submitPeopleRegistry(
   return { ok: false, status: "error", message: `Erro inesperado (HTTP ${res.status}). Contate o suporte.` };
 }
 
+type PeopleRegistryInviteFetchResult =
+  | { ok: true; invite: PeopleRegistryInvite }
+  | { ok: false; message: string };
+
+async function fetchPeopleRegistryInvite(
+  inviteToken: string
+): Promise<PeopleRegistryInviteFetchResult> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/people-registry/invites/${encodeURIComponent(inviteToken)}`);
+  } catch {
+    return { ok: false, message: "Não foi possível carregar o convite." };
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, message: `Resposta inesperada do servidor (HTTP ${res.status}).` };
+  }
+
+  if (res.ok && data.ok) {
+    return { ok: true, invite: data.invite as PeopleRegistryInvite };
+  }
+
+  const error = data.error as Record<string, unknown> | undefined;
+  const message =
+    typeof error?.message === "string"
+      ? error.message
+      : res.status === 410
+      ? "Este convite expirou."
+      : "Convite não encontrado.";
+  return { ok: false, message };
+}
+
+async function submitPeopleRegistryInvite(
+  inviteToken: string,
+  payload: PeopleRegistryApiPayload,
+  participation: PeopleRegistryInviteParticipation
+): Promise<PeopleRegistrySubmitResult> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/people-registry/invites/${encodeURIComponent(inviteToken)}/records`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ person: payload, participation }),
+    });
+  } catch {
+    return { ok: false, status: "error", message: "Não foi possível conectar ao servidor. Tente novamente." };
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, status: "error", message: `Resposta inesperada do servidor (HTTP ${res.status}).` };
+  }
+
+  const people = data.people as Record<string, unknown> | undefined;
+  const peopleError = people?.error as Record<string, unknown> | undefined;
+
+  if (res.ok && data.ok) {
+    const record = people?.record as Record<string, unknown> | undefined;
+    const inviteStatus = String(data.status ?? "");
+    return {
+      ok: true,
+      status: "created",
+      record_id: String(record?.record_id ?? ""),
+      created_at: String(record?.created_at ?? ""),
+          invite_status: inviteStatus,
+          invite_message:
+            inviteStatus === "submitted_pending_airtable"
+              ? "Cadastro salvo. O vínculo operacional ficou pendente de sincronização."
+              : "Cadastro salvo e vinculado ao projeto/faixa.",
+    };
+  }
+
+  if (res.status === 422 && people?.status === "invalid") {
+    const rawIssues = Array.isArray(peopleError?.issues) ? peopleError.issues : [];
+    const rawMsg = typeof peopleError?.message === "string" ? peopleError.message : "";
+    return {
+      ok: false,
+      status: "invalid",
+      issues: rawIssues.map((i: unknown) => {
+        const issue = i as Record<string, unknown>;
+        return { field: String(issue?.field ?? ""), message: String(issue?.message ?? "") };
+      }),
+      message: localizarMensagem(rawMsg) || "Verifique os campos obrigatórios e tente novamente.",
+    };
+  }
+
+  if (res.status === 409 || people?.status === "conflict") {
+    const raw = typeof peopleError?.message === "string" ? peopleError.message : "";
+    return {
+      ok: false,
+      status: "conflict",
+      message: localizarMensagem(raw) || "Já existe um cadastro com este documento ou e-mail neste workspace.",
+    };
+  }
+
+  const error = data.error as Record<string, unknown> | undefined;
+  const rawMessage = typeof error?.message === "string" ? error.message : "";
+  return {
+    ok: false,
+    status: "error",
+    message: localizarMensagem(rawMessage) || `Erro inesperado (HTTP ${res.status}). Contate o suporte.`,
+  };
+}
+
 // ─── API call — edit mode ─────────────────────────────────────────────────────
 
 async function patchPeopleRegistry(
@@ -328,6 +669,34 @@ function TextInput({
       />
       {error && <FieldError>{error}</FieldError>}
     </>
+  );
+}
+
+function SelectInput({
+  value, onChange, options, disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
+      disabled={disabled}
+      className={inputCls}
+    >
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option === "confirmado"
+            ? "Confirmo a função e remuneração indicada"
+            : option === "em_negociacao"
+            ? "Precisa de revisão"
+            : option || "Selecionar..."}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -495,6 +864,25 @@ function NavButtons({
   );
 }
 
+function StepHeading({
+  step,
+  currentStepIndex,
+}: {
+  step: Exclude<StepKey, "intro">;
+  currentStepIndex: number;
+}) {
+  return (
+    <div className="mb-8 border-b border-slate-200 pb-5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        Etapa {currentStepIndex}
+      </div>
+      <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+        {STEP_LABELS[step]}
+      </h2>
+    </div>
+  );
+}
+
 // ─── Review row ───────────────────────────────────────────────────────────────
 
 function ReviewRow({ label, value }: { label: string; value?: string | string[] }) {
@@ -533,6 +921,12 @@ type SubmitState =
   | { type: "invalid"; result: Extract<PeopleRegistrySubmitResult, { status: "invalid" }> }
   | { type: "error"; result: Extract<PeopleRegistrySubmitResult, { status: "error" }> };
 
+type InviteState =
+  | { type: "idle" }
+  | { type: "loading" }
+  | { type: "ready"; invite: PeopleRegistryInvite }
+  | { type: "error"; message: string };
+
 export default function PeopleRegistryForm({
   profile,
 }: {
@@ -540,39 +934,93 @@ export default function PeopleRegistryForm({
 }) {
   const searchParams = useSearchParams();
   const editToken = searchParams.get("edit_token");
+  const inviteToken = searchParams.get("invite");
   const isEditMode = Boolean(editToken);
+  const isInviteMode = Boolean(inviteToken) && !isEditMode;
 
   const [currentStep, setCurrentStep] = useState<StepKey>("intro");
   const [values, setValues] = useState<PeopleRegistryFormValues>(createInitialFormValues);
+  const [inviteParticipation, setInviteParticipation] = useState<InviteParticipationValues>(
+    createInitialInviteParticipation
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ type: "idle" });
   const [hydrateState, setHydrateState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [inviteState, setInviteState] = useState<InviteState>({ type: "idle" });
 
-  // Ordem ativa de steps — guiada pelo profile.showSections
+  const invite = inviteState.type === "ready" ? inviteState.invite : null;
+  const inviteContext = invite?.context ?? null;
+  const inviteVisibleSections = useMemo(
+    () => resolveInviteVisibleSections(inviteContext, isInviteMode),
+    [inviteContext, isInviteMode]
+  );
+
+  // Ordem ativa de steps — guiada pelo profile.showSections ou pelo link inteligente.
   const activeStepOrder = useMemo<StepKey[]>(() => {
     const steps: StepKey[] = ["intro", "identification"];
-    (Object.keys(SECTION_STEP_MAP) as Array<keyof typeof SECTION_STEP_MAP>).forEach((key) => {
-      if (profile.showSections[key]) steps.push(SECTION_STEP_MAP[key]);
+    (Object.keys(SECTION_STEP_MAP) as Array<InviteVisibleSection>).forEach((key) => {
+      const visible = isInviteMode
+        ? Boolean(inviteVisibleSections?.has(key))
+        : profile.showSections[key];
+      if (visible) {
+        steps.push(SECTION_STEP_MAP[key]);
+      }
     });
     steps.push("review_submit");
     return steps;
-  }, [profile.showSections]);
+  }, [inviteVisibleSections, isInviteMode, profile.showSections]);
 
   const currentStepIndex = activeStepOrder.indexOf(currentStep);
   const isPF = values.party_kind === "pf";
   const isLoading = submitState.type === "loading";
-
-  // Se o step atual não está na ordem ativa (ex: profile mudou), volta ao início
-  useEffect(() => {
-    if (!activeStepOrder.includes(currentStep)) {
-      setCurrentStep(activeStepOrder[0] ?? "intro");
-    }
-  }, [activeStepOrder, currentStep]);
+  const showContactSection = isInviteMode
+    ? Boolean(inviteVisibleSections?.has("contact"))
+    : profile.showSections.contact;
+  const showAddressSection = isInviteMode
+    ? Boolean(inviteVisibleSections?.has("address"))
+    : profile.showSections.address;
+  const showBankingSection = isInviteMode
+    ? Boolean(inviteVisibleSections?.has("banking"))
+    : profile.showSections.banking;
+  const showAdditionalInfoSection = isInviteMode
+    ? Boolean(inviteVisibleSections?.has("additionalInfo"))
+    : profile.showSections.additionalInfo;
+  const inviteCaseLabel = firstContextValue(inviteContext, [
+    "clearance_case_name",
+    "case_name",
+    "project_title",
+    "projeto",
+  ]);
+  const inviteItemLabel = firstContextValue(inviteContext, [
+    "clearance_item_name",
+    "item_name",
+    "music_title",
+    "faixa",
+  ]);
+  const invitePartyLabel = firstContextValue(inviteContext, [
+    "party_name",
+    "nome_parte",
+    "person_name",
+  ]);
+  const inviteRemunerationLabel = firstContextValue(inviteContext, [
+    "remuneration",
+    "remuneracao",
+    "remuneracao_indicada",
+    "participation_percent",
+    "fixed_amount",
+  ]);
+  const inviteRemunerationSource = resolveRemunerationSource(
+    firstContextValue(inviteContext, [
+      "remuneration_source",
+      "remunerationOrigem",
+      "origem_remuneracao",
+    ])
+  );
 
   // Hydrate edit mode — fetch existing record by edit_token, pre-fill form
   useEffect(() => {
     if (!editToken || hydrateState !== "idle") return;
-    setHydrateState("loading");
+    queueMicrotask(() => setHydrateState("loading"));
 
     fetch(`/api/people-registry/records/edit/${encodeURIComponent(editToken)}`)
       .then((r) => r.json())
@@ -623,6 +1071,87 @@ export default function PeopleRegistryForm({
       .catch(() => setHydrateState("error"));
   }, [editToken, hydrateState]);
 
+  // Hydrate invite mode — fetch contextual clearance invite and pre-fill safe fields.
+  useEffect(() => {
+    if (!isInviteMode || !inviteToken || inviteState.type !== "idle") return;
+
+    queueMicrotask(() => setInviteState({ type: "loading" }));
+    fetchPeopleRegistryInvite(inviteToken)
+      .then((result) => {
+        if (!result.ok) {
+          setInviteState({ type: "error", message: result.message });
+          return;
+        }
+
+        const invite = result.invite;
+        const context = invite.context ?? {};
+        const partyName = firstContextValue(context, [
+          "party_name",
+          "nome_parte",
+          "person_name",
+          "display_name",
+          "nome",
+        ]);
+        const email = firstContextValue(context, [
+          "signing_email",
+          "email",
+          "email_assinatura",
+        ]);
+        const rawRole = firstContextValue(context, [
+          "requested_role",
+          "role",
+          "papel_no_caso",
+          "tipo_parte",
+        ]);
+        const resolvedRole = rawRole ? resolveInviteRole(rawRole, profile) : null;
+
+        setValues((prev) => ({
+          ...prev,
+          display_name: prev.display_name || partyName,
+          legal_name: prev.legal_name || partyName,
+          stage_name: prev.stage_name || partyName,
+          email_primary: prev.email_primary || email,
+          roles: resolvedRole && !prev.roles.includes(resolvedRole)
+            ? [...prev.roles, resolvedRole]
+            : prev.roles,
+        }));
+
+        const remunerationType = firstContextValue(context, [
+          "remuneration_type",
+          "tipo_remuneracao",
+          "tipo_de_remuneracao",
+        ]);
+        const remunerationIndication = firstContextValue(context, [
+          "remuneration",
+          "remuneracao",
+          "remuneracao_indicada",
+        ]);
+        const parsedRemuneration = parseRemunerationIndication(remunerationIndication);
+        const participationPercent =
+          firstContextValue(context, ["participation_percent", "percentual"]) ||
+          formatContextNumber(context.participation_percent) ||
+          parsedRemuneration.participationPercent;
+        const fixedAmount =
+          firstContextValue(context, ["fixed_amount", "valor_fixo"]) ||
+          formatContextNumber(context.fixed_amount) ||
+          parsedRemuneration.fixedAmount;
+
+        setInviteParticipation((prev) => ({
+          ...prev,
+          musical_role: prev.musical_role || resolveMusicalRoleOption(rawRole),
+          remuneration_type: prev.remuneration_type === "A definir"
+            ? resolveRemunerationOption(remunerationType || parsedRemuneration.remunerationType)
+            : prev.remuneration_type,
+          participation_percent: prev.participation_percent || participationPercent,
+          fixed_amount: prev.fixed_amount || fixedAmount,
+        }));
+        setInviteState({ type: "ready", invite });
+      })
+      .catch(() => {
+        setInviteState({ type: "error", message: "Não foi possível carregar o convite." });
+      });
+  }, [inviteState.type, inviteToken, isInviteMode, profile]);
+
   const set = useCallback(<K extends keyof PeopleRegistryFormValues>(
     key: K,
     value: PeopleRegistryFormValues[K]
@@ -631,6 +1160,18 @@ export default function PeopleRegistryForm({
     setErrors((prev) => {
       const next = { ...prev };
       delete next[key];
+      return next;
+    });
+  }, []);
+
+  const setInviteField = useCallback(<K extends keyof InviteParticipationValues>(
+    key: K,
+    value: InviteParticipationValues[K]
+  ) => {
+    setInviteParticipation((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.clearance_participation;
       return next;
     });
   }, []);
@@ -663,6 +1204,12 @@ export default function PeopleRegistryForm({
     const hasDocOrEmail = values.document_id.trim() || values.email_primary.trim();
     if (!hasDocOrEmail) {
       errs.document_or_email = "Informe CPF/CNPJ ou e-mail — ao menos um é necessário para deduplicação.";
+    }
+    if (isInviteMode && inviteState.type !== "ready") {
+      errs.clearance_participation = "O link inteligente precisa estar carregado antes do envio.";
+    }
+    if (isInviteMode && inviteParticipation.confirmation_status === "em_negociacao" && !inviteParticipation.notes.trim()) {
+      errs.clearance_participation = "Explique o que precisa ser revisado para o time operacional seguir corretamente.";
     }
     return errs;
   }
@@ -710,27 +1257,18 @@ export default function PeopleRegistryForm({
 
     const result = isEditMode && editToken
       ? await patchPeopleRegistry(editToken, payload)
+      : isInviteMode && inviteToken
+      ? await submitPeopleRegistryInvite(
+          inviteToken,
+          payload,
+          buildInviteParticipationPayload(inviteParticipation)
+        )
       : await submitPeopleRegistry(payload);
 
     if (result.ok) { setSubmitState({ type: "success", result }); return; }
     if (result.status === "conflict") { setSubmitState({ type: "conflict", result }); return; }
     if (result.status === "invalid") { setSubmitState({ type: "invalid", result }); return; }
     setSubmitState({ type: "error", result });
-  }
-
-  // ─── Heading de step ──────────────────────────────────────────────────────
-
-  function StepHeading({ step }: { step: Exclude<StepKey, "intro"> }) {
-    return (
-      <div className="mb-8 border-b border-slate-200 pb-5">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Etapa {currentStepIndex}
-        </div>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
-          {STEP_LABELS[step]}
-        </h2>
-      </div>
-    );
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -750,12 +1288,30 @@ export default function PeopleRegistryForm({
             Não foi possível carregar os dados para edição. Verifique o link e tente novamente.
           </div>
         )}
+        {isInviteMode && inviteState.type === "loading" && (
+          <div className="mb-6 rounded-2xl border border-slate-200 bg-white/70 px-6 py-5 text-center text-sm text-slate-600">
+            Carregando dados do link inteligente…
+          </div>
+        )}
+        {isInviteMode && inviteState.type === "error" && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700">
+            {inviteState.message}
+          </div>
+        )}
 
         {/* Edit mode banner */}
         {isEditMode && hydrateState === "ready" && (
           <div className="mb-5 rounded-2xl border px-5 py-3 text-sm font-medium" style={{ borderColor: "var(--form-primary)", background: "color-mix(in srgb, var(--form-primary) 8%, white)" }}>
             <span style={{ color: "var(--form-primary)" }}>Modo edição</span>
             <span className="ml-2 font-normal text-slate-600">— os dados foram pré-preenchidos. Revise e confirme as alterações.</span>
+          </div>
+        )}
+        {isInviteMode && invite && currentStep !== "intro" && (
+          <div className="mb-5 rounded-2xl border px-5 py-3 text-sm font-medium" style={{ borderColor: "var(--form-primary)", background: "color-mix(in srgb, var(--form-primary) 8%, white)" }}>
+            <span style={{ color: "var(--form-primary)" }}>Cadastro vinculado</span>
+            <span className="ml-2 font-normal text-slate-600">
+              — {inviteCaseLabel || "projeto/faixa"}{inviteItemLabel ? ` · ${inviteItemLabel}` : ""}
+            </span>
           </div>
         )}
 
@@ -804,16 +1360,54 @@ export default function PeopleRegistryForm({
                 {profile.formTitle}
               </h1>
               <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
-                Preencha os dados da pessoa que deseja cadastrar. O formulário suporta
-                Pessoa Física e Pessoa Jurídica com campos condicionais.
+                {isInviteMode
+                  ? "Confirme seus dados de cadastro e a participação informada para este projeto ou faixa."
+                  : "Preencha os dados da pessoa que deseja cadastrar. O formulário suporta Pessoa Física e Pessoa Jurídica com campos condicionais."}
               </p>
+              {isInviteMode && invite && (
+                <div className="mt-6 w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-left">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Participação solicitada
+                  </div>
+                  <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <div className="text-[12px] font-medium text-slate-500">Projeto</div>
+                      <div className="mt-0.5 font-medium text-slate-900">{inviteCaseLabel || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-medium text-slate-500">Faixa</div>
+                      <div className="mt-0.5 font-medium text-slate-900">{inviteItemLabel || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-medium text-slate-500">Parte</div>
+                      <div className="mt-0.5 font-medium text-slate-900">{invitePartyLabel || values.display_name || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-medium text-slate-500">Função</div>
+                      <div className="mt-0.5 font-medium text-slate-900">{inviteParticipation.musical_role || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-medium text-slate-500">Remuneração indicada</div>
+                      <div className="mt-0.5 font-medium text-slate-900">
+                        {inviteRemunerationLabel || formatInviteRemuneration(inviteParticipation)}
+                      </div>
+                      {inviteRemunerationSource && (
+                        <div className="mt-0.5 text-[12px] text-slate-500">
+                          Informada por {inviteRemunerationSource}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={goNext}
+                disabled={isInviteMode && inviteState.type === "loading"}
                 className="mt-8 rounded-xl px-8 py-3.5 text-sm font-semibold text-white transition"
                 style={{ background: "var(--form-primary)" }}
               >
-                {isEditMode ? "Editar cadastro" : "Começar cadastro"}
+                {isEditMode ? "Editar cadastro" : isInviteMode ? "Completar cadastro" : "Começar cadastro"}
               </button>
             </div>
           )}
@@ -821,7 +1415,7 @@ export default function PeopleRegistryForm({
           {/* ── IDENTIFICAÇÃO ── */}
           {currentStep === "identification" && (
             <>
-              <StepHeading step="identification" />
+              <StepHeading step="identification" currentStepIndex={currentStepIndex} />
 
               {/* Toggle PF / PJ */}
               <div className="mb-6">
@@ -924,7 +1518,7 @@ export default function PeopleRegistryForm({
           {/* ── CONTATO ── */}
           {currentStep === "contact" && (
             <>
-              <StepHeading step="contact" />
+              <StepHeading step="contact" currentStepIndex={currentStepIndex} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>E-mail</FieldLabel>
@@ -970,7 +1564,7 @@ export default function PeopleRegistryForm({
           {/* ── ENDEREÇO ── */}
           {currentStep === "address" && (
             <>
-              <StepHeading step="address" />
+              <StepHeading step="address" currentStepIndex={currentStepIndex} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>País</FieldLabel>
@@ -1020,7 +1614,7 @@ export default function PeopleRegistryForm({
           {/* ── DADOS BANCÁRIOS ── */}
           {currentStep === "banking" && (
             <>
-              <StepHeading step="banking" />
+              <StepHeading step="banking" currentStepIndex={currentStepIndex} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Chave PIX</FieldLabel>
@@ -1078,7 +1672,7 @@ export default function PeopleRegistryForm({
           {/* ── INFORMAÇÕES ADICIONAIS ── */}
           {currentStep === "additional_info" && (
             <>
-              <StepHeading step="additional_info" />
+              <StepHeading step="additional_info" currentStepIndex={currentStepIndex} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Assessor / Manager</FieldLabel>
@@ -1106,6 +1700,88 @@ export default function PeopleRegistryForm({
                 />
                 <FieldHint>Não visível para o cadastrado</FieldHint>
               </div>
+              {isInviteMode && invite && (
+                <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Participação no projeto/faixa
+                  </div>
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">Remuneração indicada:</span>{" "}
+                    {inviteRemunerationLabel || formatInviteRemuneration(inviteParticipation)}
+                    {inviteRemunerationSource && (
+                      <span className="ml-1 text-slate-500">
+                        (informada por {inviteRemunerationSource})
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <FieldLabel>Confirmação da participação</FieldLabel>
+                      <SelectInput
+                        value={inviteParticipation.confirmation_status}
+                        onChange={(v) => setInviteField("confirmation_status", v as InviteParticipationValues["confirmation_status"])}
+                        options={["confirmado", "em_negociacao"]}
+                      />
+                      <FieldHint>Confirme ou peça revisão antes do time preparar o contrato</FieldHint>
+                    </div>
+                    <div>
+                      <FieldLabel>Função no projeto/faixa</FieldLabel>
+                      <SelectInput
+                        value={inviteParticipation.musical_role}
+                        onChange={(v) => setInviteField("musical_role", v)}
+                        options={["", ...MUSICAL_ROLE_OPTIONS]}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Tipo de remuneração indicada</FieldLabel>
+                      <SelectInput
+                        value={inviteParticipation.remuneration_type}
+                        onChange={(v) => setInviteField("remuneration_type", v)}
+                        options={REMUNERATION_OPTIONS}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Percentual / participação</FieldLabel>
+                      <TextInput
+                        type="number"
+                        value={inviteParticipation.participation_percent}
+                        onChange={(v) => setInviteField("participation_percent", v)}
+                        placeholder="Ex: 25"
+                      />
+                      <FieldHint>Informe 25 para 25%</FieldHint>
+                    </div>
+                    <div>
+                      <FieldLabel>Valor fixo indicado</FieldLabel>
+                      <TextInput
+                        type="number"
+                        value={inviteParticipation.fixed_amount}
+                        onChange={(v) => setInviteField("fixed_amount", v)}
+                        placeholder="Ex: 1500"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <FieldLabel>
+                        {inviteParticipation.confirmation_status === "em_negociacao"
+                          ? "Explique o que precisa ser ajustado"
+                          : "Observação sobre participação"}
+                      </FieldLabel>
+                      <TextArea
+                        value={inviteParticipation.notes}
+                        onChange={(v) => setInviteField("notes", v)}
+                        placeholder="Use este campo se precisar ajustar função, remuneração ou alguma condição."
+                      />
+                      {inviteParticipation.confirmation_status === "em_negociacao" && (
+                        <FieldHint>Obrigatório quando a participação precisa de revisão</FieldHint>
+                      )}
+                    </div>
+                  </div>
+                  {errors.clearance_participation && (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {errors.clearance_participation}
+                    </div>
+                  )}
+                </div>
+              )}
               <NavButtons showBack onBack={goBack} onNext={goNext} nextLabel="Revisar" />
             </>
           )}
@@ -1113,7 +1789,7 @@ export default function PeopleRegistryForm({
           {/* ── REVISÃO E ENVIO ── */}
           {currentStep === "review_submit" && (
             <>
-              <StepHeading step="review_submit" />
+              <StepHeading step="review_submit" currentStepIndex={currentStepIndex} />
 
               {submitState.type !== "success" && (
                 <>
@@ -1127,7 +1803,7 @@ export default function PeopleRegistryForm({
                     <ReviewRow label="Funções" value={values.roles} />
                   </ReviewSection>
 
-                  {profile.showSections.contact && (
+                  {showContactSection && (
                     <ReviewSection title="Contato">
                       <ReviewRow label="E-mail" value={values.email_primary} />
                       <ReviewRow label="Telefone" value={values.phone_primary} />
@@ -1136,7 +1812,7 @@ export default function PeopleRegistryForm({
                     </ReviewSection>
                   )}
 
-                  {profile.showSections.address && (
+                  {showAddressSection && (
                     <ReviewSection title="Endereço">
                       <ReviewRow label="País" value={values.country} />
                       <ReviewRow label="Estado" value={values.state_region} />
@@ -1146,7 +1822,7 @@ export default function PeopleRegistryForm({
                     </ReviewSection>
                   )}
 
-                  {profile.showSections.banking && (
+                  {showBankingSection && (
                     <ReviewSection title="Dados bancários">
                       <ReviewRow label="Chave PIX" value={values.pix_key} />
                       <ReviewRow label="Banco" value={values.bank_name} />
@@ -1157,11 +1833,33 @@ export default function PeopleRegistryForm({
                     </ReviewSection>
                   )}
 
-                  {profile.showSections.additionalInfo && (
+                  {showAdditionalInfoSection && (
                     <ReviewSection title="Informações adicionais">
                       <ReviewRow label="Assessor / Manager" value={values.manager_name} />
                       <ReviewRow label="Gravadora / Editora" value={values.label_name} />
                       <ReviewRow label="Observações" value={values.notes_internal} />
+                    </ReviewSection>
+                  )}
+
+                  {isInviteMode && invite && (
+                    <ReviewSection title="Participação">
+                      <ReviewRow label="Projeto" value={inviteCaseLabel} />
+                      <ReviewRow label="Faixa" value={inviteItemLabel} />
+                      <ReviewRow label="Parte" value={invitePartyLabel || values.display_name} />
+                      <ReviewRow
+                        label="Situação"
+                        value={inviteParticipation.confirmation_status === "confirmado"
+                          ? "Função e remuneração indicada confirmadas"
+                          : "Precisa de revisão"}
+                      />
+                      <ReviewRow label="Função" value={inviteParticipation.musical_role} />
+                      <ReviewRow label="Remuneração indicada" value={formatInviteRemuneration(inviteParticipation)} />
+                      <ReviewRow label="Percentual" value={inviteParticipation.participation_percent} />
+                      <ReviewRow label="Valor fixo" value={inviteParticipation.fixed_amount} />
+                      {inviteRemunerationSource && (
+                        <ReviewRow label="Origem" value={inviteRemunerationSource} />
+                      )}
+                      <ReviewRow label="Observação" value={inviteParticipation.notes} />
                     </ReviewSection>
                   )}
                 </>
@@ -1182,6 +1880,11 @@ export default function PeopleRegistryForm({
                       {submitState.result.record_id}
                     </code>
                   </p>
+                  {submitState.result.invite_message && (
+                    <p className="mt-3 text-sm text-emerald-700">
+                      {submitState.result.invite_message}
+                    </p>
+                  )}
                   <div className="mt-6 flex gap-3">
                     {!isEditMode && (
                       <button
@@ -1235,6 +1938,11 @@ export default function PeopleRegistryForm({
                   <p className="text-sm text-red-700">{errors.document_or_email}</p>
                 </div>
               )}
+              {errors.clearance_participation && (
+                <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-3">
+                  <p className="text-sm text-red-700">{errors.clearance_participation}</p>
+                </div>
+              )}
 
               {submitState.type !== "success" && (
                 <div className="flex justify-between mt-8">
@@ -1253,7 +1961,13 @@ export default function PeopleRegistryForm({
                     className="rounded-xl px-8 py-3 text-sm font-semibold text-white disabled:opacity-60 transition"
                     style={{ background: "var(--form-primary)" }}
                   >
-                    {isLoading ? "Salvando..." : isEditMode ? "Salvar alterações" : "Confirmar cadastro"}
+                    {isLoading
+                      ? "Salvando..."
+                      : isEditMode
+                      ? "Salvar alterações"
+                      : isInviteMode
+                      ? "Confirmar cadastro e participação"
+                      : "Confirmar cadastro"}
                   </button>
                 </div>
               )}
@@ -1264,7 +1978,7 @@ export default function PeopleRegistryForm({
 
         {/* Rodapé */}
         <p className="mt-6 text-center text-[12px] text-slate-500">
-          Sunbeat · People Registry · {profile.clientLabel} · {profile.formVersion}
+          Sunbeat · People Registry · {profile.clientLabel}
         </p>
       </div>
     </div>

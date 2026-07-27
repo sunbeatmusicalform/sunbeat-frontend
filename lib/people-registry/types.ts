@@ -104,7 +104,14 @@ export type PeopleRegistryValidationIssue = {
 };
 
 export type PeopleRegistrySubmitResult =
-  | { ok: true; status: "created"; record_id: string; created_at: string }
+  | {
+      ok: true;
+      status: "created";
+      record_id: string;
+      created_at: string;
+      invite_status?: string;
+      invite_message?: string;
+    }
   | { ok: false; status: "conflict"; message: string }
   | {
       ok: false;
@@ -128,6 +135,83 @@ export type PeopleRegistryLookupItem = {
 export type PeopleRegistryLookupResponse = {
   ok: true;
   items: PeopleRegistryLookupItem[];
+};
+
+// ─── People invite contextual de Clearance ───────────────────────────────────
+
+export type PeopleRegistryInviteContext = Record<string, unknown> & {
+  clearance_case_name?: string;
+  clearance_item_name?: string;
+  project_title?: string;
+  track_title?: string;
+  party_name?: string;
+  requested_role?: string;
+  role?: string;
+  email?: string;
+  signing_email?: string;
+  remuneration?: string;
+  remuneration_source?: "gestor" | "label" | string;
+  remuneration_type?: string;
+  participation_percent?: number | string;
+  fixed_amount?: number | string;
+  notes?: string;
+  visible_sections?: string[];
+};
+
+export type PeopleRegistryInvite = {
+  token: string;
+  status: string;
+  workspace_slug: string;
+  profile: string;
+  airtable_clearance_part_id: string;
+  invite_url: string;
+  context: PeopleRegistryInviteContext;
+  people_registry_record_id?: string | null;
+  people_airtable_record_id?: string | null;
+  last_error?: string | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  opened_at?: string | null;
+  submitted_at?: string | null;
+};
+
+export type PeopleRegistryInviteListResponse = {
+  ok: boolean;
+  items: PeopleRegistryInvite[];
+  total: number;
+};
+
+export type PeopleRegistryInviteCreateRequest = {
+  workspace_slug: string;
+  profile: string;
+  airtable_clearance_part_id?: string | null;
+  context: PeopleRegistryInviteContext;
+  expires_at?: string | null;
+  expires_in_days?: number | null;
+};
+
+export type PeopleRegistryInviteCreateResponse = {
+  ok: boolean;
+  status?: string;
+  invite?: PeopleRegistryInvite | null;
+  error?: { code?: string; message?: string; stage?: string } | null;
+};
+
+export type PeopleRegistryInviteEmailResponse = {
+  ok: boolean;
+  invite?: PeopleRegistryInvite | null;
+  provider_message_id?: string | null;
+  error?: { code?: string; message?: string; stage?: string } | null;
+};
+
+export type PeopleRegistryInviteParticipation = {
+  confirmation_status: "confirmado" | "em_negociacao";
+  musical_role?: string;
+  remuneration_type?: string;
+  participation_percent?: number;
+  fixed_amount?: number;
+  notes?: string;
 };
 
 // ─── Profile config (fundação multi-tenant) ──────────────────────────────────

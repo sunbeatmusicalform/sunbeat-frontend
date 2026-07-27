@@ -97,6 +97,10 @@ function getApiMessage(
   return text;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 function inferClearanceFormatFromScope(
   clearanceScope: Record<string, unknown>
 ): ClearanceFormat | "" {
@@ -805,7 +809,7 @@ function IntroStep({
         </div>
 
         <p className="mt-5 text-sm leading-6 text-slate-500">
-          Clique em <strong>Comecar</strong> para seguir para o preenchimento.
+          Clique em <strong>Começar</strong> para seguir para o preenchimento.
         </p>
       </div>
     </div>
@@ -824,14 +828,14 @@ function SubmissionCompleteStep({
       <div className="rounded-[28px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-8 shadow-sm">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">
-            Envio concluido
+            Envio concluído
           </p>
           <h3 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
             Obrigado pelo preenchimento.
           </h3>
           <p className="mt-4 text-base leading-7 text-slate-600">{message}</p>
           <p className="mt-3 text-sm leading-6 text-slate-500">
-            Se voce quiser registrar outra solicitacao, pode iniciar um novo
+            Se você quiser registrar outra solicitação, pode iniciar um novo
             preenchimento agora.
           </p>
 
@@ -1502,10 +1506,10 @@ export default function RightsClearancePage({
         ...values.assets_references.supporting_files,
         ...uploaded,
       ]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setFieldError(
         "assets_references.supporting_files",
-        error?.message || "Nao foi possivel enviar os arquivos."
+        getErrorMessage(error, "Nao foi possivel enviar os arquivos.")
       );
     } finally {
       event.target.value = "";
@@ -1657,10 +1661,13 @@ export default function RightsClearancePage({
         }
 
         setCurrentStep("review_submit");
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Edit submission load failed", error);
         setSubmitError(
-          error?.message || "Nao foi possivel carregar a submissao para edicao."
+          getErrorMessage(
+            error,
+            "Nao foi possivel carregar a submissao para edicao."
+          )
         );
       }
     }
@@ -1830,10 +1837,10 @@ export default function RightsClearancePage({
 
       showDraftNotice("Rascunho salvo com sucesso.", "success");
       setAutosaveState("saved");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       showDraftNotice(
-        error?.message || "Nao foi possivel salvar o rascunho.",
+        getErrorMessage(error, "Nao foi possivel salvar o rascunho."),
         "error"
       );
     }
@@ -1918,10 +1925,13 @@ export default function RightsClearancePage({
       } else {
         showDraftNotice("Link do rascunho enviado por email com sucesso.", "success");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       showDraftNotice(
-        error?.message || "Nao foi possivel enviar o link do rascunho por email.",
+        getErrorMessage(
+          error,
+          "Nao foi possivel enviar o link do rascunho por email."
+        ),
         "error"
       );
     } finally {
@@ -1975,8 +1985,8 @@ export default function RightsClearancePage({
           "Seu formulario foi enviado com sucesso. O time da Atabaque dara continuidade a analise de clearance."
       );
       setIsSubmissionComplete(true);
-    } catch (error: any) {
-      setSubmitError(error?.message ?? "Falha ao enviar o formulario.");
+    } catch (error: unknown) {
+      setSubmitError(getErrorMessage(error, "Falha ao enviar o formulario."));
     } finally {
       setLoadingSubmit(false);
     }
@@ -2149,8 +2159,8 @@ export default function RightsClearancePage({
               </div>
               {currentStep !== "intro" ? (
                 <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                  Formulario restrito ao time e aos parceiros autorizados. Preencha
-                  os dados do pedido de clearance e envie para revisao da equipe.
+                  Formulário restrito ao time e aos parceiros autorizados. Preencha
+                  os dados do pedido de clearance e envie para revisão da equipe.
                 </p>
               ) : null}
             </div>
@@ -2165,7 +2175,7 @@ export default function RightsClearancePage({
 
             {(editToken || draftToken) && (
               <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                {editToken ? "Modo edicao ativo" : "Rascunho carregado"}
+                {editToken ? "Modo edição ativo" : "Rascunho carregado"}
               </div>
             )}
           </div>
@@ -2443,8 +2453,8 @@ export default function RightsClearancePage({
                           />
                         ) : (
                           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-500">
-                            Se a faixa ainda nao possui ISRC, podemos seguir sem o
-                            codigo neste momento.
+                            Se a faixa ainda não possui ISRC, podemos seguir sem o
+                            código neste momento.
                           </div>
                         )}
                       </div>
@@ -2840,7 +2850,7 @@ export default function RightsClearancePage({
                   className="rounded-xl border px-6 py-3 text-sm font-medium text-white"
                   style={{ background: "var(--form-primary)", borderColor: "var(--form-primary)" }}
                 >
-                  {currentStep === "intro" ? "Comecar" : "Continuar"}
+                  {currentStep === "intro" ? "Começar" : "Continuar"}
                 </button>
               )}
             </div>

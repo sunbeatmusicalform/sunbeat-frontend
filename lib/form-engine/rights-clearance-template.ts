@@ -52,12 +52,12 @@ export function createRightsClearanceTemplate(args?: {
     version: 1,
     slogan: "",
     successMessage:
-      "Recebemos a solicitacao de rights clearance com sucesso. O time da Atabaque dara continuidade a analise e ao fluxo operacional.",
+      "Recebemos a solicitação de rights clearance com sucesso. O time da Atabaque dará continuidade à análise e ao fluxo operacional.",
     intro: {
       clientName: "Atabaque",
-      formTitle: "Formulario de rights clearance",
+      formTitle: "Formulário de rights clearance",
       introText:
-        "Preencha o formulario abaixo para compartilhar o contexto do pedido, o formato de clearance e os materiais de apoio com a equipe da Atabaque.\n\nSe precisar pausar, voce pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
+        "Preencha o formulário abaixo para compartilhar o contexto do pedido, o formato de clearance e os materiais de apoio com a equipe da Atabaque.\n\nSe precisar pausar, você pode salvar o rascunho e continuar depois pelo link enviado ao e-mail informado.",
       logoUrl: "/atabaque-mark.svg",
       bannerUrl: "",
       brandWordmark: "",
@@ -69,22 +69,22 @@ export function createRightsClearanceTemplate(args?: {
     steps: [
       {
         key: "intro",
-        title: "Introducao",
+        title: "Introdução",
         description: "Comece o preenchimento.",
         fields: [],
       },
       {
         key: "requester_identification",
         title: "Solicitante",
-        description: "Dados do contato responsavel por este pedido.",
+        description: "Dados do contato responsável por este pedido.",
         fields: [
           {
             key: "requester_name",
             label: "Nome do solicitante",
             type: "text",
-            placeholder: "Nome completo do responsavel",
+            placeholder: "Nome completo do responsável",
             helperText:
-              "Este contato sera usado para rascunho, edicoes e continuidade do fluxo.",
+              "Este contato será usado para rascunho, edições e continuidade do fluxo.",
             required: true,
           },
           {
@@ -93,21 +93,21 @@ export function createRightsClearanceTemplate(args?: {
             type: "email",
             placeholder: "nome@empresa.com",
             helperText:
-              "Usaremos este e-mail para salvar o rascunho e enviar o link de edicao depois do submit.",
+              "Usaremos este e-mail para salvar o rascunho e enviar o link de edição depois do envio.",
             required: true,
           },
           {
             key: "requester_company",
             label: "Empresa do solicitante",
             type: "text",
-            placeholder: "Nome da empresa responsavel pelo pedido",
+            placeholder: "Nome da empresa responsável pelo pedido",
             required: true,
           },
           {
             key: "requester_role",
             label: "Cargo ou papel no projeto",
             type: "text",
-            placeholder: "Ex.: juridico, A&R, producao executiva, atendimento",
+            placeholder: "Ex.: jurídico, A&R, produção executiva, atendimento",
             required: true,
           },
         ],
@@ -120,11 +120,11 @@ export function createRightsClearanceTemplate(args?: {
         fields: [
           {
             key: "clearance_format",
-            label: "Qual formato de rights clearance voce precisa preencher?",
+            label: "Qual formato de rights clearance você precisa preencher?",
             type: "select",
             options: clearanceFormatOptions,
             helperText:
-              "Isso define quais campos operacionais aparecerao nas etapas seguintes.",
+              "Isso define quais campos operacionais aparecerão nas etapas seguintes.",
             required: true,
           },
         ],
@@ -132,18 +132,18 @@ export function createRightsClearanceTemplate(args?: {
       {
         key: "project_context",
         title: "Contexto do projeto",
-        description: "Informacoes comuns ao pedido de clearance.",
+        description: "Informações comuns ao pedido de clearance.",
         fields: [
           {
             key: "project_title",
-            label: "Titulo do projeto",
+            label: "Título do projeto",
             type: "text",
-            placeholder: "Nome do projeto, campanha, clipe ou acao",
+            placeholder: "Nome do projeto, campanha, clipe ou ação",
             required: true,
           },
           {
             key: "responsible_company",
-            label: "Empresa responsavel pelo projeto",
+            label: "Empresa responsável pelo projeto",
             type: "text",
             placeholder: "Nome da produtora, gravadora, agencia ou cliente",
             required: true,
@@ -160,7 +160,7 @@ export function createRightsClearanceTemplate(args?: {
             label: "Data prevista de inicio ou lancamento",
             type: "date",
             helperText:
-              "Informe a data prevista de veiculacao, lancamento ou ativacao.",
+              "Informe a data prevista de veiculação, lançamento ou ativação.",
             required: true,
           },
           {
@@ -184,7 +184,7 @@ export function createRightsClearanceTemplate(args?: {
           },
           {
             key: "has_brand_association",
-            label: "Existe associacao com marca, campanha ou contexto comercial?",
+            label: "Existe associação com marca, campanha ou contexto comercial?",
             type: "select",
             options: yesNoOptions,
             required: true,
@@ -198,7 +198,7 @@ export function createRightsClearanceTemplate(args?: {
           },
           {
             key: "general_clearance_notes",
-            label: "Observacoes gerais de clearance",
+            label: "Observações gerais de clearance",
             type: "textarea",
             placeholder: "Contexto geral, urgencia, pendencias ou observacoes para o time.",
             required: false,
@@ -220,7 +220,7 @@ export function createRightsClearanceTemplate(args?: {
         fields: [
           {
             key: "music_title",
-            label: "Titulo da musica",
+            label: "Título da música",
             type: "text",
             placeholder: "Nome da obra ou fonograma",
             required: true,
@@ -278,7 +278,7 @@ export function createRightsClearanceTemplate(args?: {
             key: "intended_use",
             label: "Uso pretendido",
             type: "textarea",
-            placeholder: "Descreva como a musica sera usada no projeto musical.",
+            placeholder: "Descreva como a música será usada no projeto musical.",
             required: true,
           },
           {
@@ -299,7 +299,7 @@ export function createRightsClearanceTemplate(args?: {
             key: "director_name",
             label: "Direcao",
             type: "text",
-            placeholder: "Nome do diretor ou responsavel criativo",
+            placeholder: "Nome do diretor ou responsável criativo",
             required: true,
           },
           {
@@ -311,21 +311,21 @@ export function createRightsClearanceTemplate(args?: {
           },
           {
             key: "scene_description",
-            label: "Descricao da cena ou da aplicacao",
+            label: "Descrição da cena ou da aplicação",
             type: "textarea",
-            placeholder: "Explique como a musica sera usada no audiovisual.",
+            placeholder: "Explique como a música será usada no audiovisual.",
             required: true,
           },
           {
             key: "sync_duration",
-            label: "Duracao de sync",
+            label: "Duração de sync",
             type: "text",
             placeholder: "Ex.: 15 segundos, 30 segundos, uso integral",
             required: true,
           },
           {
             key: "media_channels",
-            label: "Canais e meios de veiculacao",
+            label: "Canais e meios de veiculação",
             type: "textarea",
             placeholder: "TV, YouTube, streaming, redes sociais, cinema, OOH, etc.",
             required: true,
@@ -349,12 +349,12 @@ export function createRightsClearanceTemplate(args?: {
             key: "reference_links",
             label: "Links de referencia",
             type: "textarea",
-            placeholder: "Cole um ou mais links relevantes para a analise.",
+            placeholder: "Cole um ou mais links relevantes para a análise.",
             required: false,
           },
           {
             key: "additional_notes",
-            label: "Observacoes adicionais",
+            label: "Observações adicionais",
             type: "textarea",
             placeholder: "Acrescente instrucoes, contexto ou pendencias.",
             required: false,
@@ -363,7 +363,7 @@ export function createRightsClearanceTemplate(args?: {
       },
       {
         key: "review_submit",
-        title: "Revisao e envio",
+        title: "Revisão e envio",
         description: "Revise os dados antes de concluir.",
         fields: [],
       },
