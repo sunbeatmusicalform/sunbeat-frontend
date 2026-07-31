@@ -7,14 +7,14 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, FileAudio, Loader2, Music2, Plus, Star, Trash2 } from 'lucide-react'
 import { Field, StepHeader, inputCls } from './ui'
-import { analyzeWav, fieldErrors, type AudioReport, type useIntakeForm } from '@/hooks/useIntakeForm'
+import { analyzeWav, type AudioReport, type useIntakeForm } from '@/hooks/useIntakeForm'
 import { ArtistLinkedField } from './ArtistLinkedField'
 
 type F = ReturnType<typeof useIntakeForm>
 
 function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index: number; showErrors: boolean; workspaceSlug: string }) {
   const track = form.data.tracks[index]
-  const all = showErrors ? fieldErrors('faixas', form.data) : {}
+  const all = showErrors ? form.errorsFor('faixas') : {}
   const p = `t${index}.`
   const [audio, setAudio] = useState<AudioReport | null>(null)
   const [checking, setChecking] = useState(false)
@@ -38,10 +38,10 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
           {track.isFocus && <Badge className="bg-secondary text-secondary-foreground">⭐ Faixa foco</Badge>}
         </div>
         <div className="flex items-center gap-1">
-          <Button type="button" variant="ghost" size="icon" title="Marcar como faixa foco"
+          {form.isVisible('focusTrack') ? <Button type="button" variant="ghost" size="icon" title="Marcar como faixa foco"
             onClick={() => form.setFocusTrack(track.id)}>
             <Star className={`h-4 w-4 ${track.isFocus ? 'fill-secondary text-secondary' : 'text-muted-foreground'}`} />
-          </Button>
+          </Button> : null}
           {form.data.tracks.length > 1 && (
             <Button type="button" variant="ghost" size="icon" title="Remover faixa"
               onClick={() => form.removeTrack(track.id)}>
@@ -52,38 +52,42 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
       </div>
 
       <div className="grid gap-5">
-        <Field label="Nome da faixa" required error={all[p + 'title']}>
-            <Input className={inputCls(!!all[p + 'title'])} placeholder="Título da música"
+        {form.isVisible('track.title') ? <Field label={form.textFor('track.title', 'label', 'Nome da faixa')} required={form.isRequired('track.title')} error={all[p + 'title']}>
+            <Input className={inputCls(!!all[p + 'title'])} placeholder={form.textFor('track.title', 'placeholder', 'Título da música')}
               value={track.title} onChange={(ev) => form.setTrack(track.id, { title: ev.target.value })} />
-        </Field>
+        </Field> : null}
 
-        <ArtistLinkedField
+        {form.isVisible('track.mainArtists') ? <ArtistLinkedField
           workspaceSlug={workspaceSlug}
           value={track.mainArtists}
           references={track.mainArtistRefs ?? []}
           error={all[p + 'mainArtists']}
+          label={form.textFor('track.mainArtists', 'label', 'Artistas principais')}
+          hint={form.textFor('track.mainArtists', 'hint', 'Busque no cadastro da Atabaque. Use vírgula ou Enter para conferir um nome novo.')}
+          placeholder={form.textFor('track.mainArtists', 'placeholder', 'Digite o nome artístico…')}
+          required={form.isRequired('track.mainArtists')}
           onChange={(mainArtists, mainArtistRefs) => form.setTrack(track.id, { mainArtists, mainArtistRefs })}
-        />
+        /> : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Participações (feats)" hint="Deixe em branco se não houver.">
-            <Input className={inputCls()} placeholder="Ex.: Zé Raminho"
+          {form.isVisible('track.featArtists') ? <Field label={form.textFor('track.featArtists', 'label', 'Participações (feats)')} required={form.isRequired('track.featArtists')} error={all[p + 'featArtists']} hint={form.textFor('track.featArtists', 'hint', 'Deixe em branco se não houver.')}>
+            <Input className={inputCls(!!all[p + 'featArtists'])} placeholder={form.textFor('track.featArtists', 'placeholder', 'Ex.: Zé Raminho')}
               value={track.featArtists} onChange={(ev) => form.setTrack(track.id, { featArtists: ev.target.value })} />
-          </Field>
-          <Field label="Compositores e autores" required error={all[p + 'composers']}
-            hint="Necessário para o registro do ISRC e créditos editoriais.">
-            <Input className={inputCls(!!all[p + 'composers'])} placeholder="Nome completo de cada autor"
+          </Field> : null}
+          {form.isVisible('track.composers') ? <Field label={form.textFor('track.composers', 'label', 'Compositores e autores')} required={form.isRequired('track.composers')} error={all[p + 'composers']}
+            hint={form.textFor('track.composers', 'hint', 'Necessário para o registro do ISRC e créditos editoriais.')}>
+            <Input className={inputCls(!!all[p + 'composers'])} placeholder={form.textFor('track.composers', 'placeholder', 'Nome completo de cada autor')}
               value={track.composers} onChange={(ev) => form.setTrack(track.id, { composers: ev.target.value })} />
-          </Field>
+          </Field> : null}
         </div>
 
-        <Field label="Intérpretes" hint="Quem executa a gravação — usado nos créditos do cadastro do ISRC.">
-          <Input className={inputCls()} placeholder="Ex.: Alaíde Tropical"
+        {form.isVisible('track.performers') ? <Field label={form.textFor('track.performers', 'label', 'Intérpretes')} required={form.isRequired('track.performers')} error={all[p + 'performers']} hint={form.textFor('track.performers', 'hint', 'Quem executa a gravação — usado nos créditos do cadastro do ISRC.')}>
+          <Input className={inputCls(!!all[p + 'performers'])} placeholder={form.textFor('track.performers', 'placeholder', 'Ex.: Alaíde Tropical')}
             value={track.performers} onChange={(ev) => form.setTrack(track.id, { performers: ev.target.value })} />
-        </Field>
+        </Field> : null}
 
-        <Field label="A música já tem ISRC?" required error={all[p + 'hasISRC']}
-          hint="ISRC é o código internacional da gravação. Se a faixa nunca foi lançada, provavelmente ainda não tem — e nós geramos para você.">
+        {form.isVisible('track.hasISRC') ? <Field label={form.textFor('track.hasISRC', 'label', 'A música já tem ISRC?')} required={form.isRequired('track.hasISRC')} error={all[p + 'hasISRC']}
+          hint={form.textFor('track.hasISRC', 'hint', 'ISRC é o código internacional da gravação. Se a faixa nunca foi lançada, provavelmente ainda não tem — e nós geramos para você.')}>
           <RadioGroup className="flex gap-3" value={track.hasISRC}
             onValueChange={(v) => form.setTrack(track.id, { hasISRC: v as 'yes' | 'no' })}>
             {[['yes', 'Sim, já tem'], ['no', 'Não, gerar para mim']].map(([v, t]) => (
@@ -93,30 +97,30 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
               </Label>
             ))}
           </RadioGroup>
-        </Field>
+        </Field> : null}
 
-        {track.hasISRC === 'yes' && (
-          <Field label="Código ISRC" required error={all[p + 'isrc']} hint="Ex.: BRABC2600001">
-            <Input className={inputCls(!!all[p + 'isrc'])} placeholder="BR___0000000" maxLength={12}
+        {form.isVisible('track.isrc') && track.hasISRC === 'yes' ? (
+          <Field label={form.textFor('track.isrc', 'label', 'Código ISRC')} required={form.isRequired('track.isrc')} error={all[p + 'isrc']} hint={form.textFor('track.isrc', 'hint', 'Ex.: BRABC2600001')}>
+            <Input className={inputCls(!!all[p + 'isrc'])} placeholder={form.textFor('track.isrc', 'placeholder', 'BR___0000000')} maxLength={12}
               value={track.isrc} onChange={(ev) => form.setTrack(track.id, { isrc: ev.target.value.toUpperCase() })} />
           </Field>
-        )}
+        ) : null}
 
-        <Field label="Produtor fonográfico" required error={all[p + 'producer']}
-          hint="Pessoa ou estúdio responsável pela gravação — obrigatório com ou sem ISRC.">
-          <Input className={inputCls(!!all[p + 'producer'])} placeholder="Ex.: Estúdio Pedra Selva"
+        {form.isVisible('track.producer') ? <Field label={form.textFor('track.producer', 'label', 'Produtor fonográfico')} required={form.isRequired('track.producer')} error={all[p + 'producer']}
+          hint={form.textFor('track.producer', 'hint', 'Pessoa ou estúdio responsável pela gravação — obrigatório com ou sem ISRC.')}>
+          <Input className={inputCls(!!all[p + 'producer'])} placeholder={form.textFor('track.producer', 'placeholder', 'Ex.: Estúdio Pedra Selva')}
             value={track.producer} onChange={(ev) => form.setTrack(track.id, { producer: ev.target.value })} />
-        </Field>
+        </Field> : null}
 
-        <Field label="Perfis de artista" hint="Se algum artista ainda não tem perfil nas plataformas, escreva o nome exato do perfil a criar. Se já tem, cole os links.">
-          <Textarea className={inputCls()} rows={2}
-            placeholder="Criar perfil: NOME DO ARTISTA&#10;Links: https://open.spotify.com/artist/..."
+        {form.isVisible('track.profiles') ? <Field label={form.textFor('track.profiles', 'label', 'Perfis de artista')} required={form.isRequired('track.profiles')} error={all[p + 'profiles']} hint={form.textFor('track.profiles', 'hint', 'Se algum artista ainda não tem perfil nas plataformas, escreva o nome exato do perfil a criar. Se já tem, cole os links.')}>
+          <Textarea className={inputCls(!!all[p + 'profiles'])} rows={2}
+            placeholder={form.textFor('track.profiles', 'placeholder', 'Criar perfil: NOME DO ARTISTA\nLinks: https://open.spotify.com/artist/...')}
             value={track.newArtistProfiles}
             onChange={(ev) => form.setTrack(track.id, { newArtistProfiles: ev.target.value })} />
-        </Field>
+        </Field> : null}
 
-        <Field label="Áudio da faixa" required error={all[p + 'audio']}
-          hint="Master em WAV (44.1 kHz / 16 bits ou superior). Analisamos o arquivo automaticamente.">
+        {form.isVisible('track.audio') ? <Field label={form.textFor('track.audio', 'label', 'Áudio da faixa')} required={form.isRequired('track.audio')} error={all[p + 'audio']}
+          hint={form.textFor('track.audio', 'hint', 'Master em WAV ou FLAC. Analisamos o arquivo automaticamente.')}>
           <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-4 transition-colors hover:border-accent hover:bg-accent/5">
             <input type="file" accept=".wav,.flac,audio/wav,audio/x-wav,audio/flac,audio/x-flac" className="sr-only" onChange={(ev) => onAudio(ev.target.files?.[0])} />
             {checking ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <FileAudio className="h-5 w-5 text-accent" />}
@@ -139,21 +143,21 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
               </div>
             </div>
           )}
-        </Field>
+        </Field> : null}
       </div>
     </div>
   )
 }
 
 export function Faixas({ form, showErrors, workspaceSlug }: { form: F; showErrors: boolean; workspaceSlug: string }) {
-  const all = showErrors ? fieldErrors('faixas', form.data) : {}
+  const all = showErrors ? form.errorsFor('faixas') : {}
   return (
     <div className="mx-auto max-w-2xl">
       <StepHeader
         title="Faixas e créditos"
         description="Cadastre cada música com seus créditos. Capriche aqui: é desses dados que saem o ISRC, os créditos nas plataformas e a distribuição."
       />
-      {all.focusTrack && (
+      {form.isVisible('focusTrack') && all.focusTrack && (
         <p className="mb-4 rounded-xl border-2 border-accent/50 bg-accent/10 p-3 text-xs font-semibold text-accent">
           {all.focusTrack}
         </p>
@@ -168,9 +172,9 @@ export function Faixas({ form, showErrors, workspaceSlug }: { form: F; showError
         onClick={form.addTrack}>
         <Plus className="mr-1 h-5 w-5" /> Adicionar outra faixa
       </Button>
-      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Music2 className="h-3.5 w-3.5" /> Marque com ⭐ a faixa foco — ela guia o plano de divulgação.
-      </p>
+      {form.isVisible('focusTrack') ? <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Music2 className="h-3.5 w-3.5" /> {form.textFor('focusTrack', 'hint', 'Marque com ⭐ a faixa foco — ela guia o plano de divulgação.')}
+      </p> : null}
     </div>
   )
 }

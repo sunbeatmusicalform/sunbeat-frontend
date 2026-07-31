@@ -10,6 +10,10 @@ interface Props {
   references: ArtistReference[]
   onChange: (value: string, references: ArtistReference[]) => void
   error?: string
+  label?: string
+  hint?: string
+  placeholder?: string
+  required?: boolean
 }
 
 function registrationUrl(workspace: string, name: string) {
@@ -17,7 +21,7 @@ function registrationUrl(workspace: string, name: string) {
   return `/people/${encodeURIComponent(workspace)}?${params}`
 }
 
-export function ArtistLinkedField({ workspaceSlug, value, references, onChange, error }: Props) {
+export function ArtistLinkedField({ workspaceSlug, value, references, onChange, error, label = 'Artistas vinculados', hint = 'Busque no cadastro da Atabaque. Use vírgula ou Enter para conferir um nome novo.', placeholder = 'Digite o nome artístico…', required = false }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PeopleLookupItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -85,8 +89,8 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
     <div className={`rounded-2xl border-2 bg-white/55 p-4 ${error ? 'border-accent' : 'border-foreground/15'}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-bold"><Link2 className="h-4 w-4 text-[#329fd7]" /> Artistas vinculados</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Busque no cadastro da Atabaque. Use vírgula ou Enter para conferir um nome novo.</p>
+          <p className="flex items-center gap-1.5 text-sm font-bold"><Link2 className="h-4 w-4 text-[#329fd7]" /> {label}{required ? <span className="text-accent">*</span> : null}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
         </div>
         <span className="rounded-full bg-[#329fd7]/12 px-2 py-1 text-[10px] font-bold text-[#1f6f9e]">cadastro vinculado</span>
       </div>
@@ -124,7 +128,7 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
             }
           }}
           className="h-11 pl-9 pr-24"
-          placeholder="Digite o nome artístico…"
+          placeholder={placeholder}
         />
         <button type="button" disabled={!query.trim() || checking} onClick={() => void addTypedName()} className="absolute right-2 top-2 flex h-7 items-center gap-1 rounded-full bg-foreground px-2.5 text-[11px] font-bold text-background disabled:opacity-30">
           {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Adicionar

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { emptyIntake, emptyTrack, type IntakeData, type Track } from '@/types/intake'
+import { fieldConfig, fieldRequired, fieldText, fieldVisible, type ValidationPhase } from '@/lib/form-config'
+import type { FormConfigRemote } from '@/lib/api'
 
 export type StepId = 'welcome' | 'identificacao' | 'projeto' | 'faixas' | 'marketing' | 'revisao' | 'sucesso'
 
@@ -27,7 +29,7 @@ const REMOTE_STEP_ALIASES: Record<string, StepId> = {
   revisao: 'revisao',
 }
 
-export function useIntakeForm() {
+export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
   const [step, setStep] = useState<StepId>('welcome')
   const [data, setDataState] = useState<IntakeData>(emptyIntake)
   const [mode, setMode] = useState<Mode>('new')
@@ -175,11 +177,21 @@ export function useIntakeForm() {
     setStep('sucesso')
   }, [])
 
+  const errorsFor = useCallback((targetStep: StepId, phase: ValidationPhase = 'step') => (
+    fieldErrors(targetStep, data, formConfig, phase)
+  ), [data, formConfig])
+  const isVisible = useCallback((key: string) => fieldVisible(formConfig, key), [formConfig])
+  const isRequired = useCallback((key: string, phase: ValidationPhase = 'step') => fieldRequired(formConfig, key, phase), [formConfig])
+  const configFor = useCallback((key: string) => fieldConfig(formConfig, key), [formConfig])
+  const textFor = useCallback((key: string, property: 'label' | 'hint' | 'placeholder', fallback: string) => (
+    fieldText(formConfig, key, property, fallback)
+  ), [formConfig])
+
   return {
     step, setStep, data, setData, setTrack, addTrack, removeTrack, setFocusTrack,
     mode, savedAt, resumeDraft, restoreRemoteDraft, hasDraft, loadForEdit, submit,
     touchedSubmit, setTouchedSubmit, draftToken, coverFile, audioFiles,
-    setCoverFile, setAudioFile,
+    setCoverFile, setAudioFile, errorsFor, isVisible, isRequired, configFor, textFor,
   }
 }
 
@@ -188,49 +200,73 @@ export function useIntakeForm() {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const ISRC_RE = /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/i
 
-export function fieldErrors(step: StepId, d: IntakeData): Record<string, string> {
+export function fieldErrors(
+  step: StepId,
+  d: IntakeData,
+  config: FormConfigRemote | null = null,
+  phase: ValidationPhase = 'step',
+): Record<string, string> {
   const e: Record<string, string> = {}
+  const required = (key: string) => fieldRequired(config, key, phase)
+  const visible = (key: string) => fieldVisible(config, key)
   if (step === 'identificacao') {
-    if (!d.responsibleName.trim()) e.responsibleName = 'Como devemos te chamar?'
-    if (!EMAIL_RE.test(d.responsibleEmail)) e.responsibleEmail = 'Use um e-mail válido — o resumo do envio chega nele.'
+    if (required('responsibleName') && !d.responsibleName.trim()) e.responsibleName = 'Como devemos te chamar?'
+    if (required('responsibleEmail') && !d.responsibleEmail.trim()) e.responsibleEmail = 'Informe um e-mail para receber os links e atualizações.'
+    else if (visible('responsibleEmail') && d.responsibleEmail && !EMAIL_RE.test(d.responsibleEmail)) e.responsibleEmail = 'Use um e-mail válido — o resumo do envio chega nele.'
   }
   if (step === 'projeto') {
-    if (!d.projectName.trim()) e.projectName = 'Dê um nome ao projeto (pode mudar depois).'
-    if (!d.releaseType) e.releaseType = 'Escolha o formato do lançamento.'
-    if (!d.releaseDate) e.releaseDate = 'Sem data não conseguimos montar o cronograma.'
-    else if (d.releaseDate < new Date().toISOString().slice(0, 10)) e.releaseDate = 'A data precisa ser futura.'
-    if (!d.genre) e.genre = 'O gênero orienta distribuição e playlists.'
-    if (d.videoLink && !/^https?:\/\/.+/.test(d.videoLink)) e.videoLink = 'Cole o link completo, começando com https://'
-    if (d.additionalFiles && !/^https?:\/\/.+/.test(d.additionalFiles)) e.additionalFiles = 'Cole um link completo para o kit visual.'
+    if (required('projectName') && !d.projectName.trim()) e.projectName = 'Dê um nome ao projeto (pode mudar depois).'
+    if (required('releaseType') && !d.releaseType) e.releaseType = 'Escolha o formato do lançamento.'
+    if (required('releaseDate') && !d.releaseDate) e.releaseDate = 'Sem data não conseguimos montar o cronograma.'
+    else if (visible('releaseDate') && d.releaseDate && d.releaseDate < new Date().toISOString().slice(0, 10)) e.releaseDate = 'A data precisa ser futura.'
+    if (required('genre') && !d.genre) e.genre = 'O gênero orienta distribuição e playlists.'
+    if (required('coverFileName') && !d.coverFileName) e.coverFileName = 'Anexe a capa do lançamento.'
+    if (required('videoLink') && !d.videoLink.trim()) e.videoLink = 'Informe o link do vídeo.'
+    else if (visible('videoLink') && d.videoLink && !/^https?:\/\/.+/.test(d.videoLink)) e.videoLink = 'Cole o link completo, começando com https://'
+    if (required('videoDate') && !d.videoDate) e.videoDate = 'Informe a data do vídeo.'
+    if (required('additionalFiles') && !d.additionalFiles?.trim()) e.additionalFiles = 'Informe o link do kit visual.'
+    else if (visible('additionalFiles') && d.additionalFiles && !/^https?:\/\/.+/.test(d.additionalFiles)) e.additionalFiles = 'Cole um link completo para o kit visual.'
+    if (required('notes') && !d.notes.trim()) e.notes = 'Inclua as observações solicitadas.'
   }
   if (step === 'faixas') {
     d.tracks.forEach((t, i) => {
       const p = `t${i}.`
-      if (!t.title.trim()) e[p + 'title'] = `Faixa ${i + 1}: informe o título.`
-      if (!t.mainArtists.trim()) e[p + 'mainArtists'] = 'Quem são os artistas principais?'
-      if (!t.composers.trim()) e[p + 'composers'] = 'Créditos de composição são obrigatórios para o ISRC.'
-      if (!t.hasISRC) e[p + 'hasISRC'] = 'Selecione uma opção.'
-      if (t.hasISRC === 'yes' && !ISRC_RE.test(t.isrc.trim()))
+      if (required('track.title') && !t.title.trim()) e[p + 'title'] = `Faixa ${i + 1}: informe o título.`
+      if (required('track.mainArtists') && !t.mainArtists.trim()) e[p + 'mainArtists'] = 'Quem são os artistas principais?'
+      if (required('track.featArtists') && !t.featArtists.trim()) e[p + 'featArtists'] = 'Informe as participações ou altere a exigência no portal.'
+      if (required('track.composers') && !t.composers.trim()) e[p + 'composers'] = 'Informe os créditos de composição.'
+      if (required('track.performers') && !t.performers.trim()) e[p + 'performers'] = 'Informe os intérpretes.'
+      if (required('track.hasISRC') && !t.hasISRC) e[p + 'hasISRC'] = 'Selecione uma opção.'
+      if (visible('track.isrc') && t.hasISRC === 'yes' && required('track.isrc') && !ISRC_RE.test(t.isrc.trim()))
         e[p + 'isrc'] = 'Formato esperado: 2 letras + 3 caracteres + 7 números (ex.: BRABC2600001).'
-      if (!t.producer.trim()) e[p + 'producer'] = 'O produtor fonográfico é exigido pelas plataformas.'
-      if (!t.audioFileName) e[p + 'audio'] = 'Anexe o áudio (WAV de preferência).'
+      else if (visible('track.isrc') && t.isrc && !ISRC_RE.test(t.isrc.trim())) e[p + 'isrc'] = 'Confira o formato do ISRC.'
+      if (required('track.producer') && !t.producer.trim()) e[p + 'producer'] = 'Informe o produtor fonográfico.'
+      if (required('track.profiles') && !t.newArtistProfiles.trim() && !t.existingProfileLinks.trim()) e[p + 'profiles'] = 'Informe os perfis de artista.'
+      if (required('track.audio') && !t.audioFileName) e[p + 'audio'] = 'Anexe o áudio (WAV ou FLAC).'
     })
-    if (!d.tracks.some((t) => t.isFocus)) e.focusTrack = 'Marque qual faixa é o foco do lançamento.'
+    if (required('focusTrack') && !d.tracks.some((t) => t.isFocus)) e.focusTrack = 'Marque qual faixa é o foco do lançamento.'
   }
   if (step === 'marketing') {
-    if (!d.focusDescription.trim()) e.focusDescription = 'Conte em uma frase qual é o foco deste lançamento.'
-    if (d.goals.length === 0) e.goals = 'Escolha pelo menos uma meta.'
-    if (d.hasSpecialGuests === null) e.hasSpecialGuests = 'Selecione sim ou não.'
-    if (d.hasSpecialGuests && !d.guestsBio.trim()) e.guestsBio = 'Inclua uma mini bio das participações.'
+    if (required('marketingNumbers') && !d.marketingNumbers.trim()) e.marketingNumbers = 'Informe números ou resultados relevantes.'
+    if (required('focusDescription') && !d.focusDescription.trim()) e.focusDescription = 'Conte em uma frase qual é o foco deste lançamento.'
+    if (required('goals') && d.goals.length === 0) e.goals = 'Escolha pelo menos uma meta.'
+    if (required('hasMarketingBudget') && d.hasMarketingBudget === null) e.hasMarketingBudget = 'Selecione sim ou não.'
+    if (d.hasMarketingBudget && required('marketingBudget') && !d.marketingBudget.trim()) e.marketingBudget = 'Informe um valor ou faixa de investimento.'
+    if (required('dateFlexibility') && !d.dateFlexibility) e.dateFlexibility = 'Selecione a flexibilidade da data.'
+    if (required('hasSpecialGuests') && d.hasSpecialGuests === null) e.hasSpecialGuests = 'Selecione sim ou não.'
+    if (d.hasSpecialGuests && required('guestsBio') && !d.guestsBio.trim()) e.guestsBio = 'Inclua uma mini bio das participações.'
+    if (d.hasSpecialGuests && required('guestsPromote') && !d.guestsPromote) e.guestsPromote = 'Informe se as participações vão divulgar.'
+    if (d.hasSpecialGuests && required('promoParticipants') && !d.promoParticipants.trim()) e.promoParticipants = 'Informe os participantes da promoção.'
+    if (required('influencers') && !d.influencers.trim()) e.influencers = 'Informe os parceiros ou altere a exigência no portal.'
   }
   if (step === 'revisao') {
-    if (!d.consentTruth) e.consentTruth = 'É preciso confirmar a declaração antes de enviar.'
+    if (required('consentTruth') && !d.consentTruth) e.consentTruth = 'É preciso confirmar a declaração antes de enviar.'
   }
   return e
 }
 
-export function stepValid(step: StepId, d: IntakeData) {
-  return Object.keys(fieldErrors(step, d)).length === 0
+export function stepValid(step: StepId, d: IntakeData, config: FormConfigRemote | null = null, phase: ValidationPhase = 'step') {
+  return Object.keys(fieldErrors(step, d, config, phase)).length === 0
 }
 
 /* ---------------- file analysis ---------------- */

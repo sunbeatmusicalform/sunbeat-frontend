@@ -6,14 +6,14 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CheckCircle2, ImagePlus, Loader2 } from 'lucide-react'
 import { Field, StepHeader, inputCls } from './ui'
-import { analyzeCover, fieldErrors, type CoverReport, type useIntakeForm } from '@/hooks/useIntakeForm'
+import { analyzeCover, type CoverReport, type useIntakeForm } from '@/hooks/useIntakeForm'
 import { GENRES } from '@/types/intake'
 import { AssetStandardsPanel } from './AssetStandardsPanel'
 
 type F = ReturnType<typeof useIntakeForm>
 
 export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) {
-  const e = showErrors ? fieldErrors('projeto', form.data) : {}
+  const e = showErrors ? form.errorsFor('projeto') : {}
   const [cover, setCover] = useState<CoverReport | null>(null)
   const [checking, setChecking] = useState(false)
 
@@ -32,13 +32,13 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
         description="O essencial do lançamento: nome, formato, data e identidade. A partir da data, montamos o cronograma de distribuição."
       />
       <div className="space-y-6">
-        <Field label="Nome do projeto" required error={e.projectName}
-          hint="Título do single, EP ou álbum como deve aparecer nas plataformas.">
-          <Input className={inputCls(!!e.projectName)} placeholder="Ex.: Ciranda Elétrica"
+        {form.isVisible('projectName') ? <Field label={form.textFor('projectName', 'label', 'Nome do projeto')} required={form.isRequired('projectName')} error={e.projectName}
+          hint={form.textFor('projectName', 'hint', 'Título do single, EP ou álbum como deve aparecer nas plataformas.')}>
+          <Input className={inputCls(!!e.projectName)} placeholder={form.textFor('projectName', 'placeholder', 'Ex.: Ciranda Elétrica')}
             value={form.data.projectName} onChange={(ev) => form.setData('projectName', ev.target.value)} />
-        </Field>
+        </Field> : null}
 
-        <Field label="Tipo de lançamento" required error={e.releaseType}>
+        {form.isVisible('releaseType') ? <Field label={form.textFor('releaseType', 'label', 'Tipo de lançamento')} required={form.isRequired('releaseType')} error={e.releaseType}>
           <RadioGroup
             className="grid grid-cols-3 gap-3"
             value={form.data.releaseType}
@@ -53,26 +53,26 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
               </Label>
             ))}
           </RadioGroup>
-        </Field>
+        </Field> : null}
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <Field label="Data de lançamento" required error={e.releaseDate}
-            hint="Recomendamos pelo menos 21 dias de antecedência.">
+          {form.isVisible('releaseDate') ? <Field label={form.textFor('releaseDate', 'label', 'Data de lançamento')} required={form.isRequired('releaseDate')} error={e.releaseDate}
+            hint={form.textFor('releaseDate', 'hint', 'Recomendamos pelo menos 21 dias de antecedência.')}>
             <Input type="date" className={inputCls(!!e.releaseDate)}
               value={form.data.releaseDate} onChange={(ev) => form.setData('releaseDate', ev.target.value)} />
-          </Field>
-          <Field label="Gênero musical" required error={e.genre}>
+          </Field> : null}
+          {form.isVisible('genre') ? <Field label={form.textFor('genre', 'label', 'Gênero musical')} required={form.isRequired('genre')} error={e.genre}>
             <Select value={form.data.genre} onValueChange={(v) => form.setData('genre', v)}>
-              <SelectTrigger className={inputCls(!!e.genre)}><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectTrigger className={inputCls(!!e.genre)}><SelectValue placeholder={form.textFor('genre', 'placeholder', 'Selecione')} /></SelectTrigger>
               <SelectContent>
                 {GENRES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
               </SelectContent>
             </Select>
-          </Field>
+          </Field> : null}
         </div>
 
-        <Field label="Capa do lançamento" error={undefined}
-          hint="Quadrada, mínimo 1500×1500 px (ideal 3000×3000). Analisamos o arquivo na hora.">
+        {form.isVisible('coverFileName') ? <Field label={form.textFor('coverFileName', 'label', 'Capa do lançamento')} required={form.isRequired('coverFileName')} error={e.coverFileName}
+          hint={form.textFor('coverFileName', 'hint', 'Quadrada, mínimo 1500×1500 px (ideal 3000×3000). Analisamos o arquivo na hora.')}>
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-6 text-center transition-colors hover:border-accent hover:bg-accent/5">
             <input type="file" accept=".jpg,.jpeg,.png,.tif,.tiff,image/jpeg,image/png,image/tiff" className="sr-only" onChange={(ev) => onCover(ev.target.files?.[0])} />
             {checking ? <Loader2 className="h-6 w-6 animate-spin text-accent" /> : <ImagePlus className="h-6 w-6 text-accent" />}
@@ -96,33 +96,33 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
               </div>
             </div>
           )}
-        </Field>
+        </Field> : null}
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <Field label="Link do vídeo (opcional)" error={e.videoLink}
-            hint="Clipe, visualizer ou lyric video já publicado ou agendado.">
-            <Input className={inputCls(!!e.videoLink)} placeholder="https://youtube.com/..."
+          {form.isVisible('videoLink') ? <Field label={form.textFor('videoLink', 'label', 'Link do vídeo')} required={form.isRequired('videoLink')} error={e.videoLink}
+            hint={form.textFor('videoLink', 'hint', 'Clipe, visualizer ou lyric video já publicado ou agendado.')}>
+            <Input className={inputCls(!!e.videoLink)} placeholder={form.textFor('videoLink', 'placeholder', 'https://youtube.com/...')}
               value={form.data.videoLink} onChange={(ev) => form.setData('videoLink', ev.target.value)} />
-          </Field>
-          <Field label="Data do vídeo (opcional)">
-            <Input type="date" className={inputCls()}
+          </Field> : null}
+          {form.isVisible('videoDate') ? <Field label={form.textFor('videoDate', 'label', 'Data do vídeo')} required={form.isRequired('videoDate')} error={e.videoDate}>
+            <Input type="date" className={inputCls(!!e.videoDate)}
               value={form.data.videoDate} onChange={(ev) => form.setData('videoDate', ev.target.value)} />
-          </Field>
+          </Field> : null}
         </div>
 
-        <Field label="Link do kit visual (opcional)" error={e.additionalFiles}
-          hint="Pasta com thumbs, cabeçalhos, banners, fotos e demais peças de divulgação.">
-          <Input className={inputCls(!!e.additionalFiles)} placeholder="https://drive.google.com/..."
+        {form.isVisible('additionalFiles') ? <Field label={form.textFor('additionalFiles', 'label', 'Link do kit visual')} required={form.isRequired('additionalFiles')} error={e.additionalFiles}
+          hint={form.textFor('additionalFiles', 'hint', 'Pasta com thumbs, cabeçalhos, banners, fotos e demais peças de divulgação.')}>
+          <Input className={inputCls(!!e.additionalFiles)} placeholder={form.textFor('additionalFiles', 'placeholder', 'https://drive.google.com/...')}
             value={form.data.additionalFiles ?? ''} onChange={(ev) => form.setData('additionalFiles', ev.target.value)} />
-        </Field>
+        </Field> : null}
 
-        <AssetStandardsPanel />
+        {form.isVisible('coverFileName') || form.isVisible('track.audio') ? <AssetStandardsPanel /> : null}
 
-        <Field label="Observações do projeto (opcional)"
-          hint="Contexto, referências, restrições de datas, territórios — qualquer coisa que ajude a equipe.">
-          <Textarea className={inputCls()} rows={3} placeholder="Conte pra gente..."
+        {form.isVisible('notes') ? <Field label={form.textFor('notes', 'label', 'Observações do projeto')} required={form.isRequired('notes')} error={e.notes}
+          hint={form.textFor('notes', 'hint', 'Contexto, referências, restrições de datas, territórios — qualquer coisa que ajude a equipe.')}>
+          <Textarea className={inputCls(!!e.notes)} rows={3} placeholder={form.textFor('notes', 'placeholder', 'Conte pra gente...')}
             value={form.data.notes} onChange={(ev) => form.setData('notes', ev.target.value)} />
-        </Field>
+        </Field> : null}
       </div>
     </div>
   )

@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Field, StepHeader, inputCls } from './ui'
-import { fieldErrors, type useIntakeForm } from '@/hooks/useIntakeForm'
+import { type useIntakeForm } from '@/hooks/useIntakeForm'
 import { GOAL_OPTIONS, type DateFlexibility, type PromotionCommitment } from '@/types/intake'
 
 type F = ReturnType<typeof useIntakeForm>
@@ -33,7 +33,7 @@ const DATE_OPTIONS: { value: DateFlexibility; label: string; description: string
 ]
 
 export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }) {
-  const e = showErrors ? fieldErrors('marketing', form.data) : {}
+  const e = showErrors ? form.errorsFor('marketing') : {}
   const d = form.data
   const focusTrack = d.tracks.find((track) => track.isFocus)
 
@@ -53,21 +53,21 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
           description="O histórico e a intenção do projeto ajudam a Atabaque a definir os melhores argumentos e prioridades."
           icon={<BarChart3 className="h-4.5 w-4.5" />}
         >
-          <Field label="Números e resultados relevantes (opcional)"
-            hint="Marcos que fortaleçam a narrativa: shows, streams, audiência, hits, colaborações ou imprensa.">
-            <Textarea className={inputCls()} rows={3}
-              placeholder="Ex.: turnê com 12 datas; 500 mil streams; composição no Top 200; abertura para…"
+          {form.isVisible('marketingNumbers') ? <Field label={form.textFor('marketingNumbers', 'label', 'Números e resultados relevantes')} required={form.isRequired('marketingNumbers')} error={e.marketingNumbers}
+            hint={form.textFor('marketingNumbers', 'hint', 'Marcos que fortaleçam a narrativa: shows, streams, audiência, hits, colaborações ou imprensa.')}>
+            <Textarea className={inputCls(!!e.marketingNumbers)} rows={3}
+              placeholder={form.textFor('marketingNumbers', 'placeholder', 'Ex.: turnê com 12 datas; 500 mil streams; composição no Top 200; abertura para…')}
               value={d.marketingNumbers} onChange={(event) => form.setData('marketingNumbers', event.target.value)} />
-          </Field>
+          </Field> : null}
 
-          <Field label="Foco do artista e do lançamento" required error={e.focusDescription}
-            hint="Em uma frase: o que este projeto precisa conquistar agora?">
+          {form.isVisible('focusDescription') ? <Field label={form.textFor('focusDescription', 'label', 'Foco do artista e do lançamento')} required={form.isRequired('focusDescription')} error={e.focusDescription}
+            hint={form.textFor('focusDescription', 'hint', 'Em uma frase: o que este projeto precisa conquistar agora?')}>
             <Textarea className={inputCls(!!e.focusDescription)} rows={3}
-              placeholder="Ex.: ampliar ouvintes mensais e posicionar a faixa foco em playlists de MPB."
+              placeholder={form.textFor('focusDescription', 'placeholder', 'Ex.: ampliar ouvintes mensais e posicionar a faixa foco em playlists de MPB.')}
               value={d.focusDescription} onChange={(event) => form.setData('focusDescription', event.target.value)} />
-          </Field>
+          </Field> : null}
 
-          <Field label="Objetivos do lançamento" required error={e.goals} hint="Escolha todos que fizerem sentido.">
+          {form.isVisible('goals') ? <Field label={form.textFor('goals', 'label', 'Objetivos do lançamento')} required={form.isRequired('goals')} error={e.goals} hint={form.textFor('goals', 'hint', 'Escolha todos que fizerem sentido.')}>
             <div className="grid gap-2 sm:grid-cols-2">
               {GOAL_OPTIONS.map((goal) => (
                 <Label key={goal} htmlFor={`goal-${goal}`}
@@ -77,7 +77,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
                 </Label>
               ))}
             </div>
-          </Field>
+          </Field> : null}
         </MarketingBlock>
 
         <MarketingBlock
@@ -85,13 +85,13 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
           description="Verba, faixa foco e flexibilidade de calendário mudam diretamente o desenho da campanha."
           icon={<WalletCards className="h-4.5 w-4.5" />}
         >
-          <div className="rounded-2xl border border-foreground/10 bg-background/55 px-4 py-3">
+          {form.isVisible('focusTrack') ? <div className="rounded-2xl border border-foreground/10 bg-background/55 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Faixa foco selecionada</p>
             <p className="mt-1 text-sm font-bold">{focusTrack?.title || 'Definida na etapa Faixas'}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Este valor é vinculado automaticamente, sem pedir a mesma informação duas vezes.</p>
-          </div>
+          </div> : null}
 
-          <Field label="Há verba para promoção?" hint="Considere mídia, creators, imprensa, conteúdo e impulsionamento.">
+          {form.isVisible('hasMarketingBudget') ? <Field label={form.textFor('hasMarketingBudget', 'label', 'Há verba para promoção?')} required={form.isRequired('hasMarketingBudget')} error={e.hasMarketingBudget} hint={form.textFor('hasMarketingBudget', 'hint', 'Considere mídia, creators, imprensa, conteúdo e impulsionamento.')}>
             <RadioGroup className="flex flex-wrap gap-3"
               value={d.hasMarketingBudget === null ? '' : d.hasMarketingBudget ? 'yes' : 'no'}
               onValueChange={(value) => form.setData('hasMarketingBudget', value === 'yes')}>
@@ -102,16 +102,16 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
                 </Label>
               ))}
             </RadioGroup>
-          </Field>
+          </Field> : null}
 
-          {d.hasMarketingBudget ? (
-            <Field label="Valor ou faixa de investimento" hint="Pode ser aproximado; se ainda estiver em definição, informe uma faixa.">
-              <Input className={inputCls()} placeholder="Ex.: R$ 5.000 a R$ 8.000"
+          {form.isVisible('marketingBudget') && d.hasMarketingBudget ? (
+            <Field label={form.textFor('marketingBudget', 'label', 'Valor ou faixa de investimento')} required={form.isRequired('marketingBudget')} error={e.marketingBudget} hint={form.textFor('marketingBudget', 'hint', 'Pode ser aproximado; se ainda estiver em definição, informe uma faixa.')}>
+              <Input className={inputCls(!!e.marketingBudget)} placeholder={form.textFor('marketingBudget', 'placeholder', 'Ex.: R$ 5.000 a R$ 8.000')}
                 value={d.marketingBudget} onChange={(event) => form.setData('marketingBudget', event.target.value)} />
             </Field>
           ) : null}
 
-          <Field label="Flexibilidade da data de lançamento" hint="Ajuda a conciliar distribuição, campanha, imprensa e calendário.">
+          {form.isVisible('dateFlexibility') ? <Field label={form.textFor('dateFlexibility', 'label', 'Flexibilidade da data de lançamento')} required={form.isRequired('dateFlexibility')} error={e.dateFlexibility} hint={form.textFor('dateFlexibility', 'hint', 'Ajuda a conciliar distribuição, campanha, imprensa e calendário.')}>
             <RadioGroup className="grid gap-2 sm:grid-cols-3" value={d.dateFlexibility}
               onValueChange={(value) => form.setData('dateFlexibility', value as DateFlexibility)}>
               {DATE_OPTIONS.map((option) => (
@@ -123,7 +123,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
                 </Label>
               ))}
             </RadioGroup>
-          </Field>
+          </Field> : null}
         </MarketingBlock>
 
         <MarketingBlock
@@ -131,8 +131,8 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
           description="Quem pode entrar na narrativa e ajudar a divulgação a ganhar tração."
           icon={<Megaphone className="h-4.5 w-4.5" />}
         >
-          <Field label="O lançamento tem participações especiais?" required error={e.hasSpecialGuests}
-            hint="Outros artistas com papel de destaque no projeto ou na divulgação.">
+          {form.isVisible('hasSpecialGuests') ? <Field label={form.textFor('hasSpecialGuests', 'label', 'O lançamento tem participações especiais?')} required={form.isRequired('hasSpecialGuests')} error={e.hasSpecialGuests}
+            hint={form.textFor('hasSpecialGuests', 'hint', 'Outros artistas com papel de destaque no projeto ou na divulgação.')}>
             <RadioGroup className="flex flex-wrap gap-3"
               value={d.hasSpecialGuests === null ? '' : d.hasSpecialGuests ? 'yes' : 'no'}
               onValueChange={(value) => form.setData('hasSpecialGuests', value === 'yes')}>
@@ -143,16 +143,17 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
                 </Label>
               ))}
             </RadioGroup>
-          </Field>
+          </Field> : null}
 
           {d.hasSpecialGuests ? (
             <>
-              <Field label="Mini bio das participações" required error={e.guestsBio}
-                hint="2 a 3 linhas sobre cada participante para o release e o pitch.">
+              {form.isVisible('guestsBio') ? <Field label={form.textFor('guestsBio', 'label', 'Mini bio das participações')} required={form.isRequired('guestsBio')} error={e.guestsBio}
+                hint={form.textFor('guestsBio', 'hint', '2 a 3 linhas sobre cada participante para o release e o pitch.')}>
                 <Textarea className={inputCls(!!e.guestsBio)} rows={4}
+                  placeholder={form.textFor('guestsBio', 'placeholder', '')}
                   value={d.guestsBio} onChange={(event) => form.setData('guestsBio', event.target.value)} />
-              </Field>
-              <Field label="As participações vão divulgar junto?" hint="Se sim, podemos preparar peças e orientações específicas.">
+              </Field> : null}
+              {form.isVisible('guestsPromote') ? <Field label={form.textFor('guestsPromote', 'label', 'As participações vão divulgar junto?')} required={form.isRequired('guestsPromote')} error={e.guestsPromote} hint={form.textFor('guestsPromote', 'hint', 'Se sim, podemos preparar peças e orientações específicas.')}>
                 <RadioGroup className="flex flex-wrap gap-3" value={d.guestsPromote}
                   onValueChange={(value) => form.setData('guestsPromote', value as PromotionCommitment)}>
                   {[['yes', 'Sim'], ['no', 'Não'], ['maybe', 'A confirmar']].map(([value, label]) => (
@@ -162,19 +163,19 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
                     </Label>
                   ))}
                 </RadioGroup>
-              </Field>
-              <Field label="Participantes na promoção" hint="Quem entra na divulgação e em quais canais.">
-                <Input className={inputCls()} placeholder="Ex.: Zé Raminho — Instagram e imprensa"
+              </Field> : null}
+              {form.isVisible('promoParticipants') ? <Field label={form.textFor('promoParticipants', 'label', 'Participantes na promoção')} required={form.isRequired('promoParticipants')} error={e.promoParticipants} hint={form.textFor('promoParticipants', 'hint', 'Quem entra na divulgação e em quais canais.')}>
+                <Input className={inputCls(!!e.promoParticipants)} placeholder={form.textFor('promoParticipants', 'placeholder', 'Ex.: Zé Raminho — Instagram e imprensa')}
                   value={d.promoParticipants} onChange={(event) => form.setData('promoParticipants', event.target.value)} />
-              </Field>
+              </Field> : null}
             </>
           ) : null}
 
-          <Field label="Influenciadores, marcas e parceiros (opcional)"
-            hint="Parcerias confirmadas ou em negociação que podem amplificar o lançamento.">
-            <Textarea className={inputCls()} rows={3} placeholder="Ex.: @canaldemusica, marca Y — em conversa"
+          {form.isVisible('influencers') ? <Field label={form.textFor('influencers', 'label', 'Influenciadores, marcas e parceiros')} required={form.isRequired('influencers')} error={e.influencers}
+            hint={form.textFor('influencers', 'hint', 'Parcerias confirmadas ou em negociação que podem amplificar o lançamento.')}>
+            <Textarea className={inputCls(!!e.influencers)} rows={3} placeholder={form.textFor('influencers', 'placeholder', 'Ex.: @canaldemusica, marca Y — em conversa')}
               value={d.influencers} onChange={(event) => form.setData('influencers', event.target.value)} />
-          </Field>
+          </Field> : null}
         </MarketingBlock>
       </div>
     </div>

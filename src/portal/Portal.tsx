@@ -4,6 +4,7 @@ import { Lock, Folder, File, CheckCircle2, Clock, RefreshCw, Zap } from 'lucide-
 import { AtabaqueMark } from '../components/AtabaqueMark'
 import { Tables } from './Tables'
 import { EmailConfig } from './EmailConfig'
+import { FormConfig } from './FormConfig'
 import {
   STAGES, RELEASES, EMAIL_LOG, DRIVE_TREE, AIRTABLE_ROWS, INTEGRATIONS,
   loadDriveConfig, saveDriveConfig, resetDriveConfig,
@@ -91,12 +92,13 @@ function FragmentRow({ r }: { r: (typeof RELEASES)[number] }) {
 }
 
 /* ---------- Abas ---------- */
-type Tab = 'geral' | 'tables' | 'convites' | 'integracoes' | 'emails' | 'drive' | 'airtable' | 'marca'
+type Tab = 'geral' | 'tables' | 'convites' | 'integracoes' | 'formulario' | 'emails' | 'drive' | 'airtable' | 'marca'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'geral', label: 'Visão geral' },
   { key: 'tables', label: 'Tables' },
   { key: 'convites', label: 'Convites' },
   { key: 'integracoes', label: 'Integrações' },
+  { key: 'formulario', label: 'Formulário' },
   { key: 'emails', label: 'E-mails' },
   { key: 'drive', label: 'Drive' },
   { key: 'airtable', label: 'Airtable' },
@@ -337,15 +339,6 @@ function DriveTree({ node, depth = 0 }: { node: DriveNode; depth?: number }) {  
 
 /* ---------- Cadeado de acesso (por tenant) ---------- */
 const portalAuthKey = (ws: string) => `sunbeat-portal-${ws}-auth`
-// SHA-256 das senhas definidas pelo admin, por workspace — a senha em si nunca fica no código
-const WORKSPACE_PASS_SHA256: Record<string, string> = {
-  atabaque: 'ef71d9a9efe7ae6beb60fa0d749b89fa80cca2f28e97d9c386eb38f52c296e1f',
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
-}
 
 function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; displayName: string; onUnlock: () => void }) {
   const [pass, setPass] = useState('')
@@ -355,15 +348,10 @@ function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; d
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setChecking(true)
-    const hash = await sha256Hex(pass)
-    if (hash === WORKSPACE_PASS_SHA256[workspace]) {
-      const token = await createPortalSession(workspace, pass)
-      if (token) {
-        sessionStorage.setItem(portalAuthKey(workspace), '1')
-        onUnlock()
-      } else {
-        setError(true)
-      }
+    const token = await createPortalSession(workspace, pass)
+    if (token) {
+      sessionStorage.setItem(portalAuthKey(workspace), '1')
+      onUnlock()
     } else {
       setError(true)
       setPass('')
@@ -420,7 +408,9 @@ function BrandingTab({ workspace }: { workspace: string }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
-    if (branding) setForm((f) => ({ ...branding, ...f }))
+    if (!branding) return
+    const task = window.setTimeout(() => setForm((current) => ({ ...branding, ...current })), 0)
+    return () => window.clearTimeout(task)
   }, [branding])
 
   function set<K extends keyof WorkspaceBranding>(key: K, value: WorkspaceBranding[K]) {
@@ -446,7 +436,8 @@ function BrandingTab({ workspace }: { workspace: string }) {
   async function save() {
     setSaving(true)
     setMsg(null)
-    const { workspace_slug: _ws, ...fields } = form
+    const { workspace_slug, ...fields } = form
+    void workspace_slug
     const r = await patchBranding(workspace, fields)
     setSaving(false)
     if (r.ok) {
@@ -609,6 +600,8 @@ export default function Portal() {
       {tab === 'marca' && <BrandingTab workspace={workspace} />}
 
       {tab === 'emails' && <EmailConfig workspace={workspace} />}
+
+      {tab === 'formulario' && <FormConfig workspace={workspace} />}
 
       {tab === 'convites' && (
         <div className="mt-6 space-y-4">

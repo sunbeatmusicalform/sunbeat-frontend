@@ -3,7 +3,7 @@ import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, CloudUpload, Loader2, Lock, Mail, PencilLine, Send, Workflow, X } from 'lucide-react'
-import { useIntakeForm, STEPS, stepValid, fieldErrors, type StepId } from '@/hooks/useIntakeForm'
+import { useIntakeForm, STEPS, type StepId } from '@/hooks/useIntakeForm'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
 import { useBranding, BrandLogo } from '@/lib/brand'
 import { Welcome } from '@/sections/Welcome'
@@ -24,6 +24,7 @@ import {
   uploadIntakeFile,
   type UploadedFileRef,
 } from '@/lib/intake-api'
+import { usePublicFormConfig } from '@/lib/form-config'
 
 type DraftNotice = { tone: 'success' | 'error'; message: string }
 
@@ -31,7 +32,8 @@ export default function Home() {
   const { workspace } = useParams<{ workspace?: string }>()
   const workspaceSlug = workspace ?? 'atabaque'
   const { branding } = useBranding(workspaceSlug)
-  const form = useIntakeForm()
+  const { config: formConfig } = usePublicFormConfig(workspaceSlug)
+  const form = useIntakeForm(formConfig)
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)
   const [whiteLabel, setWhiteLabel] = useState(false)
@@ -91,7 +93,7 @@ export default function Home() {
   }
 
   async function next() {
-    if (!stepValid(step, form.data)) {
+    if (Object.keys(form.errorsFor(step)).length > 0) {
       setShowErrors(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
@@ -114,7 +116,7 @@ export default function Home() {
   }
 
   async function sendDraftEmail() {
-    if (!stepValid('identificacao', form.data)) {
+    if (Object.keys(form.errorsFor('identificacao')).length > 0) {
       goTo('identificacao')
       setShowErrors(true)
       setDraftNotice({ tone: 'error', message: 'Preencha seu nome e um e-mail válido antes de enviar o rascunho.' })
@@ -159,7 +161,7 @@ export default function Home() {
   }
 
   async function submit() {
-    const invalid = STEPS.find((s) => Object.keys(fieldErrors(s.id, form.data)).length > 0)
+    const invalid = STEPS.find((s) => Object.keys(form.errorsFor(s.id, 'submit')).length > 0)
     if (invalid) {
       goTo(invalid.id)
       setShowErrors(true)
@@ -168,7 +170,7 @@ export default function Home() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const coverFile = form.coverFile
+      const coverFile = form.isVisible('coverFileName') && form.coverFile
         ? await uploadIntakeFile({
             file: form.coverFile,
             kind: 'cover',
@@ -177,18 +179,17 @@ export default function Home() {
           })
         : null
 
-      const audioEntries = await Promise.all(form.data.tracks.map(async (track) => {
+      const audioEntries = form.isVisible('track.audio') ? await Promise.all(form.data.tracks.flatMap((track) => {
         const file = form.audioFiles[track.id]
-        if (!file) throw new Error(`Selecione novamente o áudio da faixa “${track.title}”.`)
-        const uploaded = await uploadIntakeFile({
+        if (!file) return []
+        return [uploadIntakeFile({
           file,
           kind: 'audio',
           workspaceSlug,
           draftToken: form.draftToken,
           trackLocalId: track.id,
-        })
-        return [track.id, uploaded] as const
-      }))
+        }).then((uploaded) => [track.id, uploaded] as const)]
+      })) : []
       const audioFiles = Object.fromEntries(audioEntries) as Record<string, UploadedFileRef>
       const payload = buildIntakePayload({
         data: form.data,
@@ -251,7 +252,7 @@ export default function Home() {
               {STEPS.map((s, i) => {
                 const done = i < stepIndex
                 const active = i === stepIndex
-                const hasErr = showErrors && Object.keys(fieldErrors(s.id, form.data)).length > 0
+                const hasErr = showErrors && Object.keys(form.errorsFor(s.id)).length > 0
                 return (
                   <button key={s.id} onClick={() => (i < stepIndex ? goTo(s.id) : undefined)}
                     className={`group flex flex-1 flex-col items-center gap-1 ${i < stepIndex ? 'cursor-pointer' : 'cursor-default'}`}>

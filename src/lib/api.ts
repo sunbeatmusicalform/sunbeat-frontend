@@ -185,6 +185,36 @@ export interface EmailConfigPatchRemote {
   bcc_addresses?: string[]
 }
 
+export type FieldRequirement = 'optional' | 'on_submit' | 'on_step'
+
+export interface FormFieldConfigRemote {
+  key: string
+  step: string
+  label: string
+  hint: string
+  placeholder: string
+  visible: boolean
+  requirement: FieldRequirement
+  locked: boolean
+  lock_reason: string
+  _origin?: 'db' | 'default'
+}
+
+export interface FormConfigRemote {
+  ok: boolean
+  workspace_slug: string
+  workflow_type: string
+  schema_version: number
+  row_exists: boolean
+  steps: Record<string, string>
+  fields: Record<string, FormFieldConfigRemote>
+  updated?: string[]
+}
+
+export interface FormConfigPatchRemote {
+  fields: Record<string, Partial<Pick<FormFieldConfigRemote, 'visible' | 'requirement' | 'label' | 'hint' | 'placeholder'>>>
+}
+
 export const api = {
   lookupArtists: (query: string, workspace = WORKSPACE) =>
     get<PeopleLookupResponse>(`/people-registry/lookup?workspace_slug=${encodeURIComponent(workspace)}&roles=artista&limit=8&query=${encodeURIComponent(query)}`),
@@ -214,4 +244,10 @@ export const api = {
 
   patchEmailConfig: (workspace: string, cfg: EmailConfigPatchRemote, workflowType = 'release_intake') =>
     send<EmailConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/email-config`, cfg),
+
+  getFormConfig: (workspace: string, workflowType = 'release_intake') =>
+    get<FormConfigRemote>(`/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/form-config`),
+
+  patchFormConfig: (workspace: string, cfg: FormConfigPatchRemote, workflowType = 'release_intake') =>
+    send<FormConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/form-config`, cfg),
 }
