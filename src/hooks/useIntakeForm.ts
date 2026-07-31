@@ -15,13 +15,25 @@ export type Mode = 'new' | 'draft' | 'edit'
 
 const DRAFT_KEY = 'sunbeat.intake.atabaque.draft'
 
+const REMOTE_STEP_ALIASES: Record<string, StepId> = {
+  identification: 'identificacao',
+  identificacao: 'identificacao',
+  release: 'projeto',
+  projeto: 'projeto',
+  tracks: 'faixas',
+  faixas: 'faixas',
+  marketing: 'marketing',
+  review: 'revisao',
+  revisao: 'revisao',
+}
+
 export function useIntakeForm() {
   const [step, setStep] = useState<StepId>('welcome')
   const [data, setDataState] = useState<IntakeData>(emptyIntake)
   const [mode, setMode] = useState<Mode>('new')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [touchedSubmit, setTouchedSubmit] = useState(false)
-  const [draftToken, setDraftToken] = useState(() => crypto.randomUUID())
+  const [draftToken, setDraftToken] = useState<string>(() => crypto.randomUUID())
   const [coverFile, setCoverFileState] = useState<File | null>(null)
   const [audioFiles, setAudioFiles] = useState<Record<string, File>>({})
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -108,6 +120,25 @@ export function useIntakeForm() {
     } catch { return false }
   }, [])
 
+  const restoreRemoteDraft = useCallback((snapshot: {
+    data: IntakeData
+    currentStep: string
+    draftToken: string
+    updatedAt: string | null
+  }) => {
+    setDataState({
+      ...snapshot.data,
+      coverFileName: null,
+      tracks: snapshot.data.tracks.map((track) => ({ ...track, audioFileName: null })),
+    })
+    setCoverFileState(null)
+    setAudioFiles({})
+    setDraftToken(snapshot.draftToken)
+    setStep(REMOTE_STEP_ALIASES[snapshot.currentStep] ?? 'identificacao')
+    setMode('draft')
+    setSavedAt(snapshot.updatedAt ? new Date(snapshot.updatedAt) : new Date())
+  }, [])
+
   const hasDraft = useCallback(() => !!localStorage.getItem(DRAFT_KEY), [])
 
   // edit mode: simulates loading an existing submission (from Airtable) by ID
@@ -146,7 +177,7 @@ export function useIntakeForm() {
 
   return {
     step, setStep, data, setData, setTrack, addTrack, removeTrack, setFocusTrack,
-    mode, savedAt, resumeDraft, hasDraft, loadForEdit, submit,
+    mode, savedAt, resumeDraft, restoreRemoteDraft, hasDraft, loadForEdit, submit,
     touchedSubmit, setTouchedSubmit, draftToken, coverFile, audioFiles,
     setCoverFile, setAudioFile,
   }

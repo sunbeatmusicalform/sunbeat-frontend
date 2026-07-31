@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, ChevronLeft, ChevronRight, CloudUpload, Loader2, Lock, PencilLine, Send, Workflow } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, CloudUpload, Loader2, Lock, Mail, PencilLine, Send, Workflow, X } from 'lucide-react'
 import { useIntakeForm, STEPS, stepValid, fieldErrors, type StepId } from '@/hooks/useIntakeForm'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
 import { useBranding, BrandLogo } from '@/lib/brand'
@@ -17,11 +17,15 @@ import { AutomationDialog } from '@/sections/AutomationDialog'
 import { HelpChat } from '@/components/HelpChat'
 import {
   buildIntakePayload,
+  loadIntakeDraft,
   saveIntakeDraft,
+  sendIntakeDraftLink,
   submitIntake,
   uploadIntakeFile,
   type UploadedFileRef,
 } from '@/lib/intake-api'
+
+type DraftNotice = { tone: 'success' | 'error'; message: string }
 
 export default function Home() {
   const { workspace } = useParams<{ workspace?: string }>()
@@ -33,7 +37,42 @@ export default function Home() {
   const [whiteLabel, setWhiteLabel] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [draftEmailLoading, setDraftEmailLoading] = useState(false)
+  const [draftEmailSent, setDraftEmailSent] = useState(false)
+  const [draftNotice, setDraftNotice] = useState<DraftNotice | null>(null)
+  const [draftLoading, setDraftLoading] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return Boolean(params.get('draft') || params.get('draft_token'))
+  })
   const { step } = form
+  const restoreRemoteDraft = form.restoreRemoteDraft
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const draftToken = params.get('draft') || params.get('draft_token')
+    if (!draftToken) return
+    let active = true
+
+    loadIntakeDraft(draftToken)
+      .then((snapshot) => {
+        if (!active) return
+        restoreRemoteDraft(snapshot)
+        setDraftEmailSent(snapshot.draftLinkEmailSent)
+        setDraftNotice({
+          tone: 'success',
+          message: 'Rascunho carregado. Se havia capa ou áudios, selecione os arquivos novamente antes de enviar.',
+        })
+      })
+      .catch((error) => {
+        if (!active) return
+        setDraftNotice({ tone: 'error', message: error instanceof Error ? error.message : 'Não foi possível carregar este rascunho.' })
+      })
+      .finally(() => {
+        if (active) setDraftLoading(false)
+      })
+
+    return () => { active = false }
+  }, [restoreRemoteDraft])
 
   // painel de automações é restrito ao cliente-adm (?adm=1 na URL ou localStorage)
   const isClientAdm = useMemo(() => {
@@ -72,6 +111,46 @@ export default function Home() {
       }
     }
     goTo(nextStep)
+  }
+
+  async function sendDraftEmail() {
+    if (!stepValid('identificacao', form.data)) {
+      goTo('identificacao')
+      setShowErrors(true)
+      setDraftNotice({ tone: 'error', message: 'Preencha seu nome e um e-mail válido antes de enviar o rascunho.' })
+      return
+    }
+
+    setDraftEmailLoading(true)
+    setDraftNotice(null)
+    try {
+      await saveIntakeDraft({
+        data: form.data,
+        workspaceSlug,
+        draftToken: form.draftToken,
+        currentStep: step,
+      })
+      const result = await sendIntakeDraftLink({
+        draftToken: form.draftToken,
+        workspaceSlug,
+        toEmail: form.data.responsibleEmail,
+        recipientName: form.data.responsibleName,
+        projectTitle: form.data.projectName,
+      })
+      if (result.disabled) {
+        setDraftNotice({ tone: 'error', message: 'O envio de rascunhos por e-mail está desativado para este formulário.' })
+        return
+      }
+      setDraftEmailSent(true)
+      setDraftNotice({
+        tone: 'success',
+        message: result.already_sent ? 'O link deste rascunho já havia sido enviado por e-mail.' : 'Link do rascunho enviado por e-mail com sucesso.',
+      })
+    } catch (error) {
+      setDraftNotice({ tone: 'error', message: error instanceof Error ? error.message : 'Não foi possível enviar o link do rascunho por e-mail.' })
+    } finally {
+      setDraftEmailLoading(false)
+    }
   }
 
   function back() {
@@ -198,6 +277,11 @@ export default function Home() {
 
       {/* body */}
       <main className="mx-auto max-w-4xl px-4 py-10 pb-40">
+        {draftLoading && (
+          <div role="status" className="mx-auto mb-6 flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-white/50 p-4 text-sm font-semibold">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando rascunho…
+          </div>
+        )}
         {step === 'welcome' && (
           <Welcome
             hasDraft={form.hasDraft()}
@@ -221,14 +305,35 @@ export default function Home() {
         )}
       </main>
 
+      {draftNotice && (
+        <div role={draftNotice.tone === 'error' ? 'alert' : 'status'} aria-live="polite"
+          className={`fixed bottom-24 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-start gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-semibold shadow-lg ${draftNotice.tone === 'success' ? 'border-emerald-600/35 bg-emerald-50 text-emerald-900' : 'border-accent/50 bg-[#fff4ef] text-accent'}`}>
+          {draftNotice.tone === 'success' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />}
+          <span className="flex-1">{draftNotice.message}</span>
+          <button type="button" aria-label="Fechar aviso" className="rounded-full p-0.5 hover:bg-black/5" onClick={() => setDraftNotice(null)}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* footer: navegação + barra Sunbeat (ocultável por plano white-label) */}
       <footer className="fixed bottom-0 left-0 right-0 z-20 border-t-2 border-foreground/10 bg-background/90 backdrop-blur">
         {isFormStep && (
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-            <Button variant="ghost" className="font-bold" onClick={back}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
-            </Button>
-            <span className="text-xs font-semibold text-muted-foreground hidden sm:block">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button variant="ghost" className="px-2 font-bold sm:px-4" onClick={back}>
+                <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
+              </Button>
+              {form.mode !== 'edit' && (
+                <Button type="button" variant="outline" size="sm" title="Enviar link do rascunho por e-mail"
+                  disabled={draftEmailLoading || draftEmailSent || draftLoading} className="rounded-full px-3 font-bold" onClick={sendDraftEmail}>
+                  {draftEmailLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : draftEmailSent ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Mail className="mr-1.5 h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">{draftEmailSent ? 'Link enviado' : draftEmailLoading ? 'Enviando…' : 'Enviar rascunho por e-mail'}</span>
+                  <span className="sm:hidden">{draftEmailSent ? 'Enviado' : draftEmailLoading ? 'Enviando' : 'E-mail'}</span>
+                </Button>
+              )}
+            </div>
+            <span className="hidden text-xs font-semibold text-muted-foreground lg:block">
               Etapa {stepIndex + 1} de {STEPS.length} — {STEPS[stepIndex].hint}
             </span>
             {step !== 'revisao' ? (
