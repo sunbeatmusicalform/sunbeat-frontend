@@ -325,7 +325,7 @@ export default function Home() {
               <Button variant="ghost" className="px-2 font-bold sm:px-4" onClick={back}>
                 <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
               </Button>
-              {form.mode !== 'edit' && (
+              {step !== 'identificacao' && form.mode !== 'edit' && (
                 <Button type="button" variant="outline" size="sm" title="Enviar link do rascunho por e-mail"
                   disabled={draftEmailLoading || draftEmailSent || draftLoading} className="rounded-full px-3 font-bold" onClick={sendDraftEmail}>
                   {draftEmailLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : draftEmailSent ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Mail className="mr-1.5 h-3.5 w-3.5" />}
