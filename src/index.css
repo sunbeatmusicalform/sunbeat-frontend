@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Atabaque brand palette */
+    --brand-cream: #ebdbba;
+    --brand-brown: #512314;
+    --brand-coral: #ff5639;
+    --brand-amber: #ffb53e;
+    --brand-blue: #329fd7;
+    --brand-pink: #f1abff;
+
+    --background: 40 47% 83%;          /* cream */
+    --foreground: 19 61% 20%;          /* brown */
+    --card: 42 55% 90%;
+    --card-foreground: 19 61% 20%;
+    --popover: 42 55% 92%;
+    --popover-foreground: 19 61% 20%;
+    --primary: 19 61% 20%;             /* brown */
+    --primary-foreground: 40 47% 90%;
+    --secondary: 39 100% 62%;          /* amber */
+    --secondary-foreground: 19 61% 20%;
+    --muted: 40 35% 76%;
+    --muted-foreground: 20 30% 38%;
+    --accent: 8 100% 61%;              /* coral */
+    --accent-foreground: 40 47% 94%;
+    --destructive: 8 100% 61%;
+    --destructive-foreground: 40 47% 94%;
+    --border: 20 30% 65%;
+    --input: 20 30% 65%;
+    --ring: 8 100% 61%;
+    --radius: 0.875rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "redonda", "Avenir Next", "Trebuchet MS", ui-rounded, system-ui, sans-serif;
+    font-weight: 400;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(255, 181, 62, 0.18), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255, 86, 57, 0.12), transparent 45%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: "redonda", "Avenir Next", "Trebuchet MS", ui-rounded, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .sun-card {
+    @apply bg-card/80 backdrop-blur-sm border-2 border-foreground/10 shadow-[6px_6px_0_0_rgba(81,35,20,0.12)];
+  }
+  .sun-chip {
+    @apply inline-flex items-center gap-1 rounded-full border-2 border-foreground/15 bg-secondary/40 px-3 py-1 text-xs font-semibold;
+  }
+}
+
+/* ------- landing: animações da home original ------- */
+@keyframes dawn {
+  0% { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+@keyframes kenburns {
+  0% { transform: scale(1) translateY(0); }
+  100% { transform: scale(1.08) translateY(-1.5%); }
+}
+.dawn-in { animation: dawn 1.2s cubic-bezier(.2,.8,.2,1) both; }
+.dawn-1 { animation-delay: .15s; }
+.dawn-2 { animation-delay: .4s; }
+.dawn-3 { animation-delay: .7s; }
+.dawn-4 { animation-delay: 1s; }
+.typing-dot { animation: typing-dot 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+.kenburns { animation: kenburns 30s ease-in-out infinite alternate; }
+.story-kicker { @apply text-xs font-bold uppercase tracking-[0.25em] text-[#fbbb1e]/80; }
