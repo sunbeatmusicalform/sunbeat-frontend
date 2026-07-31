@@ -26,15 +26,26 @@ export async function uploadIntakeFile(args: {
   draftToken: string
   trackLocalId?: string
 }): Promise<UploadedFileRef> {
+  const signResponse = await fetch('/uploads/sign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      kind: args.kind,
+      file_name: args.file.name,
+      mime_type: args.file.type,
+      file_size: args.file.size,
+      workspace_slug: args.workspaceSlug,
+      draft_token: args.draftToken,
+      track_local_id: args.trackLocalId ?? '',
+    }),
+  })
+  if (!signResponse.ok) throw await apiError(signResponse, `Falha ao preparar ${args.file.name}.`)
+  const signed = await signResponse.json() as { signed_upload_url: string; file: UploadedFileRef }
   const body = new FormData()
   body.append('file', args.file)
-  body.append('kind', args.kind)
-  body.append('workspace_slug', args.workspaceSlug)
-  body.append('draft_token', args.draftToken)
-  body.append('track_local_id', args.trackLocalId ?? '')
-  const response = await fetch('/uploads', { method: 'POST', body })
-  if (!response.ok) throw await apiError(response, `Falha ao enviar ${args.file.name}.`)
-  return response.json() as Promise<UploadedFileRef>
+  const uploadResponse = await fetch(signed.signed_upload_url, { method: 'PUT', body })
+  if (!uploadResponse.ok) throw new Error(`Falha ao enviar ${args.file.name}.`)
+  return signed.file
 }
 
 export function buildIntakePayload(args: {
