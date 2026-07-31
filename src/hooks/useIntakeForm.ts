@@ -21,6 +21,9 @@ export function useIntakeForm() {
   const [mode, setMode] = useState<Mode>('new')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [touchedSubmit, setTouchedSubmit] = useState(false)
+  const [draftToken, setDraftToken] = useState(() => crypto.randomUUID())
+  const [coverFile, setCoverFileState] = useState<File | null>(null)
+  const [audioFiles, setAudioFiles] = useState<Record<string, File>>({})
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // autosave (draft mode)
@@ -28,11 +31,31 @@ export function useIntakeForm() {
     if (step === 'welcome' || step === 'sucesso') return
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, step, savedAt: new Date().toISOString() }))
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, step, draftToken, savedAt: new Date().toISOString() }))
       setSavedAt(new Date())
     }, 800)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [data, step])
+  }, [data, step, draftToken])
+
+  const setCoverFile = useCallback((file: File | null) => {
+    setCoverFileState(file)
+    setDataState((d) => ({ ...d, coverFileName: file?.name ?? null }))
+  }, [])
+
+  const setAudioFile = useCallback((trackId: string, file: File | null) => {
+    setAudioFiles((current) => {
+      const next = { ...current }
+      if (file) next[trackId] = file
+      else delete next[trackId]
+      return next
+    })
+    setDataState((d) => ({
+      ...d,
+      tracks: d.tracks.map((track) => track.id === trackId
+        ? { ...track, audioFileName: file?.name ?? null }
+        : track),
+    }))
+  }, [])
 
   const setData = useCallback(<K extends keyof IntakeData>(key: K, value: IntakeData[K]) => {
     setDataState((d) => ({ ...d, [key]: value }))
@@ -59,7 +82,13 @@ export function useIntakeForm() {
     if (!raw) return false
     try {
       const parsed = JSON.parse(raw)
-      setDataState({ ...emptyIntake(), ...parsed.data })
+      const restored = { ...emptyIntake(), ...parsed.data }
+      restored.coverFileName = null
+      restored.tracks = restored.tracks.map((track: Track) => ({ ...track, audioFileName: null }))
+      setDataState(restored)
+      setCoverFileState(null)
+      setAudioFiles({})
+      if (typeof parsed.draftToken === 'string') setDraftToken(parsed.draftToken)
       setStep(parsed.step === 'welcome' || parsed.step === 'sucesso' ? 'identificacao' : parsed.step)
       setMode('draft')
       setSavedAt(parsed.savedAt ? new Date(parsed.savedAt) : new Date())
@@ -101,7 +130,8 @@ export function useIntakeForm() {
   return {
     step, setStep, data, setData, setTrack, addTrack, removeTrack, setFocusTrack,
     mode, savedAt, resumeDraft, hasDraft, loadForEdit, submit,
-    touchedSubmit, setTouchedSubmit,
+    touchedSubmit, setTouchedSubmit, draftToken, coverFile, audioFiles,
+    setCoverFile, setAudioFile,
   }
 }
 

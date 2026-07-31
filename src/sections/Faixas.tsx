@@ -20,7 +20,7 @@ function TrackCard({ form, index, showErrors }: { form: F; index: number; showEr
 
   async function onAudio(file: File | undefined) {
     if (!file) return
-    form.setTrack(track.id, { audioFileName: file.name })
+    form.setAudioFile(track.id, file)
     setChecking(true)
     try { setAudio(await analyzeWav(file)) } catch { setAudio(null) }
     setChecking(false)

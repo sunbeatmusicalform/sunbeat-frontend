@@ -18,7 +18,7 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
 
   async function onCover(file: File | undefined) {
     if (!file) return
-    form.setData('coverFileName', file.name)
+    form.setCoverFile(file)
     setChecking(true)
     try { setCover(await analyzeCover(file)) } catch { setCover(null) }
     setChecking(false)

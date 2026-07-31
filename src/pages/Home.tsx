@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, ChevronLeft, ChevronRight, CloudUpload, Lock, PencilLine, Send, Workflow } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, CloudUpload, Loader2, Lock, PencilLine, Send, Workflow } from 'lucide-react'
 import { useIntakeForm, STEPS, stepValid, fieldErrors, type StepId } from '@/hooks/useIntakeForm'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
 import { useBranding, BrandLogo } from '@/lib/brand'
@@ -15,6 +15,13 @@ import { Revisao } from '@/sections/Revisao'
 import { Sucesso } from '@/sections/Sucesso'
 import { AutomationDialog } from '@/sections/AutomationDialog'
 import { HelpChat } from '@/components/HelpChat'
+import {
+  buildIntakePayload,
+  saveIntakeDraft,
+  submitIntake,
+  uploadIntakeFile,
+  type UploadedFileRef,
+} from '@/lib/intake-api'
 
 export default function Home() {
   const { workspace } = useParams<{ workspace?: string }>()
@@ -24,6 +31,8 @@ export default function Home() {
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)
   const [whiteLabel, setWhiteLabel] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const { step } = form
 
   // painel de automações é restrito ao cliente-adm (?adm=1 na URL ou localStorage)
@@ -42,14 +51,27 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function next() {
+  async function next() {
     if (!stepValid(step, form.data)) {
       setShowErrors(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     setShowErrors(false)
-    goTo(STEPS[stepIndex + 1].id)
+    const nextStep = STEPS[stepIndex + 1].id
+    if (step === 'identificacao' || step === 'projeto') {
+      try {
+        await saveIntakeDraft({
+          data: form.data,
+          workspaceSlug,
+          draftToken: form.draftToken,
+          currentStep: nextStep,
+        })
+      } catch (error) {
+        console.warn('[intake] rascunho remoto não foi salvo:', error)
+      }
+    }
+    goTo(nextStep)
   }
 
   function back() {
@@ -57,15 +79,54 @@ export default function Home() {
     goTo(stepIndex === 0 ? 'welcome' : STEPS[stepIndex - 1].id)
   }
 
-  function submit() {
+  async function submit() {
     const invalid = STEPS.find((s) => Object.keys(fieldErrors(s.id, form.data)).length > 0)
     if (invalid) {
       goTo(invalid.id)
       setShowErrors(true)
       return
     }
-    form.submit()
-    window.scrollTo({ top: 0 })
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const coverFile = form.coverFile
+        ? await uploadIntakeFile({
+            file: form.coverFile,
+            kind: 'cover',
+            workspaceSlug,
+            draftToken: form.draftToken,
+          })
+        : null
+
+      const audioEntries = await Promise.all(form.data.tracks.map(async (track) => {
+        const file = form.audioFiles[track.id]
+        if (!file) throw new Error(`Selecione novamente o áudio da faixa “${track.title}”.`)
+        const uploaded = await uploadIntakeFile({
+          file,
+          kind: 'audio',
+          workspaceSlug,
+          draftToken: form.draftToken,
+          trackLocalId: track.id,
+        })
+        return [track.id, uploaded] as const
+      }))
+      const audioFiles = Object.fromEntries(audioEntries) as Record<string, UploadedFileRef>
+      const payload = buildIntakePayload({
+        data: form.data,
+        workspaceSlug,
+        draftToken: form.draftToken,
+        coverFile,
+        audioFiles,
+      })
+      await submitIntake(payload)
+      form.submit()
+      window.scrollTo({ top: 0 })
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Não foi possível enviar o formulário.')
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -141,7 +202,7 @@ export default function Home() {
           <Welcome
             hasDraft={form.hasDraft()}
             onStart={() => goTo('identificacao')}
-            onResume={() => { form.resumeDraft() && window.scrollTo({ top: 0 }) }}
+            onResume={() => { if (form.resumeDraft()) window.scrollTo({ top: 0 }) }}
             onEdit={() => { form.loadForEdit(); window.scrollTo({ top: 0 }) }}
           />
         )}
@@ -152,6 +213,11 @@ export default function Home() {
         {step === 'revisao' && <Revisao form={form} goTo={goTo} showErrors={showErrors} />}
         {step === 'sucesso' && (
           <Sucesso email={form.data.responsibleEmail} project={form.data.projectName} onRestart={() => location.reload()} />
+        )}
+        {submitError && step !== 'sucesso' && (
+          <div role="alert" className="mx-auto mt-6 max-w-2xl rounded-2xl border-2 border-accent/60 bg-accent/10 p-4 text-sm font-semibold text-accent">
+            {submitError}
+          </div>
         )}
       </main>
 
@@ -170,8 +236,9 @@ export default function Home() {
                 Próximo <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-6 shadow-[3px_3px_0_0_rgba(81,35,20,0.3)]" onClick={submit}>
-                {form.mode === 'edit' ? 'Salvar alterações' : 'Enviar formulário'} <Send className="ml-1.5 h-4 w-4" />
+              <Button disabled={submitting} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-6 shadow-[3px_3px_0_0_rgba(81,35,20,0.3)]" onClick={submit}>
+                {submitting ? 'Enviando…' : form.mode === 'edit' ? 'Salvar alterações' : 'Enviar formulário'}
+                {submitting ? <Loader2 className="ml-1.5 h-4 w-4 animate-spin" /> : <Send className="ml-1.5 h-4 w-4" />}
               </Button>
             )}
           </div>
