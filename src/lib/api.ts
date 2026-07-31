@@ -8,8 +8,7 @@
    Feature flag (ordem):
      1. localStorage "sunbeat.api_enabled" = "1" | "0"
      2. env VITE_API_ENABLED = "1" | "0"
-     3. desligada por padrão → app roda 100% em mock até o backend
-        entregar os endpoints novos (verify/invites/drive-config).
+     3. ligada por padrão, pois front e API agora são servidos na mesma origem.
 
    Toda função devolve null em caso de falha/flag off — o chamador
    faz fallback para o mock local. Nenhuma chamada quebra a UI. */
@@ -29,7 +28,10 @@ export function apiBase(): string {
     if (ls) return ls.replace(/\/+$/, '')
   } catch { /* ignore */ }
   const env = import.meta.env.VITE_API_URL as string | undefined
-  return (env ?? FLY_BASE).replace(/\/+$/, '')
+  const sameOrigin = typeof window !== 'undefined' && /^https?:$/.test(window.location.protocol)
+    ? window.location.origin
+    : FLY_BASE
+  return (env ?? sameOrigin).replace(/\/+$/, '')
 }
 
 export function apiEnabled(): boolean {
@@ -38,7 +40,8 @@ export function apiEnabled(): boolean {
     if (ls === '1') return true
     if (ls === '0') return false
   } catch { /* ignore */ }
-  return (import.meta.env.VITE_API_ENABLED as string | undefined) === '1'
+  const env = import.meta.env.VITE_API_ENABLED as string | undefined
+  return env === undefined ? true : env === '1'
 }
 
 export function setApiOverride(base?: string, enabled?: boolean) {
@@ -135,6 +138,40 @@ export interface DriveConfigRemote {
   warnings?: string[]
 }
 
+export type EmailEventName = 'on_draft' | 'on_submit' | 'on_edit' | 'on_first_stage' | 'on_summary'
+
+export interface EmailEventRemote {
+  enabled: boolean
+  recipients: string[]
+  _origin?: 'db' | 'default'
+}
+
+export interface EmailTemplateRemote {
+  subject: string
+  body: string
+  _origin?: 'db' | 'default'
+}
+
+export interface EmailConfigRemote {
+  ok: boolean
+  workspace_slug: string
+  workflow_type: string
+  row_exists: boolean
+  events: Record<EmailEventName, EmailEventRemote>
+  templates: Record<EmailEventName, EmailTemplateRemote>
+  cc_addresses: string[]
+  bcc_addresses: string[]
+  placeholders: string[]
+  updated?: string[]
+}
+
+export interface EmailConfigPatchRemote {
+  events?: Partial<Record<EmailEventName, Omit<EmailEventRemote, '_origin'>>>
+  templates?: Partial<Record<EmailEventName, Omit<EmailTemplateRemote, '_origin'>>>
+  cc_addresses?: string[]
+  bcc_addresses?: string[]
+}
+
 export const api = {
   /* pendente no backend: endpoint de averiguação 2 bases (pacote Codex, tarefa 1) */
   verifyPerson: (query: string) =>
@@ -155,4 +192,10 @@ export const api = {
 
   patchDriveConfig: (workflowType: string, cfg: DriveConfigRemote) =>
     send<DriveConfigRemote>('PATCH', `/workspaces/${WORKSPACE}/workflows/${workflowType}/drive-config`, cfg),
+
+  getEmailConfig: (workspace: string, workflowType = 'release_intake') =>
+    get<EmailConfigRemote>(`/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/email-config`),
+
+  patchEmailConfig: (workspace: string, cfg: EmailConfigPatchRemote, workflowType = 'release_intake') =>
+    send<EmailConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/email-config`, cfg),
 }

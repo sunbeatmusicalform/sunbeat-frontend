@@ -3,6 +3,7 @@ import { useParams } from 'react-router'
 import { Lock, Folder, File, CheckCircle2, Clock, RefreshCw, Zap } from 'lucide-react'
 import { AtabaqueMark } from '../components/AtabaqueMark'
 import { Tables } from './Tables'
+import { EmailConfig } from './EmailConfig'
 import {
   STAGES, RELEASES, EMAIL_LOG, DRIVE_TREE, AIRTABLE_ROWS, INTEGRATIONS,
   loadDriveConfig, saveDriveConfig, resetDriveConfig,
@@ -10,7 +11,7 @@ import {
 } from './data'
 import { INVITE_STATUS_LABEL, invitesWithStatus, lookupPerson, VERDICT_STYLE, type LookupResult, type PersonBaseHit } from '../forms/invites'
 import { api, apiEnabled } from '../lib/api'
-import { useBranding, patchBranding, createPortalSession, BrandLogo, type WorkspaceBranding } from '../lib/brand'
+import { useBranding, patchBranding, createPortalSession, portalToken, BrandLogo, type WorkspaceBranding } from '../lib/brand'
 
 const stageOf = (k: StageKey) => STAGES.find((s) => s.key === k)!
 
@@ -90,12 +91,13 @@ function FragmentRow({ r }: { r: (typeof RELEASES)[number] }) {
 }
 
 /* ---------- Abas ---------- */
-type Tab = 'geral' | 'tables' | 'convites' | 'integracoes' | 'drive' | 'airtable' | 'marca'
+type Tab = 'geral' | 'tables' | 'convites' | 'integracoes' | 'emails' | 'drive' | 'airtable' | 'marca'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'geral', label: 'Visão geral' },
   { key: 'tables', label: 'Tables' },
   { key: 'convites', label: 'Convites' },
   { key: 'integracoes', label: 'Integrações' },
+  { key: 'emails', label: 'E-mails' },
   { key: 'drive', label: 'Drive' },
   { key: 'airtable', label: 'Airtable' },
   { key: 'marca', label: 'Minha marca' },
@@ -355,10 +357,13 @@ function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; d
     setChecking(true)
     const hash = await sha256Hex(pass)
     if (hash === WORKSPACE_PASS_SHA256[workspace]) {
-      sessionStorage.setItem(portalAuthKey(workspace), '1')
-      // sessão no backend para habilitar edições (Minha marca, Drive) — best effort
-      void createPortalSession(workspace, pass)
-      onUnlock()
+      const token = await createPortalSession(workspace, pass)
+      if (token) {
+        sessionStorage.setItem(portalAuthKey(workspace), '1')
+        onUnlock()
+      } else {
+        setError(true)
+      }
     } else {
       setError(true)
       setPass('')
@@ -383,7 +388,7 @@ function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; d
           autoFocus
           className="mt-5 w-full rounded-2xl border border-[#512314]/25 bg-transparent px-4 py-3 text-sm text-[#512314] outline-none focus:border-[#512314]/60"
         />
-        {error && <p className="mt-2 text-xs font-semibold text-red-700">Senha incorreta. Tente novamente.</p>}
+        {error && <p className="mt-2 text-xs font-semibold text-red-700">Senha incorreta ou serviço indisponível. Tente novamente.</p>}
         <button
           type="submit"
           disabled={checking || !pass}
@@ -530,7 +535,9 @@ export default function Portal() {
   const { workspace = 'atabaque' } = useParams()
   const displayName = workspace.charAt(0).toUpperCase() + workspace.slice(1)
   const [tab, setTab] = useState<Tab>('geral')
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(portalAuthKey(workspace)) === '1')
+  const [unlocked, setUnlocked] = useState(
+    () => sessionStorage.getItem(portalAuthKey(workspace)) === '1' && Boolean(portalToken()),
+  )
   const { branding } = useBranding(workspace)
   if (!unlocked) return <PortalGate workspace={workspace} displayName={branding?.workspace_name ?? displayName} onUnlock={() => setUnlocked(true)} />
   return (
@@ -554,7 +561,7 @@ export default function Portal() {
         Acompanhe os formulários, as integrações e o andamento da operação em tempo real.
       </p>
 
-      <nav className="mt-5 flex gap-2 border-b border-[#512314]/15 pb-3">
+      <nav className="mt-5 flex flex-wrap gap-2 border-b border-[#512314]/15 pb-3">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition ${
@@ -600,6 +607,8 @@ export default function Portal() {
       {tab === 'tables' && <Tables />}
 
       {tab === 'marca' && <BrandingTab workspace={workspace} />}
+
+      {tab === 'emails' && <EmailConfig workspace={workspace} />}
 
       {tab === 'convites' && (
         <div className="mt-6 space-y-4">
