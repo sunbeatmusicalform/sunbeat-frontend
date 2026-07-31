@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, FileAudio, Loader2, Music2, Plus, Star, Trash2 } from 'lucide-react'
 import { Field, StepHeader, inputCls } from './ui'
 import { analyzeWav, fieldErrors, type AudioReport, type useIntakeForm } from '@/hooks/useIntakeForm'
+import { ArtistLinkedField } from './ArtistLinkedField'
 
 type F = ReturnType<typeof useIntakeForm>
 
-function TrackCard({ form, index, showErrors }: { form: F; index: number; showErrors: boolean }) {
+function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index: number; showErrors: boolean; workspaceSlug: string }) {
   const track = form.data.tracks[index]
   const all = showErrors ? fieldErrors('faixas', form.data) : {}
   const p = `t${index}.`
@@ -51,17 +52,18 @@ function TrackCard({ form, index, showErrors }: { form: F; index: number; showEr
       </div>
 
       <div className="grid gap-5">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Nome da faixa" required error={all[p + 'title']}>
+        <Field label="Nome da faixa" required error={all[p + 'title']}>
             <Input className={inputCls(!!all[p + 'title'])} placeholder="Título da música"
               value={track.title} onChange={(ev) => form.setTrack(track.id, { title: ev.target.value })} />
-          </Field>
-          <Field label="Artistas principais" required error={all[p + 'mainArtists']}
-            hint="Exatamente como aparecem nas plataformas. Separe com vírgula.">
-            <Input className={inputCls(!!all[p + 'mainArtists'])} placeholder="Ex.: Alaíde Tropical"
-              value={track.mainArtists} onChange={(ev) => form.setTrack(track.id, { mainArtists: ev.target.value })} />
-          </Field>
-        </div>
+        </Field>
+
+        <ArtistLinkedField
+          workspaceSlug={workspaceSlug}
+          value={track.mainArtists}
+          references={track.mainArtistRefs ?? []}
+          error={all[p + 'mainArtists']}
+          onChange={(mainArtists, mainArtistRefs) => form.setTrack(track.id, { mainArtists, mainArtistRefs })}
+        />
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Participações (feats)" hint="Deixe em branco se não houver.">
@@ -116,7 +118,7 @@ function TrackCard({ form, index, showErrors }: { form: F; index: number; showEr
         <Field label="Áudio da faixa" required error={all[p + 'audio']}
           hint="Master em WAV (44.1 kHz / 16 bits ou superior). Analisamos o arquivo automaticamente.">
           <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-4 transition-colors hover:border-accent hover:bg-accent/5">
-            <input type="file" accept="audio/*,.wav" className="sr-only" onChange={(ev) => onAudio(ev.target.files?.[0])} />
+            <input type="file" accept=".wav,.flac,audio/wav,audio/x-wav,audio/flac,audio/x-flac" className="sr-only" onChange={(ev) => onAudio(ev.target.files?.[0])} />
             {checking ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <FileAudio className="h-5 w-5 text-accent" />}
             <span className="text-sm font-semibold">{track.audioFileName ?? 'Clique para anexar o áudio'}</span>
           </label>
@@ -124,11 +126,17 @@ function TrackCard({ form, index, showErrors }: { form: F; index: number; showEr
             <div className={`mt-3 rounded-xl border-2 p-3 text-xs leading-relaxed ${audio.ok ? 'border-emerald-600/40 bg-emerald-500/10' : 'border-accent/50 bg-accent/10'}`}>
               <div className="flex items-center gap-1.5 font-bold">
                 <CheckCircle2 className={`h-4 w-4 ${audio.ok ? 'text-emerald-600' : 'text-accent'}`} />
-                Análise do áudio — {audio.duration} min · {audio.sampleRate} Hz · {audio.bitDepth} bits · {audio.channels === 2 ? 'estéreo' : `${audio.channels} canal(is)`}
+                Análise do áudio — {audio.format} · {audio.duration} min{audio.sampleRate ? ` · ${audio.sampleRate} Hz · ${audio.bitDepth} bits · ${audio.channels === 2 ? 'estéreo' : `${audio.channels} canal(is)`}` : ''}
               </div>
               <ul className="mt-1 list-inside list-disc text-muted-foreground">
                 {audio.notes.map((n) => <li key={n}>{n}</li>)}
               </ul>
+              <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                {audio.standards.map((standard) => <div key={standard.label} className="rounded-lg bg-white/55 px-2.5 py-2">
+                  <p className="font-bold">{standard.status === 'ok' ? '✓' : standard.status === 'warning' ? '◐' : '×'} {standard.label}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{standard.detail}</p>
+                </div>)}
+              </div>
             </div>
           )}
         </Field>
@@ -137,7 +145,7 @@ function TrackCard({ form, index, showErrors }: { form: F; index: number; showEr
   )
 }
 
-export function Faixas({ form, showErrors }: { form: F; showErrors: boolean }) {
+export function Faixas({ form, showErrors, workspaceSlug }: { form: F; showErrors: boolean; workspaceSlug: string }) {
   const all = showErrors ? fieldErrors('faixas', form.data) : {}
   return (
     <div className="mx-auto max-w-2xl">
@@ -152,7 +160,7 @@ export function Faixas({ form, showErrors }: { form: F; showErrors: boolean }) {
       )}
       <div className="space-y-6">
         {form.data.tracks.map((_, i) => (
-          <TrackCard key={form.data.tracks[i].id} form={form} index={i} showErrors={showErrors} />
+          <TrackCard key={form.data.tracks[i].id} form={form} index={i} showErrors={showErrors} workspaceSlug={workspaceSlug} />
         ))}
       </div>
       <Button type="button" variant="outline"

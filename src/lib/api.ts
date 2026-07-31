@@ -108,6 +108,19 @@ export interface VerifyPersonResponse {
   acao: string
 }
 
+export interface PeopleLookupItem {
+  id: string
+  displayName: string
+  roles: string[]
+  source: 'people_registry'
+  confidence: 'exact' | 'partial'
+}
+
+export interface PeopleLookupResponse {
+  ok: boolean
+  items: PeopleLookupItem[]
+}
+
 /* Contrato real da branch codex/atabaque-meeting-readiness
    (app/schemas/people_registry.py — PeopleRegistryInvite*). */
 export interface InviteRemotePayload {
@@ -173,9 +186,12 @@ export interface EmailConfigPatchRemote {
 }
 
 export const api = {
+  lookupArtists: (query: string, workspace = WORKSPACE) =>
+    get<PeopleLookupResponse>(`/people-registry/lookup?workspace_slug=${encodeURIComponent(workspace)}&roles=artista&limit=8&query=${encodeURIComponent(query)}`),
+
   /* pendente no backend: endpoint de averiguação 2 bases (pacote Codex, tarefa 1) */
-  verifyPerson: (query: string) =>
-    get<VerifyPersonResponse>(`/people-registry/verify?workspace_slug=${WORKSPACE}&query=${encodeURIComponent(query)}`),
+  verifyPerson: (query: string, workspace = WORKSPACE) =>
+    get<VerifyPersonResponse>(`/people-registry/verify?workspace_slug=${encodeURIComponent(workspace)}&query=${encodeURIComponent(query)}`),
 
   /* existe na branch do Codex: GET marca o convite como "opened" */
   getInvite: (token: string) =>

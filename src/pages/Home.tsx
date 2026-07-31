@@ -208,7 +208,7 @@ export default function Home() {
         )}
         {step === 'identificacao' && <Identificacao form={form} showErrors={showErrors} />}
         {step === 'projeto' && <Projeto form={form} showErrors={showErrors} />}
-        {step === 'faixas' && <Faixas form={form} showErrors={showErrors} />}
+        {step === 'faixas' && <Faixas form={form} showErrors={showErrors} workspaceSlug={workspaceSlug} />}
         {step === 'marketing' && <Marketing form={form} showErrors={showErrors} />}
         {step === 'revisao' && <Revisao form={form} goTo={goTo} showErrors={showErrors} />}
         {step === 'sucesso' && (

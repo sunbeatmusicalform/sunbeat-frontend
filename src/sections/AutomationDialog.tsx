@@ -14,7 +14,7 @@ const FLOWS = [
   },
   {
     icon: ImageIcon, title: 'Avaliação da capa', color: '#ffb53e',
-    desc: 'A capa é verificada automaticamente: formato quadrado, resolução mínima de 1400 px e ideal de 3000 px.',
+    desc: 'A capa é verificada automaticamente: formato quadrado, resolução mínima de 1500 px e compatibilidade por distribuidora.',
   },
   {
     icon: Mail, title: 'Triggers de e-mail por etapa', color: '#ff5639',

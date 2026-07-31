@@ -34,7 +34,7 @@ const RULES: { keys: string[]; answer: string }[] = [
   },
   {
     keys: ['capa', 'imagem', 'arte'],
-    answer: 'A capa precisa ser quadrada, mínimo 1400×1400 px — o ideal é 3000×3000. A verificação é automática no envio e te diz na hora se algo precisa ajustar.',
+    answer: 'A capa precisa ser quadrada, mínimo 1500×1500 px — o ideal é 3000×3000. A verificação automática compara o arquivo com os padrões de cada distribuidora.',
   },
   {
     keys: ['prazo', 'demora', 'quando', 'análise'],

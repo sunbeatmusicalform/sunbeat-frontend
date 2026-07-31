@@ -16,6 +16,14 @@ import { AtabaqueMark } from '@/components/AtabaqueMark'
 export default function PeoplePage() {
   const [params] = useSearchParams()
   const token = params.get('invite')
+  const intakeName = params.get('name')?.trim() ?? ''
+  const intakeRole = params.get('role')?.trim() ?? ''
+  const intakePrefill = useMemo(() => intakeName ? {
+    party_kind: 'pf',
+    display_name: intakeName,
+    stage_name: intakeName,
+    roles: intakeRole ? [intakeRole] : ['artista'],
+  } : undefined, [intakeName, intakeRole])
   const localInvite = useMemo(() => findInvite(token), [token])
   const [remoteInvite, setRemoteInvite] = useState<PeopleInvite | null | undefined>(undefined)
   // estruturais do envelope (mapping PR #37): vêm do convite remoto; fallback local
@@ -26,7 +34,7 @@ export default function PeoplePage() {
 
   useEffect(() => {
     let cancelled = false
-    if (!token) { setRemoteInvite(undefined); return }
+    if (!token) return
     ;(async () => {
       const r = await api.getInvite(token)
       if (cancelled) return
@@ -55,7 +63,7 @@ export default function PeoplePage() {
   }, [token])
 
   // backend respondeu (ou está checando) tem precedência; sem API, vale o mock local
-  const invite = remoteInvite !== undefined ? (remoteInvite ?? localInvite) : localInvite
+  const invite = token && remoteInvite !== undefined ? (remoteInvite ?? localInvite) : localInvite
   const checkingRemote = !!token && remoteInvite === undefined
 
   if (token && !invite && !checkingRemote) {
@@ -76,7 +84,7 @@ export default function PeoplePage() {
     )
   }
 
-  if (!invite) return <FormShell config={peopleConfig} />
+  if (!invite) return <FormShell config={peopleConfig} prefill={intakePrefill} />
 
   const banner = (
     <div className="mb-6 rounded-2xl border-2 border-[#329fd7]/40 bg-[#329fd7]/10 p-4">

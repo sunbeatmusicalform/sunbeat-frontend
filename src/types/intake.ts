@@ -1,7 +1,15 @@
+export interface ArtistReference {
+  id: string | null
+  name: string
+  status: 'registered' | 'unregistered'
+  source?: 'people_registry' | 'dados_cadastrais' | 'v2_pessoas'
+}
+
 export interface Track {
   id: string
   title: string
   mainArtists: string
+  mainArtistRefs: ArtistReference[]
   featArtists: string
   composers: string
   performers: string
@@ -52,11 +60,12 @@ export const GENRES = [
   'R&B / Soul', 'Axé', 'Bossa Nova', 'Experimental', 'Outro',
 ] as const
 
-export function emptyTrack(_order: number): Track {
+export function emptyTrack(order: number): Track {
   return {
-    id: Math.random().toString(36).slice(2, 9),
+    id: `${order}-${Math.random().toString(36).slice(2, 9)}`,
     title: '',
     mainArtists: '',
+    mainArtistRefs: [],
     featArtists: '',
     composers: '',
     performers: '',

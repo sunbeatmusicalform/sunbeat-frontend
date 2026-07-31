@@ -84,7 +84,11 @@ export function useIntakeForm() {
       const parsed = JSON.parse(raw)
       const restored = { ...emptyIntake(), ...parsed.data }
       restored.coverFileName = null
-      restored.tracks = restored.tracks.map((track: Track) => ({ ...track, audioFileName: null }))
+      restored.tracks = restored.tracks.map((track: Track) => ({
+        ...track,
+        mainArtistRefs: track.mainArtistRefs ?? [],
+        audioFileName: null,
+      }))
       setDataState(restored)
       setCoverFileState(null)
       setAudioFiles({})
@@ -153,6 +157,7 @@ export function fieldErrors(step: StepId, d: IntakeData): Record<string, string>
     else if (d.releaseDate < new Date().toISOString().slice(0, 10)) e.releaseDate = 'A data precisa ser futura.'
     if (!d.genre) e.genre = 'O gênero orienta distribuição e playlists.'
     if (d.videoLink && !/^https?:\/\/.+/.test(d.videoLink)) e.videoLink = 'Cole o link completo, começando com https://'
+    if (d.additionalFiles && !/^https?:\/\/.+/.test(d.additionalFiles)) e.additionalFiles = 'Cole um link completo para o kit visual.'
   }
   if (step === 'faixas') {
     d.tracks.forEach((t, i) => {
@@ -186,16 +191,28 @@ export function stepValid(step: StepId, d: IntakeData) {
 
 /* ---------------- file analysis ---------------- */
 
-export interface AudioReport { duration: string; sampleRate: number; bitDepth: number; channels: number; ok: boolean; notes: string[] }
-export interface CoverReport { width: number; height: number; square: boolean; ok: boolean; notes: string[] }
+export interface StandardCheck { label: string; status: 'ok' | 'warning' | 'no'; detail: string }
+export interface AudioReport { format: string; duration: string; sampleRate: number; bitDepth: number; channels: number; ok: boolean; notes: string[]; standards: StandardCheck[] }
+export interface CoverReport { format: string; sizeMb: number; width: number; height: number; square: boolean; ok: boolean; notes: string[]; standards: StandardCheck[] }
 
 export async function analyzeWav(file: File): Promise<AudioReport> {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (extension === 'flac') {
+    return {
+      format: 'FLAC', duration: '—', sampleRate: 0, bitDepth: 0, channels: 0, ok: true,
+      notes: ['FLAC é aceito no estéreo The Orchard. Sample rate, bit depth e canais serão confirmados no preflight técnico.'],
+      standards: [
+        { label: 'The Orchard · estéreo', status: 'warning', detail: 'Formato aceito; metadados técnicos pendentes.' },
+        { label: 'Dolby Atmos · Apple Lossless', status: 'no', detail: 'O padrão informado exige WAV 24-bit / 48 kHz.' },
+      ],
+    }
+  }
   const buf = await file.slice(0, 64 * 1024).arrayBuffer()
   const dv = new DataView(buf)
   const notes: string[] = []
   const riff = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) === 'RIFF'
   if (!riff) {
-    return { duration: '—', sampleRate: 0, bitDepth: 0, channels: 0, ok: false, notes: ['Este arquivo não é um WAV válido. Envie o master em WAV.'] }
+    return { format: extension.toUpperCase() || 'Arquivo', duration: '—', sampleRate: 0, bitDepth: 0, channels: 0, ok: false, notes: ['O arquivo não é WAV nem FLAC válido.'], standards: [] }
   }
   const channels = dv.getUint16(22, true)
   const sampleRate = dv.getUint32(24, true)
@@ -203,24 +220,77 @@ export async function analyzeWav(file: File): Promise<AudioReport> {
   const bitDepth = dv.getUint16(34, true)
   const seconds = byteRate ? file.size / byteRate : 0
   const mm = Math.floor(seconds / 60), ss = Math.round(seconds % 60)
-  if (sampleRate < 44100) notes.push('Sample rate abaixo de 44.1 kHz — as plataformas exigem 44.1 kHz ou mais.')
-  if (bitDepth < 16) notes.push('Profundidade de bits abaixo de 16 bits.')
-  if (sampleRate >= 44100 && bitDepth >= 16) notes.push('Formato compatível com distribuição (CD quality ou superior). ✓')
-  return { duration: `${mm}:${String(ss).padStart(2, '0')}`, sampleRate, bitDepth, channels, ok: sampleRate >= 44100 && bitDepth >= 16, notes }
+  const orchardRates = bitDepth === 16 ? [44100, 48000] : bitDepth === 24 ? [44100, 48000, 88200, 96000, 176400, 192000] : []
+  const orchardOk = channels === 2 && orchardRates.includes(sampleRate)
+  const dolbyOk = bitDepth === 24 && sampleRate === 48000
+  if (channels !== 2) notes.push('O master estéreo The Orchard precisa ter exatamente 2 canais.')
+  if (!orchardRates.includes(sampleRate)) notes.push(`${bitDepth}-bit / ${sampleRate} Hz não está na matriz estéreo informada pela Atabaque.`)
+  if (orchardOk) notes.push('Master compatível com a matriz estéreo The Orchard. ✓')
+  return {
+    format: 'WAV', duration: `${mm}:${String(ss).padStart(2, '0')}`, sampleRate, bitDepth, channels, ok: orchardOk, notes,
+    standards: [
+      { label: 'The Orchard · estéreo', status: orchardOk ? 'ok' : 'no', detail: orchardOk ? 'Canais, bit depth e sample rate compatíveis.' : 'Revise canais, bit depth ou sample rate.' },
+      { label: 'Dolby Atmos · Apple Lossless', status: dolbyOk ? 'ok' : 'no', detail: dolbyOk ? 'WAV 24-bit / 48 kHz.' : 'Exige WAV 24-bit / 48 kHz.' },
+    ],
+  }
 }
 
-export function analyzeCover(file: File): Promise<CoverReport> {
+function readTiffDimensions(buffer: ArrayBuffer): { width: number; height: number } | null {
+  const view = new DataView(buffer)
+  if (view.byteLength < 16) return null
+  const marker = String.fromCharCode(view.getUint8(0), view.getUint8(1))
+  const little = marker === 'II'
+  if (!little && marker !== 'MM') return null
+  const ifdOffset = view.getUint32(4, little)
+  if (ifdOffset + 2 > view.byteLength) return null
+  const count = view.getUint16(ifdOffset, little)
+  let width = 0, height = 0
+  for (let index = 0; index < count; index += 1) {
+    const offset = ifdOffset + 2 + index * 12
+    if (offset + 12 > view.byteLength) break
+    const tag = view.getUint16(offset, little)
+    const type = view.getUint16(offset + 2, little)
+    const value = type === 3 ? view.getUint16(offset + 8, little) : view.getUint32(offset + 8, little)
+    if (tag === 256) width = value
+    if (tag === 257) height = value
+  }
+  return width && height ? { width, height } : null
+}
+
+function buildCoverReport(file: File, width: number, height: number): CoverReport {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+  const format = extension === 'tif' || extension === 'tiff' ? 'TIFF' : extension.toUpperCase()
+  const sizeMb = file.size / (1024 * 1024)
+  const square = width === height && width > 0
+  const notes: string[] = []
+  if (!square) notes.push('A capa precisa ser quadrada.')
+  if (width < 1500) notes.push('Abaixo do mínimo de 1500 × 1500 px usado no padrão mais permissivo.')
+  if (square && width >= 3000) notes.push('Dimensão recomendada para a maioria dos destinos. ✓')
+  const jpg = ['jpg', 'jpeg'].includes(extension)
+  const png = extension === 'png'
+  const tiff = ['tif', 'tiff'].includes(extension)
+  const standards: StandardCheck[] = [
+    { label: 'Urban', status: tiff && width === 3000 && height === 3000 ? 'warning' : 'no', detail: tiff && width === 3000 ? 'Dimensão/formato corretos; confirmar LZW e resolução >150 dpi.' : 'Exige TIFF LZW, 3000 × 3000.' },
+    { label: 'Universal', status: tiff && square && width >= 1500 && width <= 3000 && sizeMb <= 100 ? 'warning' : 'no', detail: tiff && square && width >= 1500 && width <= 3000 ? 'Estrutura compatível; confirmar RGB 8-bit, 300–600 ppi, sem alpha/perfil e LZW.' : 'Exige TIFF, 1500–3000 px e até 100 MB.' },
+    { label: 'Som Livre', status: jpg && square && width >= 3000 && width <= 6000 ? 'ok' : 'no', detail: 'JPG quadrado entre 3000 e 6000 px.' },
+    { label: 'ONErpm', status: (jpg || png) && square && width >= 3000 && sizeMb <= 35 ? 'warning' : 'no', detail: (jpg || png) && square && width >= 3000 && sizeMb <= 35 ? 'Dimensão/tamanho corretos; confirmar RGB e 72 dpi.' : 'JPG/PNG, mínimo 3000 px e até 35 MB.' },
+    { label: 'Ingrooves', status: (jpg || png || tiff) && square && width >= 1500 ? 'warning' : 'no', detail: (jpg || png || tiff) && square && width >= 1500 ? 'Dimensão/formato compatíveis; confirmar RGB.' : 'JPG/PNG/TIFF, mínimo 1500 px.' },
+  ]
+  return { format, sizeMb, width, height, square, ok: square && width >= 1500 && standards.some((item) => item.status !== 'no'), notes, standards }
+}
+
+export async function analyzeCover(file: File): Promise<CoverReport> {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (extension === 'tif' || extension === 'tiff') {
+    const dimensions = readTiffDimensions(await file.slice(0, 256 * 1024).arrayBuffer())
+    if (!dimensions) return buildCoverReport(file, 0, 0)
+    return buildCoverReport(file, dimensions.width, dimensions.height)
+  }
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
-      const notes: string[] = []
-      const square = img.width === img.height
-      if (!square) notes.push('A capa precisa ser quadrada (ex.: 3000 × 3000 px).')
-      if (img.width < 1400) notes.push('Resolução abaixo do mínimo das plataformas (1400 px).')
-      if (square && img.width >= 3000) notes.push('Resolução ideal para todas as plataformas. ✓')
-      else if (square && img.width >= 1400) notes.push('Dentro do mínimo — recomendamos 3000 × 3000 px.')
       URL.revokeObjectURL(img.src)
-      resolve({ width: img.width, height: img.height, square, ok: square && img.width >= 1400, notes })
+      resolve(buildCoverReport(file, img.width, img.height))
     }
     img.onerror = () => reject(new Error('Não conseguimos ler esta imagem.'))
     img.src = URL.createObjectURL(file)

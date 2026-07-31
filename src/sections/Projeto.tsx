@@ -8,6 +8,7 @@ import { CheckCircle2, ImagePlus, Loader2 } from 'lucide-react'
 import { Field, StepHeader, inputCls } from './ui'
 import { analyzeCover, fieldErrors, type CoverReport, type useIntakeForm } from '@/hooks/useIntakeForm'
 import { GENRES } from '@/types/intake'
+import { AssetStandardsPanel } from './AssetStandardsPanel'
 
 type F = ReturnType<typeof useIntakeForm>
 
@@ -71,22 +72,28 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
         </div>
 
         <Field label="Capa do lançamento" error={undefined}
-          hint="Quadrada, mínimo 1400×1400 px (ideal 3000×3000). Analisamos o arquivo na hora.">
+          hint="Quadrada, mínimo 1500×1500 px (ideal 3000×3000). Analisamos o arquivo na hora.">
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-6 text-center transition-colors hover:border-accent hover:bg-accent/5">
-            <input type="file" accept="image/*" className="sr-only" onChange={(ev) => onCover(ev.target.files?.[0])} />
+            <input type="file" accept=".jpg,.jpeg,.png,.tif,.tiff,image/jpeg,image/png,image/tiff" className="sr-only" onChange={(ev) => onCover(ev.target.files?.[0])} />
             {checking ? <Loader2 className="h-6 w-6 animate-spin text-accent" /> : <ImagePlus className="h-6 w-6 text-accent" />}
             <span className="text-sm font-semibold">{form.data.coverFileName ?? 'Clique para enviar a capa'}</span>
-            <span className="text-xs text-muted-foreground">JPG ou PNG</span>
+            <span className="text-xs text-muted-foreground">JPG, PNG ou TIFF · até 100 MB</span>
           </label>
           {cover && (
             <div className={`mt-3 rounded-xl border-2 p-3 text-xs leading-relaxed ${cover.ok ? 'border-emerald-600/40 bg-emerald-500/10' : 'border-accent/50 bg-accent/10'}`}>
               <div className="flex items-center gap-1.5 font-bold">
                 <CheckCircle2 className={`h-4 w-4 ${cover.ok ? 'text-emerald-600' : 'text-accent'}`} />
-                Análise da capa — {cover.width} × {cover.height} px
+                Análise da capa — {cover.format} · {cover.width || 'dimensão não lida'}{cover.width ? ` × ${cover.height} px` : ''} · {cover.sizeMb.toFixed(1)} MB
               </div>
               <ul className="mt-1 list-inside list-disc text-muted-foreground">
                 {cover.notes.map((n) => <li key={n}>{n}</li>)}
               </ul>
+              <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                {cover.standards.map((standard) => <div key={standard.label} className="rounded-lg bg-white/55 px-2.5 py-2">
+                  <p className="font-bold">{standard.status === 'ok' ? '✓' : standard.status === 'warning' ? '◐' : '×'} {standard.label}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{standard.detail}</p>
+                </div>)}
+              </div>
             </div>
           )}
         </Field>
@@ -102,6 +109,14 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
               value={form.data.videoDate} onChange={(ev) => form.setData('videoDate', ev.target.value)} />
           </Field>
         </div>
+
+        <Field label="Link do kit visual (opcional)" error={e.additionalFiles}
+          hint="Pasta com thumbs, cabeçalhos, banners, fotos e demais peças de divulgação.">
+          <Input className={inputCls(!!e.additionalFiles)} placeholder="https://drive.google.com/..."
+            value={form.data.additionalFiles ?? ''} onChange={(ev) => form.setData('additionalFiles', ev.target.value)} />
+        </Field>
+
+        <AssetStandardsPanel />
 
         <Field label="Observações do projeto (opcional)"
           hint="Contexto, referências, restrições de datas, territórios — qualquer coisa que ajude a equipe.">

@@ -28,7 +28,7 @@ export function Welcome({
       <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
         {[
           { icon: Clock3, t: '10–15 minutos', d: 'E salva rascunho automaticamente — volte quando quiser.' },
-          { icon: FileAudio, t: 'Tenha em mãos', d: 'Áudios em WAV, capa quadrada (3000×3000) e créditos completos.' },
+          { icon: FileAudio, t: 'Tenha em mãos', d: 'Áudios em WAV ou FLAC, capa quadrada (ideal 3000×3000) e créditos completos.' },
           { icon: ImageIcon, t: 'Validação automática', d: 'Analisamos áudio e capa na hora e avisamos se algo precisa de ajuste.' },
           { icon: Mail, t: 'Acompanhamento', d: 'Você recebe e-mails a cada etapa: recebido, em análise, ajustes e aprovado.' },
         ].map(({ icon: Icon, t, d }) => (
