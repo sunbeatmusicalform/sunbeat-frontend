@@ -5,6 +5,9 @@ export interface ArtistReference {
   source?: 'people_registry' | 'dados_cadastrais' | 'v2_pessoas'
 }
 
+export type PromotionCommitment = '' | 'yes' | 'no' | 'maybe'
+export type DateFlexibility = '' | 'fixed' | 'some' | 'open'
+
 export interface Track {
   id: string
   title: string
@@ -34,11 +37,15 @@ export interface IntakeData {
   coverFileName: string | null
   additionalFiles: string | null
   tracks: Track[]
+  marketingNumbers: string
   focusDescription: string
   goals: string[]
+  hasMarketingBudget: boolean | null
+  marketingBudget: string
+  dateFlexibility: DateFlexibility
   hasSpecialGuests: boolean | null
   guestsBio: string
-  guestsPromote: boolean | null
+  guestsPromote: PromotionCommitment
   promoParticipants: string
   influencers: string
   notes: string
@@ -92,11 +99,15 @@ export function emptyIntake(): IntakeData {
     coverFileName: null,
     additionalFiles: null,
     tracks: [emptyTrack(1)],
+    marketingNumbers: '',
     focusDescription: '',
     goals: [],
+    hasMarketingBudget: null,
+    marketingBudget: '',
+    dateFlexibility: '',
     hasSpecialGuests: null,
     guestsBio: '',
-    guestsPromote: null,
+    guestsPromote: '',
     promoParticipants: '',
     influencers: '',
     notes: '',

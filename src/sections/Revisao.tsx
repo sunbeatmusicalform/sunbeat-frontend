@@ -78,9 +78,13 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
           ))}
         </div>
         <Separator className="my-4 bg-foreground/10" />
+        <Row label="Números e resultados" value={d.marketingNumbers} />
         <Row label="Foco" value={d.focusDescription} />
         <Row label="Metas" value={d.goals.join(' · ')} />
+        <Row label="Verba de promoção" value={d.hasMarketingBudget === null ? undefined : d.hasMarketingBudget ? d.marketingBudget || 'Sim, valor a confirmar' : 'Não'} />
+        <Row label="Flexibilidade da data" value={d.dateFlexibility === 'fixed' ? 'Data fixa' : d.dateFlexibility === 'some' ? 'Alguma flexibilidade' : d.dateFlexibility === 'open' ? 'Data aberta para planejamento' : undefined} />
         <Row label="Participações" value={d.hasSpecialGuests ? d.guestsBio : undefined} />
+        <Row label="Divulgação das participações" value={d.hasSpecialGuests ? d.guestsPromote === 'yes' ? 'Sim' : d.guestsPromote === 'no' ? 'Não' : d.guestsPromote === 'maybe' ? 'A confirmar' : undefined : undefined} />
         <Row label="Parceiros" value={d.influencers} />
         <Row label="Observações" value={d.notes} />
       </div>

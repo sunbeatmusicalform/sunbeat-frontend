@@ -94,15 +94,25 @@ export function buildIntakePayload(args: {
       audio_file: audioFiles[track.id] ?? null,
     })),
     marketing: {
+      marketing_numbers: data.marketingNumbers || null,
       marketing_focus: data.focusDescription || null,
       marketing_objectives: data.goals.join(', ') || null,
+      has_marketing_budget: data.hasMarketingBudget === null ? null : data.hasMarketingBudget ? 'yes' : 'no',
+      marketing_budget: data.hasMarketingBudget ? data.marketingBudget || null : null,
       focus_track_name: focusTrack?.title || null,
+      date_flexibility: data.dateFlexibility === 'fixed'
+        ? 'Data fixa'
+        : data.dateFlexibility === 'some'
+          ? 'Alguma flexibilidade'
+          : data.dateFlexibility === 'open'
+            ? 'Data aberta para planejamento'
+            : null,
       has_special_guests: data.hasSpecialGuests ? 'yes' : 'no',
-      special_guests_bio: data.guestsBio || null,
-      feat_will_promote: data.guestsPromote === null ? null : data.guestsPromote ? 'yes' : 'no',
-      promotion_participants: data.promoParticipants || null,
+      special_guests_bio: data.hasSpecialGuests ? data.guestsBio || null : null,
+      feat_will_promote: data.hasSpecialGuests && data.guestsPromote !== 'maybe' ? data.guestsPromote || null : null,
+      promotion_participants: data.hasSpecialGuests ? data.promoParticipants || null : null,
       influencers_brands_partners: data.influencers || null,
-      general_notes: data.notes || null,
+      general_notes: [data.notes, data.hasSpecialGuests && data.guestsPromote === 'maybe' ? 'Divulgação das participações: a confirmar.' : ''].filter(Boolean).join('\n') || null,
     },
     meta: {
       form_version: 'vite_v1',

@@ -83,6 +83,14 @@ export function useIntakeForm() {
     try {
       const parsed = JSON.parse(raw)
       const restored = { ...emptyIntake(), ...parsed.data }
+      const legacyGuestsPromote = restored.guestsPromote as unknown
+      restored.guestsPromote = legacyGuestsPromote === true
+        ? 'yes'
+        : legacyGuestsPromote === false
+          ? 'no'
+          : legacyGuestsPromote === 'yes' || legacyGuestsPromote === 'no' || legacyGuestsPromote === 'maybe'
+            ? legacyGuestsPromote
+            : ''
       restored.coverFileName = null
       restored.tracks = restored.tracks.map((track: Track) => ({
         ...track,
@@ -116,9 +124,14 @@ export function useIntakeForm() {
         ...emptyTrack(1),
         title: 'Ciranda Elétrica', mainArtists: 'Alaíde Tropical', composers: 'Alaíde Costa, Zé Raminho',
         performers: 'Alaíde Tropical', hasISRC: 'no', producer: 'Estúdio Pedra Selva', isFocus: true,
+        audioFileName: 'ciranda-eletrica-master.wav',
       }],
       focusDescription: 'Faixa de trabalho para rádios e playlists de MPB nova.',
       goals: ['Playlisting editorial', 'Imprensa / mídia especializada'],
+      marketingNumbers: 'Turnê regional concluída e crescimento orgânico nas plataformas.',
+      hasMarketingBudget: true,
+      marketingBudget: 'R$ 5.000',
+      dateFlexibility: 'some',
       consentTruth: true,
     }
     setDataState(sample)
