@@ -62,8 +62,29 @@ export function buildPersonPayload(values: FormValues, structural: InviteStructu
     address,
     banking,
     additional_info: additionalInfo,
-    meta: { form_version: 'people_invite_v1' },
+    meta: {
+      form_version: 'people_registry_v1',
+      source: `sunbeat:${structural.workspace_slug}:people_registry:v1`,
+      submitted_at: new Date().toISOString(),
+    },
   }
+}
+
+export async function submitPerson(values: FormValues, structural: InviteStructural) {
+  const response = await fetch('/people-registry/records', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildPersonPayload(values, structural)),
+  })
+  const payload = await response.json().catch(() => null) as {
+    error?: { message?: string }
+  } | null
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || (response.status === 409
+      ? 'Já existe um cadastro com este documento ou e-mail.'
+      : 'Não foi possível concluir o cadastro de pessoas.'))
+  }
+  return payload
 }
 
 export interface ParticipationPayload {
@@ -81,7 +102,10 @@ export function buildInviteEnvelope(
   participation: ParticipationPayload = {},
 ) {
   return {
-    person: buildPersonPayload(values, structural),
+    person: {
+      ...buildPersonPayload(values, structural),
+      meta: { form_version: 'people_invite_v1', source: 'clearance_invite', submitted_at: new Date().toISOString() },
+    },
     participation,
   }
 }

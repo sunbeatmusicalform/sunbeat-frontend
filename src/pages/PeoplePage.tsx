@@ -4,7 +4,7 @@ import { Link2 } from 'lucide-react'
 import { FormShell } from '@/engine/FormShell'
 import { peopleConfig } from '@/forms/people'
 import { findInvite, INVITE_STATUS_LABEL, markInviteResponded, type PeopleInvite } from '@/forms/invites'
-import { buildInviteEnvelope, type InviteStructural } from '@/forms/peopleAdapter'
+import { buildInviteEnvelope, submitPerson, type InviteStructural } from '@/forms/peopleAdapter'
 import { api } from '@/lib/api'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
 
@@ -85,7 +85,15 @@ export default function PeoplePage() {
     )
   }
 
-  if (!invite) return <FormShell config={peopleConfig} workspaceSlug={workspace} workflowType="people_registry" prefill={intakePrefill} />
+  if (!invite) return (
+    <FormShell
+      config={peopleConfig}
+      workspaceSlug={workspace}
+      workflowType="people_registry"
+      prefill={intakePrefill}
+      onSubmit={(values) => submitPerson(values, { workspace_slug: workspace, profile: 'atabaque_people_v1' }).then(() => undefined)}
+    />
+  )
 
   const banner = (
     <div className="mb-6 rounded-2xl border-2 border-[#329fd7]/40 bg-[#329fd7]/10 p-4">
@@ -111,9 +119,10 @@ export default function PeoplePage() {
       workflowType="people_registry"
       prefill={invite.prefill}
       banner={banner}
-      onSubmitted={(values) => {
+      onSubmit={async (values) => {
+        const result = await api.respondInvite(invite.token, buildInviteEnvelope(values, structural))
+        if (!result?.ok) throw new Error('Não foi possível concluir este convite. Confira o link e tente novamente.')
         markInviteResponded(invite.token)
-        void api.respondInvite(invite.token, buildInviteEnvelope(values, structural))
       }}
     />
   )

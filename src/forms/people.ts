@@ -97,7 +97,7 @@ export const peopleConfig: FormConfig = {
       title: 'Contato',
       description: 'Canais de comunicação — o e-mail também serve para a deduplicação.',
       customValidate: (v): Record<string, string> => {
-        const doc = String(v.document_id ?? v.document_id_pj ?? '').trim()
+        const doc = String(v.document_id || v.document_id_pj || '').trim()
         const email = String(v.email_primary ?? '').trim()
         if (doc || email) return {}
         return { document_or_email: 'Informe CPF/CNPJ ou e-mail — ao menos um é necessário para a deduplicação.' }
