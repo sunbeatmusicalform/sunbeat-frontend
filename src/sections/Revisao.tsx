@@ -80,6 +80,12 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
                 {form.isVisible('track.composers') ? ` · comp. ${t.composers || '—'}` : ''}
                 {form.isVisible('track.audio') ? ` · ${t.audioFileName ?? 'sem áudio'}` : ''}
               </div>
+              {form.isVisible('track.lyrics') && t.lyrics && (
+                <details className="mt-3 rounded-xl border border-foreground/10 bg-white/45 px-3 py-2 text-xs">
+                  <summary className="cursor-pointer font-bold">Ver letra da música</summary>
+                  <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{t.lyrics}</p>
+                </details>
+              )}
             </div>
           ))}
         </div>

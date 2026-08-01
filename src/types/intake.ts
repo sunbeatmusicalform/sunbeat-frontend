@@ -23,6 +23,7 @@ export interface Track {
   isFocus: boolean
   newArtistProfiles: string
   existingProfileLinks: string
+  lyrics: string
 }
 
 export interface IntakeData {
@@ -83,6 +84,7 @@ export function emptyTrack(order: number): Track {
     isFocus: false,
     newArtistProfiles: '',
     existingProfileLinks: '',
+    lyrics: '',
   }
 }
 

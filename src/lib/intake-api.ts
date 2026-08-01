@@ -105,6 +105,7 @@ function intakeDataFromStoredValues(value: unknown): IntakeData {
         isFocus: stored.is_focus_track === true,
         newArtistProfiles: textValue(stored.artist_profile_names_to_create),
         existingProfileLinks: textValue(stored.existing_profile_links),
+        lyrics: textValue(stored.lyrics),
         audioFileName: null,
       }
     }) : data.tracks,
@@ -205,6 +206,7 @@ export function buildIntakePayload(args: {
       existing_profile_links: track.existingProfileLinks || null,
       has_isrc: track.hasISRC || null,
       isrc_code: track.isrc || null,
+      lyrics: track.lyrics || null,
       audio_file: audioFiles[track.id] ?? null,
     })),
     marketing: {

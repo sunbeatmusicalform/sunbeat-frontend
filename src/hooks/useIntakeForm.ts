@@ -106,7 +106,8 @@ export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
             ? legacyGuestsPromote
             : ''
       restored.coverFileName = null
-      restored.tracks = restored.tracks.map((track: Track) => ({
+      restored.tracks = restored.tracks.map((track: Track, index: number) => ({
+        ...emptyTrack(index + 1),
         ...track,
         mainArtistRefs: track.mainArtistRefs ?? [],
         audioFileName: null,
@@ -242,6 +243,7 @@ export function fieldErrors(
       else if (visible('track.isrc') && t.isrc && !ISRC_RE.test(t.isrc.trim())) e[p + 'isrc'] = 'Confira o formato do ISRC.'
       if (required('track.producer') && !t.producer.trim()) e[p + 'producer'] = 'Informe o produtor fonográfico.'
       if (required('track.profiles') && !t.newArtistProfiles.trim() && !t.existingProfileLinks.trim()) e[p + 'profiles'] = 'Informe os perfis de artista.'
+      if (required('track.lyrics') && !t.lyrics.trim()) e[p + 'lyrics'] = 'Informe a letra da música ou altere a exigência no portal.'
       if (required('track.audio') && !t.audioFileName) e[p + 'audio'] = 'Anexe o áudio (WAV ou FLAC).'
     })
     if (required('focusTrack') && !d.tracks.some((t) => t.isFocus)) e.focusTrack = 'Marque qual faixa é o foco do lançamento.'

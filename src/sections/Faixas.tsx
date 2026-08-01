@@ -119,6 +119,14 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
             onChange={(ev) => form.setTrack(track.id, { newArtistProfiles: ev.target.value })} />
         </Field> : null}
 
+        {form.isVisible('track.lyrics') ? <Field label={form.textFor('track.lyrics', 'label', 'Letra da música')} required={form.isRequired('track.lyrics')} error={all[p + 'lyrics']}
+          hint={form.textFor('track.lyrics', 'hint', 'Cole a letra completa, preservando versos e refrões. Se a faixa for instrumental, deixe em branco.')}>
+          <Textarea className={inputCls(!!all[p + 'lyrics'])} rows={8}
+            placeholder={form.textFor('track.lyrics', 'placeholder', 'Cole aqui a letra completa da música…')}
+            value={track.lyrics}
+            onChange={(ev) => form.setTrack(track.id, { lyrics: ev.target.value })} />
+        </Field> : null}
+
         {form.isVisible('track.audio') ? <Field label={form.textFor('track.audio', 'label', 'Áudio da faixa')} required={form.isRequired('track.audio')} error={all[p + 'audio']}
           hint={form.textFor('track.audio', 'hint', 'Master em WAV ou FLAC. Analisamos o arquivo automaticamente.')}>
           <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-4 transition-colors hover:border-accent hover:bg-accent/5">
