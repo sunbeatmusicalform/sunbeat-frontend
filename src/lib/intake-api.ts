@@ -1,4 +1,4 @@
-import { emptyIntake, emptyTrack, type ArtistReference, type DateFlexibility, type IntakeData, type PromotionCommitment } from '@/types/intake'
+import { emptyIntake, emptyTrack, type ArtistReference, type DateFlexibility, type IntakeData, type PromotionCommitment, type TimedLyricLine } from '@/types/intake'
 
 export interface UploadedFileRef {
   file_name: string
@@ -63,6 +63,26 @@ function artistReferences(value: unknown): ArtistReference[] {
   })
 }
 
+function timedLyrics(value: unknown): TimedLyricLine[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const candidate = record(item)
+    const id = textValue(candidate.id)
+    const text = textValue(candidate.text)
+    if (!id || !text) return []
+    const status = candidate.status === 'timed' || candidate.status === 'section' ? candidate.status : 'unmatched'
+    return [{
+      id,
+      text,
+      start_ms: typeof candidate.start_ms === 'number' ? candidate.start_ms : null,
+      end_ms: typeof candidate.end_ms === 'number' ? candidate.end_ms : null,
+      confidence: typeof candidate.confidence === 'number' ? candidate.confidence : 0,
+      status,
+      needs_review: candidate.needs_review !== false,
+    }]
+  })
+}
+
 function intakeDataFromStoredValues(value: unknown): IntakeData {
   const values = record(value)
   const identification = record(values.identification)
@@ -106,6 +126,7 @@ function intakeDataFromStoredValues(value: unknown): IntakeData {
         newArtistProfiles: textValue(stored.artist_profile_names_to_create),
         existingProfileLinks: textValue(stored.existing_profile_links),
         lyrics: textValue(stored.lyrics),
+        timedLyrics: timedLyrics(stored.timed_lyrics),
         audioFileName: null,
       }
     }) : data.tracks,
@@ -207,6 +228,7 @@ export function buildIntakePayload(args: {
       has_isrc: track.hasISRC || null,
       isrc_code: track.isrc || null,
       lyrics: track.lyrics || null,
+      timed_lyrics: track.timedLyrics.length ? track.timedLyrics : null,
       audio_file: audioFiles[track.id] ?? null,
     })),
     marketing: {

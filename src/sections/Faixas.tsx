@@ -9,6 +9,7 @@ import { CheckCircle2, FileAudio, Loader2, Music2, Plus, Star, Trash2 } from 'lu
 import { Field, StepHeader, inputCls } from './ui'
 import { analyzeWav, type AudioReport, type useIntakeForm } from '@/hooks/useIntakeForm'
 import { ArtistLinkedField } from './ArtistLinkedField'
+import { LyricsSyncEditor } from './LyricsSyncEditor'
 
 type F = ReturnType<typeof useIntakeForm>
 
@@ -124,7 +125,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
           <Textarea className={inputCls(!!all[p + 'lyrics'])} rows={8}
             placeholder={form.textFor('track.lyrics', 'placeholder', 'Cole aqui a letra completa da música…')}
             value={track.lyrics}
-            onChange={(ev) => form.setTrack(track.id, { lyrics: ev.target.value })} />
+            onChange={(ev) => form.setTrack(track.id, { lyrics: ev.target.value, timedLyrics: [] })} />
         </Field> : null}
 
         {form.isVisible('track.audio') ? <Field label={form.textFor('track.audio', 'label', 'Áudio da faixa')} required={form.isRequired('track.audio')} error={all[p + 'audio']}
@@ -152,6 +153,16 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
             </div>
           )}
         </Field> : null}
+
+        {form.isVisible('track.lyrics') ? <LyricsSyncEditor
+          audioFile={form.audioFiles[track.id]}
+          lyrics={track.lyrics}
+          lines={track.timedLyrics}
+          title={track.title}
+          artist={track.mainArtists}
+          workspaceSlug={workspaceSlug}
+          onChange={(timedLyrics) => form.setTrack(track.id, { timedLyrics })}
+        /> : null}
       </div>
     </div>
   )

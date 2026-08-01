@@ -8,6 +8,16 @@ export interface ArtistReference {
 export type PromotionCommitment = '' | 'yes' | 'no' | 'maybe'
 export type DateFlexibility = '' | 'fixed' | 'some' | 'open'
 
+export interface TimedLyricLine {
+  id: string
+  text: string
+  start_ms: number | null
+  end_ms: number | null
+  confidence: number
+  status: 'timed' | 'section' | 'unmatched'
+  needs_review: boolean
+}
+
 export interface Track {
   id: string
   title: string
@@ -24,6 +34,7 @@ export interface Track {
   newArtistProfiles: string
   existingProfileLinks: string
   lyrics: string
+  timedLyrics: TimedLyricLine[]
 }
 
 export interface IntakeData {
@@ -85,6 +96,7 @@ export function emptyTrack(order: number): Track {
     newArtistProfiles: '',
     existingProfileLinks: '',
     lyrics: '',
+    timedLyrics: [],
   }
 }
 

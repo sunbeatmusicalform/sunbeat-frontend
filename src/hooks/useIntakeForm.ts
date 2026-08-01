@@ -66,7 +66,7 @@ export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
     setDataState((d) => ({
       ...d,
       tracks: d.tracks.map((track) => track.id === trackId
-        ? { ...track, audioFileName: file?.name ?? null }
+        ? { ...track, audioFileName: file?.name ?? null, timedLyrics: [] }
         : track),
     }))
   }, [])
