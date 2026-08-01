@@ -23,6 +23,10 @@ export interface FieldDef {
   label: string
   type: FieldType
   required?: boolean
+  /** exigência publicada pelo portal; quando ausente, usa `required` legado */
+  requirement?: 'optional' | 'on_submit' | 'on_step'
+  /** false quando o tenant ocultou o campo no portal */
+  enabled?: boolean
   hint?: string
   placeholder?: string
   options?: Option[]
@@ -65,6 +69,8 @@ export type FormValues = Record<string, unknown>
 
 export interface FormConfig {
   slug: string
+  /** workflow persistido em workspace_workflow_settings */
+  workflowType?: 'release_intake' | 'rights_clearance' | 'people_registry' | 'company_registry'
   clientName: string
   /** chip do topo da welcome, ex.: "Atabaque · Rights Clearance" */
   chip: string

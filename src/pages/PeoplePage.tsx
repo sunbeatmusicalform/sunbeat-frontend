@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams, Link } from 'react-router'
+import { useParams, useSearchParams, Link } from 'react-router'
 import { Link2 } from 'lucide-react'
 import { FormShell } from '@/engine/FormShell'
 import { peopleConfig } from '@/forms/people'
@@ -14,6 +14,7 @@ import { AtabaqueMark } from '@/components/AtabaqueMark'
    Com a API habilitada, o convite é resolvido no backend (GET /people-invites/{token})
    e o submit responde o convite remoto (POST .../respond) — o mock local é o fallback. */
 export default function PeoplePage() {
+  const { workspace = 'atabaque' } = useParams()
   const [params] = useSearchParams()
   const token = params.get('invite')
   const intakeName = params.get('name')?.trim() ?? ''
@@ -84,7 +85,7 @@ export default function PeoplePage() {
     )
   }
 
-  if (!invite) return <FormShell config={peopleConfig} prefill={intakePrefill} />
+  if (!invite) return <FormShell config={peopleConfig} workspaceSlug={workspace} workflowType="people_registry" prefill={intakePrefill} />
 
   const banner = (
     <div className="mb-6 rounded-2xl border-2 border-[#329fd7]/40 bg-[#329fd7]/10 p-4">
@@ -106,6 +107,8 @@ export default function PeoplePage() {
   return (
     <FormShell
       config={peopleConfig}
+      workspaceSlug={structural.workspace_slug || workspace}
+      workflowType="people_registry"
       prefill={invite.prefill}
       banner={banner}
       onSubmitted={(values) => {

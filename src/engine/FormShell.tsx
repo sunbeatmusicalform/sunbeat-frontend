@@ -17,10 +17,13 @@ import { useFormEngine, isVisible, type Engine } from './useFormEngine'
 import { FieldRenderer, reviewValue } from './FieldRenderer'
 import { CONFIDENTIALITY_NOTICE, consentLabel } from './consent'
 import type { FieldDef, FormConfig, FormValues } from './types'
+import { applyPublishedFormConfig, usePublicFormConfig } from '@/lib/form-config'
 
-export function FormShell({ config, prefill, banner, onSubmitted }: { config: FormConfig; prefill?: Partial<FormValues>; banner?: ReactNode; onSubmitted?: (values: FormValues) => void }) {
+export function FormShell({ config: baseConfig, workspaceSlug, workflowType, prefill, banner, onSubmitted }: { config: FormConfig; workspaceSlug: string; workflowType: string; prefill?: Partial<FormValues>; banner?: ReactNode; onSubmitted?: (values: FormValues) => void }) {
+  const { config: publishedConfig } = usePublicFormConfig(workspaceSlug, workflowType)
+  const config = useMemo(() => applyPublishedFormConfig(baseConfig, publishedConfig), [baseConfig, publishedConfig])
   const engine = useFormEngine(config, prefill)
-  const { branding } = useBranding(config.slug)
+  const { branding } = useBranding(workspaceSlug)
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)
   const [whiteLabel, setWhiteLabel] = useState(false)
@@ -65,7 +68,7 @@ export function FormShell({ config, prefill, banner, onSubmitted }: { config: Fo
   }
 
   function submit() {
-    const invalid = progressItems.find((p) => Object.keys(engine.errorsFor(p.id)).length > 0)
+    const invalid = progressItems.find((p) => Object.keys(engine.errorsFor(p.id, 'submit')).length > 0)
     if (invalid) {
       if (invalid.id !== 'revisao') goTo(invalid.id)
       setShowErrors(true)
@@ -150,7 +153,7 @@ export function FormShell({ config, prefill, banner, onSubmitted }: { config: Fo
             {banner}
             <StepHeader title={activeStep.title} description={activeStep.description} />
             <div className="grid gap-6">
-              {activeStep.fields.filter((f) => isVisible(f.visibleWhen, engine.values)).map((f) => (
+              {activeStep.fields.filter((f) => f.enabled !== false && isVisible(f.visibleWhen, engine.values)).map((f) => (
                 <FieldRenderer key={f.key} f={f} engine={engine}
                   errors={engine.errorsFor(step)} showErrors={showErrors} />
               ))}
@@ -261,7 +264,7 @@ function EngineWelcome({ config, engine, onStart }: { config: FormConfig; engine
         <div className="flex gap-4 text-sm">
           {engine.hasDraft() && (
             <button className="font-semibold underline underline-offset-4 text-foreground/80 hover:text-foreground"
-              onClick={() => { engine.resumeDraft() && window.scrollTo({ top: 0 }) }}>
+              onClick={() => { if (engine.resumeDraft()) window.scrollTo({ top: 0 }) }}>
               Continuar meu rascunho
             </button>
           )}

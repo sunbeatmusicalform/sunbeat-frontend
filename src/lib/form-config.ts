@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type FieldRequirement, type FormConfigRemote, type FormFieldConfigRemote } from './api'
+import type { FieldDef, FormConfig } from '@/engine/types'
 
 export type ValidationPhase = 'step' | 'submit'
 
@@ -63,19 +64,48 @@ export function fieldText(
   return fieldConfig(config, key)[property] || fallback
 }
 
-export function usePublicFormConfig(workspace: string) {
+export function usePublicFormConfig(workspace: string, workflowType = 'release_intake') {
   const [config, setConfig] = useState<FormConfigRemote | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     let active = true
-    void api.getFormConfig(workspace).then((result) => {
+    void api.getFormConfig(workspace, workflowType).then((result) => {
       if (!active) return
       setConfig(result)
       setLoaded(true)
     })
     return () => { active = false }
-  }, [workspace])
+  }, [workspace, workflowType])
 
   return { config, loaded }
+}
+
+function configuredField(field: FieldDef, remote: FormConfigRemote | null, parentKey?: string): FieldDef {
+  const remoteKey = parentKey ? `${parentKey}.${field.key}` : field.key
+  const published = remote?.fields[remoteKey] ?? remote?.fields[field.key]
+  const nested = field.fields?.map((child) => configuredField(child, remote, field.key))
+  if (!published) return nested ? { ...field, fields: nested } : field
+  return {
+    ...field,
+    fields: nested,
+    enabled: published.visible,
+    requirement: published.requirement,
+    required: published.requirement !== 'optional',
+    label: published.label || field.label,
+    hint: published.hint || field.hint,
+    placeholder: published.placeholder || field.placeholder,
+  }
+}
+
+/** Aplica a configuração pública sem alterar opções, condicionais ou validadores do formulário. */
+export function applyPublishedFormConfig(config: FormConfig, remote: FormConfigRemote | null): FormConfig {
+  if (!remote) return config
+  return {
+    ...config,
+    steps: config.steps.map((step) => ({
+      ...step,
+      fields: step.fields.map((field) => configuredField(field, remote)),
+    })),
+  }
 }

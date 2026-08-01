@@ -16,12 +16,12 @@ export default function App() {
       <Route path="/intake" element={<Navigate to="/intake/atabaque" replace />} />
       <Route path="/intake/:workspace" element={<Home />} />
       <Route path="/forms" element={<FormsIndex />} />
-      <Route path="/clearance" element={<EngineFormPage config={clearanceConfig} />} />
-      <Route path="/clearance/:workspace" element={<EngineFormPage config={clearanceConfig} />} />
+      <Route path="/clearance" element={<EngineFormPage config={clearanceConfig} workflowType="rights_clearance" />} />
+      <Route path="/clearance/:workspace" element={<EngineFormPage config={clearanceConfig} workflowType="rights_clearance" />} />
       <Route path="/people" element={<PeoplePage />} />
       <Route path="/people/:workspace" element={<PeoplePage />} />
-      <Route path="/company" element={<EngineFormPage config={companyConfig} />} />
-      <Route path="/company/:workspace" element={<EngineFormPage config={companyConfig} />} />
+      <Route path="/company" element={<EngineFormPage config={companyConfig} workflowType="company_registry" />} />
+      <Route path="/company/:workspace" element={<EngineFormPage config={companyConfig} workflowType="company_registry" />} />
       <Route path="/portal" element={<PortalIndex />} />
       <Route path="/portal/:workspace" element={<Portal />} />
       <Route path="*" element={<Navigate to="/" replace />} />

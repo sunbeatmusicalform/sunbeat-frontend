@@ -8,7 +8,12 @@ const REQUIREMENTS: { value: FieldRequirement; label: string; description: strin
   { value: 'on_step', label: 'Na etapa', description: 'Precisa preencher para avançar.' },
 ]
 
-const STEP_ORDER = ['identificacao', 'projeto', 'faixas', 'marketing', 'revisao']
+const WORKFLOWS = [
+  { value: 'release_intake', label: 'Intake de lançamento' },
+  { value: 'rights_clearance', label: 'Clearance de direitos' },
+  { value: 'people_registry', label: 'Cadastro de pessoas' },
+  { value: 'company_registry', label: 'Cadastro de empresa' },
+] as const
 
 function requirementLabel(value: FieldRequirement) {
   return REQUIREMENTS.find((item) => item.value === value)?.label ?? value
@@ -64,6 +69,7 @@ function FieldEditor({ field, onChange }: { field: FormFieldConfigRemote; onChan
 }
 
 export function FormConfig({ workspace }: { workspace: string }) {
+  const [workflowType, setWorkflowType] = useState<(typeof WORKFLOWS)[number]['value']>('release_intake')
   const [config, setConfig] = useState<FormConfigRemote | null>(null)
   const [published, setPublished] = useState<FormConfigRemote | null>(null)
   const [selectedStep, setSelectedStep] = useState('identificacao')
@@ -72,14 +78,16 @@ export function FormConfig({ workspace }: { workspace: string }) {
 
   useEffect(() => {
     let active = true
-    void api.getFormConfig(workspace).then((result) => {
+    void api.getFormConfig(workspace, workflowType).then((result) => {
       if (!active) return
       setConfig(result)
       setPublished(result)
+      const firstStep = result ? Object.keys(result.steps)[0] : undefined
+      if (firstStep) setSelectedStep(firstStep)
       if (!result) setMessage({ ok: false, text: 'Não foi possível carregar a configuração do formulário.' })
     })
     return () => { active = false }
-  }, [workspace])
+  }, [workspace, workflowType])
 
   const fields = useMemo(
     () => config ? Object.values(config.fields).filter((field) => field.step === selectedStep) : [],
@@ -108,7 +116,7 @@ export function FormConfig({ workspace }: { workspace: string }) {
         hint: field.hint,
         placeholder: field.placeholder,
       }])),
-    })
+    }, workflowType)
     setSaving(false)
     if (!result) {
       setMessage({ ok: false, text: 'Não foi possível publicar. Confira a sessão do portal e tente novamente.' })
@@ -128,10 +136,20 @@ export function FormConfig({ workspace }: { workspace: string }) {
           <div className="flex items-start gap-3">
             <FileSliders className="mt-0.5 text-[#329fd7]" size={20} />
             <div>
-              <h2 className="text-[15px] font-bold text-[#512314]">Campos do intake de lançamento</h2>
+              <h2 className="text-[15px] font-bold text-[#512314]">Campos dos formulários</h2>
               <p className="mt-0.5 max-w-2xl text-[12px] text-[#512314]/60">Escolha quando cada informação será exigida, oculte o que não faz parte da operação e ajuste os textos exibidos. Alterações só entram no ar ao publicar.</p>
             </div>
           </div>
+          <label className="min-w-56 text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">
+            Formulário
+            <select value={workflowType} onChange={(event) => {
+              setConfig(null); setPublished(null); setMessage(null)
+              setWorkflowType(event.target.value as typeof workflowType)
+            }}
+              className="mt-1 block w-full rounded-xl border border-[#512314]/20 bg-white/60 px-3 py-2 text-[12px] font-semibold normal-case text-[#512314]">
+              {WORKFLOWS.map((workflow) => <option key={workflow.value} value={workflow.value}>{workflow.label}</option>)}
+            </select>
+          </label>
           <div className="flex items-center gap-2">
             <button type="button" disabled={!changed || saving} onClick={() => { setConfig(published); setMessage(null) }}
               className="inline-flex items-center gap-1.5 rounded-full border border-[#512314]/20 px-3 py-2 text-[11px] font-bold text-[#512314] disabled:opacity-40">
@@ -145,7 +163,7 @@ export function FormConfig({ workspace }: { workspace: string }) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2 border-b border-[#512314]/12 pb-3">
-          {STEP_ORDER.map((step) => {
+          {Object.keys(config.steps).map((step) => {
             const stepFields = Object.values(config.fields).filter((field) => field.step === step)
             const visibleCount = stepFields.filter((field) => field.visible).length
             return (

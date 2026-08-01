@@ -14,6 +14,13 @@ const EVENTS: { key: EmailEventName; label: string; description: string }[] = [
   { key: 'on_edit', label: 'Submissão atualizada', description: 'Quando uma submissão existente é editada.' },
 ]
 
+const WORKFLOWS = [
+  { value: 'release_intake', label: 'Intake de lançamento' },
+  { value: 'rights_clearance', label: 'Clearance de direitos' },
+  { value: 'people_registry', label: 'Cadastro de pessoas' },
+  { value: 'company_registry', label: 'Cadastro de empresa' },
+] as const
+
 const SAMPLE: Record<string, string> = {
   submitter_name: 'Ana Souza',
   submitter_email: 'ana@exemplo.com',
@@ -40,6 +47,7 @@ function renderPreview(template: string): string {
 }
 
 export function EmailConfig({ workspace }: { workspace: string }) {
+  const [workflowType, setWorkflowType] = useState<(typeof WORKFLOWS)[number]['value']>('release_intake')
   const [config, setConfig] = useState<EmailConfigRemote | null>(null)
   const [selected, setSelected] = useState<EmailEventName>('on_first_stage')
   const [saving, setSaving] = useState(false)
@@ -47,13 +55,13 @@ export function EmailConfig({ workspace }: { workspace: string }) {
 
   useEffect(() => {
     let cancelled = false
-    void api.getEmailConfig(workspace).then((result) => {
+    void api.getEmailConfig(workspace, workflowType).then((result) => {
       if (cancelled) return
       setConfig(result)
       if (!result) setMessage({ ok: false, text: 'Não foi possível carregar a configuração. Entre novamente no portal.' })
     })
     return () => { cancelled = true }
-  }, [workspace])
+  }, [workspace, workflowType])
 
   const selectedMeta = EVENTS.find((event) => event.key === selected) ?? EVENTS[0]
   const preview = useMemo(() => {
@@ -103,7 +111,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
       }])),
       cc_addresses: config.cc_addresses,
       bcc_addresses: config.bcc_addresses,
-    })
+    }, workflowType)
     setSaving(false)
     if (!result) {
       setMessage({ ok: false, text: 'Não foi possível salvar. Confira os e-mails, placeholders e sua sessão.' })
@@ -122,7 +130,8 @@ export function EmailConfig({ workspace }: { workspace: string }) {
   return (
     <div className="mt-6 space-y-5">
       <div className="sun-card p-5">
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
           <Mail className="mt-0.5 text-[#329fd7]" size={20} />
           <div>
             <h2 className="text-[15px] font-bold text-[#512314]">E-mails do intake</h2>
@@ -130,6 +139,17 @@ export function EmailConfig({ workspace }: { workspace: string }) {
               Defina quem recebe cada evento e personalize assunto e corpo. Campos vazios mantêm o template padrão da Sunbeat.
             </p>
           </div>
+          </div>
+          <label className="min-w-56 text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">
+            Formulário
+            <select value={workflowType} onChange={(event) => {
+              setConfig(null); setMessage(null)
+              setWorkflowType(event.target.value as typeof workflowType)
+            }}
+              className="mt-1 block w-full rounded-xl border border-[#512314]/20 bg-white/60 px-3 py-2 text-[12px] font-semibold normal-case text-[#512314]">
+              {WORKFLOWS.map((workflow) => <option key={workflow.value} value={workflow.value}>{workflow.label}</option>)}
+            </select>
+          </label>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">

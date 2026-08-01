@@ -153,7 +153,7 @@ export function FieldRenderer({
                   </Button>
                 </div>
                 <div className="grid gap-5">
-                  {(f.fields ?? []).filter((sub) => isVisible(sub.visibleWhen, item)).map((sub) => (
+                  {(f.fields ?? []).filter((sub) => sub.enabled !== false && isVisible(sub.visibleWhen, item)).map((sub) => (
                     <RepeaterField key={sub.key} sub={sub} index={i} parentKey={f.key}
                       engine={engine} errors={errors} showErrors={showErrors} />
                   ))}
@@ -259,6 +259,7 @@ function RepeaterField({
 }
 
 /** valor formatado para a tela de revisão */
+// eslint-disable-next-line react-refresh/only-export-components
 export function reviewValue(f: FieldDef, value: unknown, allValues?: FormValues): string | null {
   if (!isVisible(f.visibleWhen, allValues ?? {})) return null
   if (value === '' || value === null || value === undefined) return null

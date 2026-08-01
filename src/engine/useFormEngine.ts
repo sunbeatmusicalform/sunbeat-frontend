@@ -36,11 +36,19 @@ function emptyValues(config: FormConfig): FormValues {
   return v
 }
 
-function validateField(f: FieldDef, value: unknown): string | null {
+export type ValidationPhase = 'step' | 'submit'
+
+function requiredAt(f: FieldDef, phase: ValidationPhase): boolean {
+  if (f.enabled === false) return false
+  if (!f.requirement) return !!f.required
+  return f.requirement === 'on_step' || (phase === 'submit' && f.requirement === 'on_submit')
+}
+
+function validateField(f: FieldDef, value: unknown, phase: ValidationPhase): string | null {
   const empty =
     value === '' || value === null || value === undefined ||
     (Array.isArray(value) && value.length === 0)
-  if (f.required && empty) {
+  if (requiredAt(f, phase) && empty) {
     if (f.type === 'chips') return 'Escolha pelo menos uma opção.'
     if (f.type === 'file') return 'Anexe o arquivo.'
     if (f.type === 'yesno' || f.type === 'radio' || f.type === 'select') return 'Selecione uma opção.'
@@ -51,25 +59,25 @@ function validateField(f: FieldDef, value: unknown): string | null {
   return null
 }
 
-export function fieldErrors(step: StepDef, values: FormValues): Record<string, string> {
+export function fieldErrors(step: StepDef, values: FormValues, phase: ValidationPhase = 'step'): Record<string, string> {
   const e: Record<string, string> = {}
   for (const f of step.fields) {
-    if (!isVisible(f.visibleWhen, values)) continue
+    if (f.enabled === false || !isVisible(f.visibleWhen, values)) continue
     if (f.type === 'repeater') {
       const items = (values[f.key] as FormValues[]) ?? []
-      if (f.required && items.length < (f.minItems ?? 1)) {
+      if (requiredAt(f, phase) && items.length < (f.minItems ?? 1)) {
         e[f.key] = `Adicione ao menos ${(f.minItems ?? 1)} ${f.itemLabel ?? 'item'}.`
       }
       items.forEach((item, i) => {
         for (const sub of f.fields ?? []) {
-          if (!isVisible(sub.visibleWhen, item)) continue
-          const msg = validateField(sub, item[sub.key])
+          if (sub.enabled === false || !isVisible(sub.visibleWhen, item)) continue
+          const msg = validateField(sub, item[sub.key], phase)
           if (msg) e[`${f.key}.${i}.${sub.key}`] = `${f.itemLabel ?? 'Item'} ${i + 1}: ${msg}`
         }
       })
       continue
     }
-    const msg = validateField(f, values[f.key])
+    const msg = validateField(f, values[f.key], phase)
     if (msg) e[f.key] = msg
   }
   if (step.customValidate) {
@@ -130,12 +138,12 @@ export function useFormEngine(config: FormConfig, prefill?: Partial<FormValues>)
   }, [DRAFT_KEY])
 
   /** erros de um passo pelo id; 'revisao' valida o consentimento */
-  const errorsFor = useCallback((stepId: EngineStep): Record<string, string> => {
+  const errorsFor = useCallback((stepId: EngineStep, phase: ValidationPhase = 'step'): Record<string, string> => {
     if (stepId === 'revisao') {
       return values.consentTruth ? {} : { consentTruth: CONSENT_ERROR }
     }
     const def = activeSteps(config, values).find((s) => s.id === stepId)
-    return def ? fieldErrors(def, values) : {}
+    return def ? fieldErrors(def, values, phase) : {}
   }, [config, values])
 
   return {
