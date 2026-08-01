@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import {
   ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert,
-  Clock3, CloudUpload, Lock, Mail, PencilLine, Send, Sparkles, Workflow,
+  Clock3, CloudUpload, Loader2, Lock, Mail, PencilLine, Send, Sparkles, Workflow,
 } from 'lucide-react'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
 import { useBranding, BrandLogo } from '@/lib/brand'
@@ -19,7 +19,7 @@ import { CONFIDENTIALITY_NOTICE, consentLabel } from './consent'
 import type { FieldDef, FormConfig, FormValues } from './types'
 import { applyPublishedFormConfig, usePublicFormConfig } from '@/lib/form-config'
 
-export function FormShell({ config: baseConfig, workspaceSlug, workflowType, prefill, banner, onSubmitted }: { config: FormConfig; workspaceSlug: string; workflowType: string; prefill?: Partial<FormValues>; banner?: ReactNode; onSubmitted?: (values: FormValues) => void }) {
+export function FormShell({ config: baseConfig, workspaceSlug, workflowType, prefill, banner, onSubmit, onSubmitted }: { config: FormConfig; workspaceSlug: string; workflowType: string; prefill?: Partial<FormValues>; banner?: ReactNode; onSubmit?: (values: FormValues) => Promise<void>; onSubmitted?: (values: FormValues) => void }) {
   const { config: publishedConfig } = usePublicFormConfig(workspaceSlug, workflowType)
   const config = useMemo(() => applyPublishedFormConfig(baseConfig, publishedConfig), [baseConfig, publishedConfig])
   const engine = useFormEngine(config, prefill)
@@ -27,6 +27,8 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)
   const [whiteLabel, setWhiteLabel] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const { step, steps } = engine
 
   // painel de automações é restrito ao cliente-adm (?adm=1 na URL ou localStorage)
@@ -67,7 +69,7 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
     goTo(stepIndex === 0 ? 'welcome' : steps[stepIndex - 1].id)
   }
 
-  function submit() {
+  async function submit() {
     const invalid = progressItems.find((p) => Object.keys(engine.errorsFor(p.id, 'submit')).length > 0)
     if (invalid) {
       if (invalid.id !== 'revisao') goTo(invalid.id)
@@ -75,9 +77,19 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
       if (invalid.id === 'revisao') window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
-    engine.submit()
-    onSubmitted?.(engine.values)
-    window.scrollTo({ top: 0 })
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await onSubmit?.(engine.values)
+      engine.submit()
+      onSubmitted?.(engine.values)
+      window.scrollTo({ top: 0 })
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Não foi possível enviar o formulário.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const activeStep = steps[stepIndex]
@@ -144,6 +156,11 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
 
       {/* body */}
       <main className="mx-auto max-w-4xl px-4 py-10 pb-40">
+        {submitError && step !== 'sucesso' && (
+          <div className="mx-auto mb-6 max-w-2xl rounded-2xl border-2 border-accent/50 bg-accent/10 p-4 text-sm font-semibold text-accent">
+            {submitError}
+          </div>
+        )}
         {step === 'welcome' && (
           <EngineWelcome config={config} engine={engine} onStart={() => goTo(steps[0].id)} />
         )}
@@ -199,8 +216,9 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
                 Próximo <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-6 shadow-[3px_3px_0_0_rgba(81,35,20,0.3)]" onClick={submit}>
-                {engine.mode === 'edit' ? 'Salvar alterações' : 'Enviar formulário'} <Send className="ml-1.5 h-4 w-4" />
+              <Button disabled={submitting} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-6 shadow-[3px_3px_0_0_rgba(81,35,20,0.3)]" onClick={() => void submit()}>
+                {submitting ? 'Enviando…' : engine.mode === 'edit' ? 'Salvar alterações' : 'Enviar formulário'}
+                {submitting ? <Loader2 className="ml-1.5 h-4 w-4 animate-spin" /> : <Send className="ml-1.5 h-4 w-4" />}
               </Button>
             )}
           </div>
@@ -268,10 +286,12 @@ function EngineWelcome({ config, engine, onStart }: { config: FormConfig; engine
               Continuar meu rascunho
             </button>
           )}
-          <button className="font-semibold underline underline-offset-4 text-muted-foreground hover:text-foreground"
-            onClick={() => { engine.loadForEdit(); window.scrollTo({ top: 0 }) }}>
-            Editar uma submissão enviada
-          </button>
+          {new URLSearchParams(window.location.search).has('demo') && (
+            <button className="font-semibold underline underline-offset-4 text-muted-foreground hover:text-foreground"
+              onClick={() => { engine.loadForEdit(); window.scrollTo({ top: 0 }) }}>
+              Editar dados de demonstração
+            </button>
+          )}
         </div>
         <p className="max-w-md text-[11px] leading-relaxed text-muted-foreground">
           Seus dados são usados apenas para operar este fluxo, conforme a política de

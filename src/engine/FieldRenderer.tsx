@@ -10,6 +10,11 @@ function optLabel(f: FieldDef, value: unknown) {
   return f.options?.find((o) => o.value === value)?.label ?? String(value ?? '')
 }
 
+function fileLabel(value: unknown): string | null {
+  if (value instanceof File) return value.name
+  return typeof value === 'string' && value ? value : null
+}
+
 function ChoiceButtons({
   f, value, onChange, invalid, multi,
 }: {
@@ -131,9 +136,9 @@ export function FieldRenderer({
           <label className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-5 text-sm font-semibold transition-colors
             ${error ? 'border-accent bg-accent/5' : 'border-foreground/25 bg-white/50 hover:border-foreground/50'}`}>
             <UploadCloud className="h-5 w-5 text-accent" />
-            <span>{value ? String(value) : (f.placeholder ?? 'Toque para anexar')}</span>
+            <span>{fileLabel(value) ?? (f.placeholder ?? 'Toque para anexar')}</span>
             <input type="file" accept={f.accept} className="hidden"
-              onChange={(e) => engine.setValue(f.key, e.target.files?.[0]?.name ?? null)} />
+              onChange={(e) => engine.setValue(f.key, e.target.files?.[0] ?? null)} />
           </label>
         </Field>
       )
@@ -247,9 +252,9 @@ function RepeaterField({
           <label className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-5 text-sm font-semibold transition-colors
             ${error ? 'border-accent bg-accent/5' : 'border-foreground/25 bg-white/50 hover:border-foreground/50'}`}>
             <UploadCloud className="h-5 w-5 text-accent" />
-            <span>{value ? String(value) : (sub.placeholder ?? 'Toque para anexar')}</span>
+            <span>{fileLabel(value) ?? (sub.placeholder ?? 'Toque para anexar')}</span>
             <input type="file" accept={sub.accept} className="hidden"
-              onChange={(e) => setSub(e.target.files?.[0]?.name ?? null)} />
+              onChange={(e) => setSub(e.target.files?.[0] ?? null)} />
           </label>
         </Field>
       )
@@ -268,6 +273,7 @@ export function reviewValue(f: FieldDef, value: unknown, allValues?: FormValues)
     return value.map((v) => f.options?.find((o) => o.value === v)?.label ?? String(v)).join(' · ')
   }
   if (f.type === 'yesno') return value === 'yes' ? 'Sim' : 'Não'
+  if (f.type === 'file') return fileLabel(value)
   if (f.type === 'select' || f.type === 'radio') return optLabel(f, value)
   return String(value)
 }
