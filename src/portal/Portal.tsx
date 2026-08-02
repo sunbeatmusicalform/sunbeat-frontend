@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { Lock } from 'lucide-react'
 import { AtabaqueMark } from '../components/AtabaqueMark'
+import { HelpChat } from '../components/HelpChat'
 import { EmailConfig } from './EmailConfig'
 import { FormConfig } from './FormConfig'
 import { VERDICT_STYLE, type LookupResult, type PersonBaseHit } from '../forms/invites'
@@ -542,6 +543,7 @@ export default function Portal() {
       )}
 
       {tab === 'airtable' && <LiveAirtable {...liveProps} />}
+      <HelpChat clientName={branding?.workspace_name ?? displayName} />
     </div>
   )
 }

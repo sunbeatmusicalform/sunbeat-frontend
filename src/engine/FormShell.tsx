@@ -246,8 +246,7 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
 
       <AutomationDialog open={autoOpen} onOpenChange={setAutoOpen} whiteLabel={whiteLabel} onWhiteLabelChange={setWhiteLabel} />
 
-      {/* chat de dúvidas — só depois da identificação inicial */}
-      {(stepIndex > 0 || step === 'revisao') && <HelpChat clientName={config.clientName} />}
+      <HelpChat clientName={config.clientName} />
     </div>
   )
 }

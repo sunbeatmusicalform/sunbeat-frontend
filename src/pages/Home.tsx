@@ -373,8 +373,7 @@ export default function Home() {
 
       <AutomationDialog open={autoOpen} onOpenChange={setAutoOpen} whiteLabel={whiteLabel} onWhiteLabelChange={setWhiteLabel} />
 
-      {/* chat de dúvidas — só depois da identificação inicial */}
-      {stepIndex > 0 && <HelpChat clientName={branding?.workspace_name ?? 'Atabaque'} />}
+      <HelpChat clientName={branding?.workspace_name ?? 'Atabaque'} />
     </div>
   )
 }
