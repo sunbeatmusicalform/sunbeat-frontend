@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CheckCircle2, Eye, EyeOff, FileSliders, Lock, RotateCcw } from 'lucide-react'
 import { api, type FieldRequirement, type FormConfigRemote, type FormFieldConfigRemote } from '../lib/api'
+import { HelpConfig } from './HelpConfig'
 
 const REQUIREMENTS: { value: FieldRequirement; label: string; description: string }[] = [
   { value: 'optional', label: 'Opcional', description: 'Nunca bloqueia o preenchimento.' },
@@ -136,6 +137,7 @@ export function FormConfig({ workspace }: { workspace: string }) {
 
   return (
     <div className="mt-6 space-y-5">
+      <HelpConfig workspace={workspace} />
       <section className="sun-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">

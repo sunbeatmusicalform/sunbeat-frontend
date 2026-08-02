@@ -373,7 +373,7 @@ export default function Home() {
 
       <AutomationDialog open={autoOpen} onOpenChange={setAutoOpen} whiteLabel={whiteLabel} onWhiteLabelChange={setWhiteLabel} />
 
-      <HelpChat clientName={branding?.workspace_name ?? 'Atabaque'} />
+      <HelpChat clientName={branding?.workspace_name ?? 'Atabaque'} workspaceSlug={workspaceSlug} />
     </div>
   )
 }

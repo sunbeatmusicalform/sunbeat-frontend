@@ -215,6 +215,25 @@ export interface FormConfigPatchRemote {
   fields: Record<string, Partial<Pick<FormFieldConfigRemote, 'visible' | 'requirement' | 'label' | 'hint' | 'placeholder'>>>
 }
 
+export interface HelpTopicRemote {
+  question: string
+  answer: string
+  keywords: string[]
+}
+
+export interface HelpConfigRemote {
+  ok?: boolean
+  workspace_slug?: string
+  row_exists?: boolean
+  enabled: boolean
+  button_label: string
+  title: string
+  subtitle: string
+  welcome_message: string
+  fallback_message: string
+  topics: HelpTopicRemote[]
+}
+
 export interface PortalProjectRemote {
   id: string; title: string; artist: string; release_type: string
   release_date?: string | null; status: string; genre?: string; track_count: number
@@ -279,6 +298,12 @@ export const api = {
 
   patchFormConfig: (workspace: string, cfg: FormConfigPatchRemote, workflowType = 'release_intake') =>
     send<FormConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/form-config`, cfg),
+
+  getHelpConfig: (workspace: string) =>
+    get<HelpConfigRemote>(`/workspaces/${encodeURIComponent(workspace)}/help-config`),
+
+  patchHelpConfig: (workspace: string, cfg: HelpConfigRemote) =>
+    send<HelpConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/help-config`, cfg),
 
   getPortalData: (workspace: string) =>
     get<PortalDataRemote>(`/workspaces/${encodeURIComponent(workspace)}/portal-data`),

@@ -246,7 +246,7 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
 
       <AutomationDialog open={autoOpen} onOpenChange={setAutoOpen} whiteLabel={whiteLabel} onWhiteLabelChange={setWhiteLabel} />
 
-      <HelpChat clientName={config.clientName} />
+      <HelpChat clientName={config.clientName} workspaceSlug={workspaceSlug} />
     </div>
   )
 }

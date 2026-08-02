@@ -543,7 +543,7 @@ export default function Portal() {
       )}
 
       {tab === 'airtable' && <LiveAirtable {...liveProps} />}
-      <HelpChat clientName={branding?.workspace_name ?? displayName} />
+      <HelpChat clientName={branding?.workspace_name ?? displayName} workspaceSlug={workspace} />
     </div>
   )
 }

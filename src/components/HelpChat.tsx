@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircleQuestion, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { api, type HelpConfigRemote } from '@/lib/api'
 
 /* Assistente operacional com respostas controladas por assunto. */
 
@@ -72,19 +73,19 @@ const RULES: { keys: string[]; answer: string }[] = [
   },
 ]
 
-function botAnswer(q: string): string {
+function botAnswer(q: string, fallback?: string): string {
   const lower = q.toLowerCase()
   const hit = RULES.find((r) => r.keys.some((k) => lower.includes(k)))
   return hit
     ? hit.answer
-    : 'Posso ajudar com lançamento, clearance, cadastro de pessoas e empresas, portal, Airtable, Drive, e-mails e segurança dos dados. Tente mencionar qual fluxo ou etapa gerou a dúvida; questões contratuais ou jurídicas devem ser confirmadas com a equipe responsável.'
+    : fallback || 'Posso ajudar com lançamento, clearance, cadastro de pessoas e empresas, portal, Airtable, Drive, e-mails e segurança dos dados. Tente mencionar qual fluxo ou etapa gerou a dúvida; questões contratuais ou jurídicas devem ser confirmadas com a equipe responsável.'
 }
 
-export function HelpChat({ clientName }: { clientName: string }) {
+export function HelpChat({ clientName, workspaceSlug }: { clientName: string; workspaceSlug: string }) {
+  const [config, setConfig] = useState<HelpConfigRemote | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const [open, setOpen] = useState(false)
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { from: 'bot', text: `Oi! Sou o assistente da operação ${clientName}. Posso ajudar com os formulários, o portal, integrações e segurança dos dados. O que você precisa?` },
-  ])
+  const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -92,12 +93,31 @@ export function HelpChat({ clientName }: { clientName: string }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [msgs, open])
 
+  useEffect(() => {
+    let active = true
+    void api.getHelpConfig(workspaceSlug).then((result) => {
+      if (!active) return
+      setConfig(result)
+      setMsgs(result ? [{ from: 'bot', text: result.welcome_message }] : [])
+      setLoaded(true)
+    })
+    return () => { active = false }
+  }, [workspaceSlug])
+
   function send(text: string) {
     const t = text.trim()
     if (!t) return
-    setMsgs((m) => [...m, { from: 'user', text: t }, { from: 'bot', text: botAnswer(t) }])
+    const lower = t.toLowerCase()
+    const custom = config?.topics.find((topic) =>
+      topic.question.toLowerCase() === lower || topic.keywords.some((keyword) => lower.includes(keyword.toLowerCase())),
+    )
+    setMsgs((m) => [...m, { from: 'user', text: t }, { from: 'bot', text: custom?.answer ?? botAnswer(t, config?.fallback_message) }])
     setInput('')
   }
+
+  if (!loaded || !config?.enabled) return null
+
+  const suggested = config.topics.slice(0, 4).map((topic) => topic.question)
 
   return (
     <>
@@ -105,15 +125,15 @@ export function HelpChat({ clientName }: { clientName: string }) {
         onClick={() => setOpen(true)}
         className="fixed bottom-24 right-4 z-30 flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-bold text-background shadow-[3px_3px_0_0_rgba(81,35,20,0.25)] transition hover:scale-[1.03]"
       >
-        <MessageCircleQuestion className="h-4 w-4" /> Dúvidas?
+        <MessageCircleQuestion className="h-4 w-4" /> {config.button_label}
       </button>
 
       {open && (
         <div className="fixed bottom-24 right-4 z-40 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border-2 border-foreground/15 bg-background shadow-[8px_8px_0_0_rgba(81,35,20,0.18)]">
           <div className="flex items-center justify-between border-b-2 border-foreground/10 px-4 py-3">
             <div>
-              <p className="text-sm font-black">Assistente {clientName}</p>
-              <p className="text-[11px] text-muted-foreground">formulários, portal e segurança</p>
+              <p className="text-sm font-black">{config.title.replace('{cliente}', clientName)}</p>
+              <p className="text-[11px] text-muted-foreground">{config.subtitle}</p>
             </div>
             <button onClick={() => setOpen(false)} className="rounded-full p-1.5 hover:bg-foreground/10">
               <X className="h-4 w-4" />
@@ -130,7 +150,7 @@ export function HelpChat({ clientName }: { clientName: string }) {
             ))}
             {msgs.length <= 1 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {SUGGESTED.map((s) => (
+                {(suggested.length ? suggested : SUGGESTED).map((s) => (
                   <button key={s} onClick={() => send(s)}
                     className="rounded-full border-2 border-foreground/15 px-3 py-1 text-[11px] font-semibold text-foreground/75 transition hover:border-foreground/40">
                     {s}
