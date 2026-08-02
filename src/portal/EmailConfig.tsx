@@ -123,7 +123,6 @@ export function EmailConfig({ workspace }: { workspace: string }) {
     if (field === 'body' && bodyMode === 'visual' && richBodyRef.current) {
       richBodyRef.current.focus()
       document.execCommand('insertText', false, insertion)
-      updateTemplate('body', richBodyRef.current.innerHTML)
       return
     }
     const element = field === 'subject' ? subjectRef.current : bodyRef.current
@@ -144,7 +143,6 @@ export function EmailConfig({ workspace }: { workspace: string }) {
   function formatRichBody(command: 'bold' | 'formatBlock' | 'insertHTML', value?: string) {
     richBodyRef.current?.focus()
     document.execCommand(command, false, value)
-    if (richBodyRef.current) updateTemplate('body', richBodyRef.current.innerHTML)
   }
 
   function restoreSystemDefault(field: 'subject' | 'body') {
@@ -162,6 +160,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
 
   async function save() {
     if (!config) return
+    const visualBody = bodyMode === 'visual' ? richBodyRef.current?.innerHTML : undefined
     const tooMany = EVENTS.some(({ key }) => config.events[key].recipients.length > 5)
       || config.cc_addresses.length > 5
       || config.bcc_addresses.length > 5
@@ -178,7 +177,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
       }])),
       templates: Object.fromEntries(EVENTS.map(({ key }) => [key, {
         subject: config.templates[key].subject,
-        body: config.templates[key].body,
+        body: key === selected && visualBody !== undefined ? visualBody : config.templates[key].body,
       }])),
       cc_addresses: config.cc_addresses,
       bcc_addresses: config.bcc_addresses,
@@ -313,7 +312,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
                     className={`rounded-full px-2.5 py-1 ${bodyMode === 'html' ? 'bg-white/80 text-[#512314]' : 'text-[#512314]/55'}`}>HTML avançado</button>
                 </div>
               </div>
-              <p className="mt-1 text-[11px] text-[#512314]/50">Clique diretamente no texto abaixo e altere somente o que precisar.</p>
+              <p className="mt-1 text-[11px] text-[#512314]/50">Clique diretamente no texto abaixo e altere somente o que precisar. A prévia atualiza ao sair do editor.</p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-[#512314]/15 bg-white/35 p-2">
                 {bodyMode === 'visual' ? <>
                   <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRichBody('formatBlock', 'p')}
@@ -333,7 +332,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
                   contentEditable
                   suppressContentEditableWarning
                   onFocus={() => setActiveTemplateField('body')}
-                  onInput={(event) => updateTemplate('body', event.currentTarget.innerHTML)}
+                  onBlur={(event) => updateTemplate('body', event.currentTarget.innerHTML)}
                   dangerouslySetInnerHTML={{ __html: config.templates[selected].body || config.templates[selected].default_body_template }}
                   className="mt-1.5 min-h-64 max-h-[28rem] overflow-y-auto rounded-2xl border border-[#512314]/25 bg-white/65 p-4 text-[13px] leading-relaxed text-[#512314] outline-none focus:border-[#512314]/60 [&_a]:text-blue-700 [&_p]:mb-2.5 [&_table]:my-3 [&_table]:w-full [&_td]:py-1 [&_td:first-child]:w-[38%] [&_td:first-child]:text-[#512314]/60"
                 />
