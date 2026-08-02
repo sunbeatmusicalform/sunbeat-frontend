@@ -24,6 +24,7 @@ function registrationUrl(workspace: string, name: string) {
 export function ArtistLinkedField({ workspaceSlug, value, references, onChange, error, label = 'Artistas vinculados', hint = 'Busque no cadastro da Atabaque. Use vírgula ou Enter para conferir um nome novo.', placeholder = 'Digite o nome artístico…', required = false }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PeopleLookupItem[]>([])
+  const [pendingMatch, setPendingMatch] = useState<PeopleLookupItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(false)
 
@@ -58,6 +59,7 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
     onChange(next.map((item) => item.name).join(', '), next)
     setQuery('')
     setResults([])
+    setPendingMatch(null)
   }
 
   function addRegistered(item: PeopleLookupItem) {
@@ -68,17 +70,25 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
   async function addTypedName() {
     const name = query.trim().replace(/,$/, '').trim()
     if (!name || effective.some((artist) => artist.name.toLowerCase() === name.toLowerCase())) return
+    const suggestion = results[0]
+    if (suggestion && suggestion.confidence !== 'exact') {
+      setPendingMatch(suggestion)
+      return
+    }
     setChecking(true)
-    const verified = await api.verifyPerson(name, workspaceSlug)
-    const match = verified?.v2_pessoas ?? verified?.dados_cadastrais
-    const isRegistered = verified && verified.verdict !== 'nao_encontrado' && match
-    commit([...effective, isRegistered ? {
-      id: match.record_id,
-      name: match.display_name || name,
-      status: 'registered',
-      source: verified.v2_pessoas ? 'v2_pessoas' : 'dados_cadastrais',
-    } : { id: null, name, status: 'unregistered' }])
-    setChecking(false)
+    try {
+      const verified = await api.verifyPerson(name, workspaceSlug)
+      const match = verified?.v2_pessoas ?? verified?.dados_cadastrais
+      const isRegistered = verified && verified.verdict !== 'nao_encontrado' && match
+      commit([...effective, isRegistered ? {
+        id: match.record_id,
+        name: match.display_name || name,
+        status: 'registered',
+        source: verified.v2_pessoas ? 'v2_pessoas' : 'dados_cadastrais',
+      } : { id: null, name, status: 'unregistered' }])
+    } finally {
+      setChecking(false)
+    }
   }
 
   function remove(index: number) {
@@ -120,7 +130,7 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
         <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => { setQuery(event.target.value); setPendingMatch(null) }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ',') {
               event.preventDefault()
@@ -135,13 +145,24 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
         </button>
       </div>
 
+      {pendingMatch && (
+        <div className="mt-2 rounded-xl border border-[#329fd7]/30 bg-[#329fd7]/8 p-3 text-left">
+          <p className="text-xs font-semibold text-foreground">Encontramos um nome parecido: <strong>{pendingMatch.displayName}</strong>.</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">É esta pessoa? O contato só será vinculado após sua confirmação.</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={() => addRegistered(pendingMatch)} className="rounded-full bg-foreground px-3 py-1.5 text-[11px] font-bold text-background">Sim, vincular</button>
+            <button type="button" onClick={() => setPendingMatch(null)} className="rounded-full border border-foreground/15 px-3 py-1.5 text-[11px] font-bold">Não é esta pessoa</button>
+          </div>
+        </div>
+      )}
+
       {query.trim().length >= 2 && (loading || results.length > 0) && (
         <div className="mt-2 overflow-hidden rounded-xl border border-foreground/10 bg-background shadow-sm">
           {loading ? <p className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando cadastros…</p> : results.map((item) => (
-            <button type="button" key={item.id} onClick={() => addRegistered(item)} className="flex w-full items-center gap-2 border-b border-foreground/8 px-3 py-2 text-left last:border-0 hover:bg-[#329fd7]/8">
+            <button type="button" key={item.id} onClick={() => item.confidence === 'exact' ? addRegistered(item) : setPendingMatch(item)} className="flex w-full items-center gap-2 border-b border-foreground/8 px-3 py-2 text-left last:border-0 hover:bg-[#329fd7]/8">
               <Check className="h-3.5 w-3.5 text-emerald-600" />
               <span className="flex-1 text-sm font-semibold">{item.displayName}</span>
-              <span className="text-[10px] text-muted-foreground">{item.confidence === 'exact' ? 'nome exato' : 'possível match'}</span>
+              <span className="text-[10px] text-muted-foreground">{item.confidence === 'exact' ? 'nome exato' : 'confirmar semelhança'}</span>
             </button>
           ))}
         </div>
