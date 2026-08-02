@@ -23,7 +23,7 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
   const { config: publishedConfig } = usePublicFormConfig(workspaceSlug, workflowType)
   const config = useMemo(() => applyPublishedFormConfig(baseConfig, publishedConfig), [baseConfig, publishedConfig])
   const engine = useFormEngine(config, prefill)
-  const { branding } = useBranding(workspaceSlug)
+  const { branding, loaded: brandingLoaded } = useBranding(workspaceSlug)
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)
   const [whiteLabel, setWhiteLabel] = useState(false)
@@ -100,7 +100,9 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
       <header className="sticky top-0 z-20 border-b-2 border-foreground/10 bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
-            {branding?.logo_url ? (
+            {!brandingLoaded ? (
+              <div className="h-9 w-44" aria-label="Carregando identidade visual" />
+            ) : branding?.logo_url ? (
               <BrandLogo branding={branding} size={36} fallback={<AtabaqueMark size={36} />} />
             ) : (
               <>

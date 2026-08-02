@@ -215,6 +215,35 @@ export interface FormConfigPatchRemote {
   fields: Record<string, Partial<Pick<FormFieldConfigRemote, 'visible' | 'requirement' | 'label' | 'hint' | 'placeholder'>>>
 }
 
+export interface PortalProjectRemote {
+  id: string; title: string; artist: string; release_type: string
+  release_date?: string | null; status: string; genre?: string; track_count: number
+  cover_status: 'ok' | 'pending' | 'unknown'; audio_status: 'ok' | 'pending' | 'unknown'
+  isrc_status: 'generated' | 'pending' | 'unknown'; sync_status: string; created_at?: string | null
+}
+
+export interface PortalStageRemote {
+  id: string; project_id: string; project: string; name: string; macroarea: string
+  status: string; active: boolean; responsible: string; start_date?: string | null
+  end_date?: string | null; release_date?: string | null; risk: string
+}
+
+export interface PortalDemandRemote {
+  id: string; ticket: string; product: string; type: string; status: string
+  release_date?: string | null; deadline?: string | null; days_remaining?: number | string | null
+  upload_status: string
+}
+
+export interface PortalDataRemote {
+  ok: boolean; workspace_slug: string; source: 'airtable' | 'supabase'; source_error?: string | null
+  projects: PortalProjectRemote[]; stages: PortalStageRemote[]; demands: PortalDemandRemote[]
+  invites: InviteRemotePayload[]
+  drive_folders: { submission_id: string; project: string; folder_id: string; url: string; created_at?: string | null }[]
+  email_activity: { submission_id: string; project: string; status: string; sent_at?: string | null }[]
+  sync_summary: { total: number; synced: number; failed: number }
+  integrations: Record<string, { configured: boolean; status: string }>
+}
+
 export const api = {
   lookupArtists: (query: string, workspace = WORKSPACE) =>
     get<PeopleLookupResponse>(`/people-registry/lookup?workspace_slug=${encodeURIComponent(workspace)}&roles=artista&limit=8&query=${encodeURIComponent(query)}`),
@@ -233,11 +262,11 @@ export const api = {
   respondInvite: (token: string, envelope: Record<string, unknown>) =>
     send<InviteRemoteResponse>('POST', `/people-registry/invites/${encodeURIComponent(token)}/records`, envelope),
 
-  getDriveConfig: (workflowType: string) =>
-    get<DriveConfigRemote>(`/workspaces/${WORKSPACE}/workflows/${workflowType}/drive-config`),
+  getDriveConfig: (workflowType: string, workspace = WORKSPACE) =>
+    get<DriveConfigRemote>(`/workspaces/${encodeURIComponent(workspace)}/workflows/${workflowType}/drive-config`),
 
-  patchDriveConfig: (workflowType: string, cfg: DriveConfigRemote) =>
-    send<DriveConfigRemote>('PATCH', `/workspaces/${WORKSPACE}/workflows/${workflowType}/drive-config`, cfg),
+  patchDriveConfig: (workflowType: string, cfg: DriveConfigRemote, workspace = WORKSPACE) =>
+    send<DriveConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${workflowType}/drive-config`, cfg),
 
   getEmailConfig: (workspace: string, workflowType = 'release_intake') =>
     get<EmailConfigRemote>(`/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/email-config`),
@@ -250,4 +279,7 @@ export const api = {
 
   patchFormConfig: (workspace: string, cfg: FormConfigPatchRemote, workflowType = 'release_intake') =>
     send<FormConfigRemote>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/form-config`, cfg),
+
+  getPortalData: (workspace: string) =>
+    get<PortalDataRemote>(`/workspaces/${encodeURIComponent(workspace)}/portal-data`),
 }

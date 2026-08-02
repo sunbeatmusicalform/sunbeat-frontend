@@ -31,7 +31,7 @@ type DraftNotice = { tone: 'success' | 'error'; message: string }
 export default function Home() {
   const { workspace } = useParams<{ workspace?: string }>()
   const workspaceSlug = workspace ?? 'atabaque'
-  const { branding } = useBranding(workspaceSlug)
+  const { branding, loaded: brandingLoaded } = useBranding(workspaceSlug)
   const { config: formConfig } = usePublicFormConfig(workspaceSlug)
   const form = useIntakeForm(formConfig)
   const [showErrors, setShowErrors] = useState(false)
@@ -215,7 +215,9 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b-2 border-foreground/10 bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
-            {branding?.logo_url ? (
+            {!brandingLoaded ? (
+              <div className="h-10 w-44" aria-label="Carregando identidade visual" />
+            ) : branding?.logo_url ? (
               <BrandLogo branding={branding} size={40} fallback={<AtabaqueMark size={40} />} />
             ) : (
               <>
