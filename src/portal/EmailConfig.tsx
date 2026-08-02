@@ -70,8 +70,11 @@ export function EmailConfig({ workspace }: { workspace: string }) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [activeTemplateField, setActiveTemplateField] = useState<'subject' | 'body'>('body')
+  const [bodyMode, setBodyMode] = useState<'visual' | 'html'>('visual')
+  const [bodyEditorVersion, setBodyEditorVersion] = useState(0)
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
+  const richBodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -82,6 +85,11 @@ export function EmailConfig({ workspace }: { workspace: string }) {
     })
     return () => { cancelled = true }
   }, [workspace, workflowType])
+
+  useEffect(() => {
+    setBodyMode('visual')
+    setBodyEditorVersion((version) => version + 1)
+  }, [selected, workflowType])
 
   const selectedMeta = EVENTS.find((event) => event.key === selected) ?? EVENTS[0]
   const preview = useMemo(() => {
@@ -112,8 +120,15 @@ export function EmailConfig({ workspace }: { workspace: string }) {
 
   function insertTemplateText(field: 'subject' | 'body', insertion: string, suffix = '') {
     if (!config) return
+    if (field === 'body' && bodyMode === 'visual' && richBodyRef.current) {
+      richBodyRef.current.focus()
+      document.execCommand('insertText', false, insertion)
+      updateTemplate('body', richBodyRef.current.innerHTML)
+      return
+    }
     const element = field === 'subject' ? subjectRef.current : bodyRef.current
-    const current = config.templates[selected][field]
+    const template = config.templates[selected]
+    const current = template[field] || (field === 'subject' ? template.default_subject_template : template.default_body_template)
     const start = element?.selectionStart ?? current.length
     const end = element?.selectionEnd ?? start
     const selectedText = current.slice(start, end)
@@ -126,33 +141,23 @@ export function EmailConfig({ workspace }: { workspace: string }) {
     })
   }
 
-  function startFromCurrentTemplate() {
-    if (!config) return
-    const current = config.templates[selected]
-    setConfig({
-      ...config,
-      templates: {
-        ...config.templates,
-        [selected]: {
-          ...current,
-          subject: current.default_subject_template,
-          body: current.default_body_template,
-        },
-      },
-    })
-    setMessage({ ok: true, text: 'Texto atual carregado para edição. Revise e salve quando terminar.' })
+  function formatRichBody(command: 'bold' | 'formatBlock' | 'insertHTML', value?: string) {
+    richBodyRef.current?.focus()
+    document.execCommand(command, false, value)
+    if (richBodyRef.current) updateTemplate('body', richBodyRef.current.innerHTML)
   }
 
-  function restoreSystemDefault() {
+  function restoreSystemDefault(field: 'subject' | 'body') {
     if (!config) return
     setConfig({
       ...config,
       templates: {
         ...config.templates,
-        [selected]: { ...config.templates[selected], subject: '', body: '' },
+        [selected]: { ...config.templates[selected], [field]: '' },
       },
     })
-    setMessage({ ok: true, text: 'O padrão do sistema será usado após salvar.' })
+    if (field === 'body') setBodyEditorVersion((version) => version + 1)
+    setMessage({ ok: true, text: `${field === 'subject' ? 'O assunto' : 'O corpo'} padrão será usado após salvar.` })
   }
 
   async function save() {
@@ -271,20 +276,16 @@ export function EmailConfig({ workspace }: { workspace: string }) {
               </div>
               <input
                 ref={subjectRef}
-                value={config.templates[selected].subject}
+                value={config.templates[selected].subject || config.templates[selected].default_subject_template}
                 onChange={(event) => updateTemplate('subject', event.target.value)}
                 onFocus={() => setActiveTemplateField('subject')}
-                placeholder="Vazio = assunto padrão"
+                placeholder="Assunto do e-mail"
                 className={`${inputClass} mt-1.5`}
               />
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={startFromCurrentTemplate}
-                  className="rounded-full border border-[#512314]/20 bg-white/45 px-3 py-1.5 text-[11px] font-semibold text-[#512314]">
-                  Editar a partir do texto atual
-                </button>
-                <button type="button" onClick={restoreSystemDefault}
+                <button type="button" onClick={() => restoreSystemDefault('subject')}
                   className="rounded-full px-3 py-1.5 text-[11px] font-semibold text-[#512314]/60 underline underline-offset-2">
-                  Voltar ao padrão
+                  Restaurar assunto padrão
                 </button>
               </div>
             </div>
@@ -303,25 +304,49 @@ export function EmailConfig({ workspace }: { workspace: string }) {
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Corpo do e-mail</label>
-              <p className="mt-1 text-[11px] text-[#512314]/50">Selecione um trecho e use os botões para formatar. A prévia aparece ao lado.</p>
-              <div className="mt-2 flex flex-wrap gap-1.5 rounded-xl border border-[#512314]/15 bg-white/35 p-2">
-                <button type="button" onClick={() => insertTemplateText('body', '<p>', '</p>')}
-                  className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-[#512314]">Parágrafo</button>
-                <button type="button" onClick={() => insertTemplateText('body', '<strong>', '</strong>')}
-                  className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-bold text-[#512314]">Negrito</button>
-                <button type="button" onClick={() => insertTemplateText('body', '<br>')}
-                  className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-[#512314]">Quebra de linha</button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Corpo do e-mail</label>
+                <div className="flex rounded-full bg-[#512314]/8 p-0.5 text-[10px] font-semibold">
+                  <button type="button" onClick={() => { setBodyMode('visual'); setBodyEditorVersion((version) => version + 1) }}
+                    className={`rounded-full px-2.5 py-1 ${bodyMode === 'visual' ? 'bg-white/80 text-[#512314]' : 'text-[#512314]/55'}`}>Editor visual</button>
+                  <button type="button" onClick={() => setBodyMode('html')}
+                    className={`rounded-full px-2.5 py-1 ${bodyMode === 'html' ? 'bg-white/80 text-[#512314]' : 'text-[#512314]/55'}`}>HTML avançado</button>
+                </div>
               </div>
-              <textarea
-                ref={bodyRef}
-                rows={7}
-                value={config.templates[selected].body}
-                onChange={(event) => updateTemplate('body', event.target.value)}
-                onFocus={() => setActiveTemplateField('body')}
-                placeholder="<p>Olá, {{submitter_name}}...</p> — vazio = template padrão"
-                className={`${inputClass} mt-1.5 font-mono text-[12px]`}
-              />
+              <p className="mt-1 text-[11px] text-[#512314]/50">Clique diretamente no texto abaixo e altere somente o que precisar.</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-[#512314]/15 bg-white/35 p-2">
+                {bodyMode === 'visual' ? <>
+                  <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRichBody('formatBlock', 'p')}
+                    className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-[#512314]">Parágrafo</button>
+                  <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRichBody('bold')}
+                    className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-bold text-[#512314]">Negrito</button>
+                  <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRichBody('insertHTML', '<br>')}
+                    className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-[#512314]">Quebra de linha</button>
+                </> : <span className="px-1 text-[11px] text-[#512314]/50">Edição direta do código do template.</span>}
+                <button type="button" onClick={() => restoreSystemDefault('body')}
+                  className="ml-auto rounded-lg px-2.5 py-1 text-[11px] font-semibold text-[#512314]/60 underline underline-offset-2">Restaurar corpo padrão</button>
+              </div>
+              {bodyMode === 'visual' ? (
+                <div
+                  key={`${workflowType}-${selected}-${bodyEditorVersion}`}
+                  ref={richBodyRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onFocus={() => setActiveTemplateField('body')}
+                  onInput={(event) => updateTemplate('body', event.currentTarget.innerHTML)}
+                  dangerouslySetInnerHTML={{ __html: config.templates[selected].body || config.templates[selected].default_body_template }}
+                  className="mt-1.5 min-h-64 max-h-[28rem] overflow-y-auto rounded-2xl border border-[#512314]/25 bg-white/65 p-4 text-[13px] leading-relaxed text-[#512314] outline-none focus:border-[#512314]/60 [&_a]:text-blue-700 [&_p]:mb-2.5 [&_table]:my-3 [&_table]:w-full [&_td]:py-1 [&_td:first-child]:w-[38%] [&_td:first-child]:text-[#512314]/60"
+                />
+              ) : (
+                <textarea
+                  ref={bodyRef}
+                  rows={12}
+                  value={config.templates[selected].body || config.templates[selected].default_body_template}
+                  onChange={(event) => updateTemplate('body', event.target.value)}
+                  onFocus={() => setActiveTemplateField('body')}
+                  className={`${inputClass} mt-1.5 font-mono text-[12px]`}
+                />
+              )}
             </div>
           </div>
 
