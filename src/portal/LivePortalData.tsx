@@ -33,14 +33,16 @@ type TimelineRow = {
   id: string
   project: string
   label: string
+  phase: string
   status: string
   start: number
   end: number
   milestone: boolean
+  duplicateCount: number
 }
 
 function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote[]): TimelineRow[] {
-  const rows = stages.flatMap((stage) => {
+  const stageRows = stages.flatMap((stage) => {
     const start = dateValue(stage.start_date || stage.end_date)
     const end = dateValue(stage.end_date || stage.start_date)
     if (start === null || end === null) return []
@@ -48,11 +50,20 @@ function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote
       id: `stage-${stage.id}`,
       project: stage.project,
       label: stage.name || stage.macroarea || 'Etapa',
+      phase: stage.macroarea || stage.name || 'Outras etapas',
       status: stage.status,
       start: Math.min(start, end),
       end: Math.max(start, end),
       milestone: start === end,
+      duplicateCount: 1,
     }]
+  })
+  const exactStages = new Map<string, TimelineRow>()
+  stageRows.forEach((row) => {
+    const key = [row.project, row.phase, row.status, row.start, row.end].join('|')
+    const existing = exactStages.get(key)
+    if (existing) existing.duplicateCount += 1
+    else exactStages.set(key, row)
   })
   const releases = projects.flatMap((project) => {
     const release = dateValue(project.release_date)
@@ -61,13 +72,35 @@ function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote
       id: `release-${project.id}`,
       project: project.title,
       label: 'Lançamento',
+      phase: 'Lançamento',
       status: project.status,
       start: release,
       end: release,
       milestone: true,
+      duplicateCount: 1,
     }]
   })
-  return [...rows, ...releases].sort((a, b) => a.start - b.start || a.project.localeCompare(b.project))
+  return [...exactStages.values(), ...releases].sort((a, b) => a.start - b.start || a.project.localeCompare(b.project))
+}
+
+const phaseOrder = [
+  'Clearance', 'Plano de Marketing', 'Operacional', 'Plano de Midia',
+  'Videoclipe', 'Imprensa', 'Relatorio D+7', 'Relatorio D+15',
+  'Relatorio D+28', 'Lançamento',
+]
+
+function phaseRank(value: string) {
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
+  const index = phaseOrder.findIndex((phase) => phase.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR') === normalized)
+  return index === -1 ? phaseOrder.length : index
+}
+
+function groupedTimeline(rows: TimelineRow[]) {
+  const grouped = new Map<string, TimelineRow[]>()
+  rows.forEach((row) => grouped.set(row.phase, [...(grouped.get(row.phase) || []), row]))
+  return [...grouped.entries()]
+    .map(([phase, items]) => ({ phase, items: items.sort((a, b) => a.start - b.start || a.project.localeCompare(b.project)) }))
+    .sort((a, b) => phaseRank(a.phase) - phaseRank(b.phase) || a.phase.localeCompare(b.phase))
 }
 
 function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[]; stages: PortalStageRemote[] }) {
@@ -78,7 +111,8 @@ function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[
   const daysBack = windowDays === 30 ? 7 : windowDays === 90 ? 30 : 60
   const first = now.getTime() - (daysBack * day)
   const last = first + (windowDays * day)
-  const rows = allRows.filter((row) => row.end >= first && row.start <= last).slice(0, 50)
+  const rows = allRows.filter((row) => row.end >= first && row.start <= last).slice(0, 60)
+  const groups = groupedTimeline(rows)
   const duration = Math.max(last - first, day)
   const position = (value: number) => Math.max(0, Math.min(100, ((value - first) / duration) * 100))
   const ticks = Array.from({ length: 6 }, (_, index) => first + ((duration * index) / 5))
@@ -100,23 +134,29 @@ function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[
       {rows.length ? <div className="overflow-x-auto">
         <div className="min-w-[900px] p-4">
           <div className="grid grid-cols-[230px_1fr] border-b border-[#512314]/10 pb-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/45">Projeto · etapa</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/45">Etapa · projeto</p>
             <div className="relative h-5">
               {ticks.map((tick, index) => <span key={index} className="absolute -translate-x-1/2 whitespace-nowrap text-[10px] text-[#512314]/45" style={{ left: `${position(tick)}%` }}>{fmt(new Date(tick).toISOString())}</span>)}
             </div>
           </div>
           <div className="relative">
             {todayPosition !== null && <div className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-[#ff5a45]" style={{ left: `calc(230px + (100% - 230px) * ${todayPosition / 100})` }}><span className="absolute -top-1 -translate-x-1/2 rounded-full bg-[#ff5a45] px-1.5 py-0.5 text-[8px] font-bold text-white">hoje</span></div>}
-            {rows.map((row) => {
-              const left = position(row.start)
-              const width = Math.max(1.5, position(row.end) - left)
-              return <div key={row.id} className="grid min-h-12 grid-cols-[230px_1fr] items-center border-b border-[#512314]/7">
-                <div className="min-w-0 pr-4"><p className="truncate text-[11px] font-semibold text-[#512314]">{row.project}</p><p className="truncate text-[10px] text-[#512314]/55">{row.label} · {row.status}</p></div>
-                <div className="relative h-6 rounded-full bg-[#512314]/5">
-                  {row.milestone ? <span title={`${row.label}: ${fmt(new Date(row.start).toISOString())}`} className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]" style={{ left: `${left}%`, backgroundColor: stageColor(row.status) }} /> : <span title={`${fmt(new Date(row.start).toISOString())} — ${fmt(new Date(row.end).toISOString())}`} className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-full" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: stageColor(row.status) }} />}
-                </div>
+            {groups.map((group) => <section key={group.phase} className="border-b border-[#512314]/12 last:border-b-0">
+              <div className="grid grid-cols-[230px_1fr] items-center bg-[#512314]/[0.045] py-2">
+                <div className="flex items-center gap-2 pr-4"><span className="h-2 w-2 rounded-full bg-[#ff5a45]"/><p className="text-[11px] font-bold uppercase tracking-wide text-[#512314]">{group.phase}</p><span className="rounded-full bg-white/60 px-1.5 py-0.5 text-[9px] font-semibold text-[#512314]/55">{group.items.length}</span></div>
+                <p className="text-[9px] text-[#512314]/40">Projetos com esta etapa dentro da janela selecionada</p>
               </div>
-            })}
+              {group.items.map((row) => {
+                const left = position(row.start)
+                const width = Math.max(1.5, position(row.end) - left)
+                return <div key={row.id} className="grid min-h-11 grid-cols-[230px_1fr] items-center border-t border-[#512314]/6">
+                  <div className="min-w-0 pr-4 pl-4"><p className="truncate text-[11px] font-semibold text-[#512314]">{row.project}</p><p className="truncate text-[10px] text-[#512314]/55">{row.status}{row.duplicateCount > 1 ? ` · ${row.duplicateCount} registros iguais na base` : ''}</p></div>
+                  <div className="relative h-6 rounded-full bg-[#512314]/5">
+                    {row.milestone ? <span title={`${row.label}: ${fmt(new Date(row.start).toISOString())}`} className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]" style={{ left: `${left}%`, backgroundColor: stageColor(row.status) }} /> : <span title={`${fmt(new Date(row.start).toISOString())} — ${fmt(new Date(row.end).toISOString())}`} className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-full" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: stageColor(row.status) }} />}
+                  </div>
+                </div>
+              })}
+            </section>)}
           </div>
         </div>
       </div> : <div className="p-4"><Empty>Nenhuma etapa ou lançamento possui data dentro desta janela. Selecione um período maior ou atualize as datas no Airtable.</Empty></div>}
