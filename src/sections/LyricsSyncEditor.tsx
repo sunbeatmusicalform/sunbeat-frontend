@@ -79,6 +79,9 @@ export function LyricsSyncEditor({
   title,
   artist,
   workspaceSlug,
+  heading,
+  description,
+  generateLabel,
   onChange,
 }: {
   audioFile?: File
@@ -87,6 +90,9 @@ export function LyricsSyncEditor({
   title: string
   artist: string
   workspaceSlug: string
+  heading: string
+  description: string
+  generateLabel: string
   onChange: (lines: TimedLyricLine[]) => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -146,14 +152,14 @@ export function LyricsSyncEditor({
     <div className="rounded-2xl border border-foreground/15 bg-white/45 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-accent" /> Sincronização da letra</p>
+          <p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-accent" /> {heading}</p>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
-            Ao gerar, o áudio e a letra serão processados pela IA do Google apenas para sugerir os tempos. Revise antes de exportar; o texto da letra não é alterado.
+            {description}
           </p>
         </div>
         <Button type="button" variant="outline" disabled={!ready || loading} onClick={generate}>
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {lines.length ? 'Gerar novamente' : 'Gerar timestamps com IA'}
+          {lines.length ? 'Gerar novamente' : generateLabel}
         </Button>
       </div>
 

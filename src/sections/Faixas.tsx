@@ -19,6 +19,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
   const p = `t${index}.`
   const [audio, setAudio] = useState<AudioReport | null>(null)
   const [checking, setChecking] = useState(false)
+  const isSingle = form.data.releaseType === 'single'
 
   async function onAudio(file: File | undefined) {
     if (!file) return
@@ -39,7 +40,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
           {track.isFocus && <Badge className="bg-secondary text-secondary-foreground">⭐ Faixa foco</Badge>}
         </div>
         <div className="flex items-center gap-1">
-          {form.isVisible('focusTrack') ? <Button type="button" variant="ghost" size="icon" title="Marcar como faixa foco"
+          {form.isVisible('focusTrack') && !isSingle ? <Button type="button" variant="ghost" size="icon" title="Marcar como faixa foco"
             onClick={() => form.setFocusTrack(track.id)}>
             <Star className={`h-4 w-4 ${track.isFocus ? 'fill-secondary text-secondary' : 'text-muted-foreground'}`} />
           </Button> : null}
@@ -135,12 +136,13 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
             {checking ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <FileAudio className="h-5 w-5 text-accent" />}
             <span className="text-sm font-semibold">{track.audioFileName ?? 'Clique para anexar o áudio'}</span>
           </label>
-          {audio && (
+          {audio && form.isVisible('track.audioAnalysis') && (
             <div className={`mt-3 rounded-xl border-2 p-3 text-xs leading-relaxed ${audio.ok ? 'border-emerald-600/40 bg-emerald-500/10' : 'border-accent/50 bg-accent/10'}`}>
               <div className="flex items-center gap-1.5 font-bold">
                 <CheckCircle2 className={`h-4 w-4 ${audio.ok ? 'text-emerald-600' : 'text-accent'}`} />
-                Análise do áudio — {audio.format} · {audio.duration} min{audio.sampleRate ? ` · ${audio.sampleRate} Hz · ${audio.bitDepth} bits · ${audio.channels === 2 ? 'estéreo' : `${audio.channels} canal(is)`}` : ''}
+                {form.textFor('track.audioAnalysis', 'label', 'Análise do áudio')} — {audio.format} · {audio.duration} min{audio.sampleRate ? ` · ${audio.sampleRate} Hz · ${audio.bitDepth} bits · ${audio.channels === 2 ? 'estéreo' : `${audio.channels} canal(is)`}` : ''}
               </div>
+              <p className="mt-1 text-muted-foreground">{form.textFor('track.audioAnalysis', 'hint', 'Confira abaixo a compatibilidade do master com os padrões técnicos configurados.')}</p>
               <ul className="mt-1 list-inside list-disc text-muted-foreground">
                 {audio.notes.map((n) => <li key={n}>{n}</li>)}
               </ul>
@@ -154,13 +156,16 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
           )}
         </Field> : null}
 
-        {form.isVisible('track.lyrics') ? <LyricsSyncEditor
+        {form.isVisible('track.lyrics') && form.isVisible('track.lyricsSync') ? <LyricsSyncEditor
           audioFile={form.audioFiles[track.id]}
           lyrics={track.lyrics}
           lines={track.timedLyrics}
           title={track.title}
           artist={track.mainArtists}
           workspaceSlug={workspaceSlug}
+          heading={form.textFor('track.lyricsSync', 'label', 'Sincronização da letra')}
+          description={form.textFor('track.lyricsSync', 'hint', 'Ao gerar, o áudio e a letra serão processados pela IA do Google apenas para sugerir os tempos. Revise antes de exportar; o texto da letra não é alterado.')}
+          generateLabel={form.textFor('track.lyricsSync', 'placeholder', 'Gerar timestamps com IA')}
           onChange={(timedLyrics) => form.setTrack(track.id, { timedLyrics })}
         /> : null}
       </div>
@@ -170,6 +175,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
 
 export function Faixas({ form, showErrors, workspaceSlug }: { form: F; showErrors: boolean; workspaceSlug: string }) {
   const all = showErrors ? form.errorsFor('faixas') : {}
+  const isSingle = form.data.releaseType === 'single'
   return (
     <div className="mx-auto max-w-2xl">
       <StepHeader
@@ -181,18 +187,19 @@ export function Faixas({ form, showErrors, workspaceSlug }: { form: F; showError
           {all.focusTrack}
         </p>
       )}
+      {all.trackCount && <p className="mb-4 rounded-xl border-2 border-accent/50 bg-accent/10 p-3 text-xs font-semibold text-accent">{all.trackCount}</p>}
       <div className="space-y-6">
         {form.data.tracks.map((_, i) => (
           <TrackCard key={form.data.tracks[i].id} form={form} index={i} showErrors={showErrors} workspaceSlug={workspaceSlug} />
         ))}
       </div>
-      <Button type="button" variant="outline"
+      {!isSingle ? <Button type="button" variant="outline"
         className="mt-6 w-full rounded-2xl border-2 border-dashed border-foreground/30 bg-transparent h-14 font-bold hover:border-accent hover:bg-accent/5"
         onClick={form.addTrack}>
         <Plus className="mr-1 h-5 w-5" /> Adicionar outra faixa
-      </Button>
+      </Button> : null}
       {form.isVisible('focusTrack') ? <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Music2 className="h-3.5 w-3.5" /> {form.textFor('focusTrack', 'hint', 'Marque com ⭐ a faixa foco — ela guia o plano de divulgação.')}
+        <Music2 className="h-3.5 w-3.5" /> {isSingle ? 'Em um single, a faixa única é automaticamente definida como faixa foco.' : form.textFor('focusTrack', 'hint', 'Marque com ⭐ a faixa foco — ela guia o plano de divulgação.')}
       </p> : null}
     </div>
   )

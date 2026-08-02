@@ -72,7 +72,12 @@ export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
   }, [])
 
   const setData = useCallback(<K extends keyof IntakeData>(key: K, value: IntakeData[K]) => {
-    setDataState((d) => ({ ...d, [key]: value }))
+    setDataState((d) => {
+      const next = { ...d, [key]: value }
+      if (key !== 'releaseType' || value !== 'single') return next
+      const firstTrack = next.tracks[0] ?? emptyTrack(1)
+      return { ...next, tracks: [{ ...firstTrack, isFocus: true }] }
+    })
   }, [])
 
   const setTrack = useCallback((id: string, patch: Partial<Track>) => {
@@ -80,7 +85,9 @@ export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
   }, [])
 
   const addTrack = useCallback(() => {
-    setDataState((d) => ({ ...d, tracks: [...d.tracks, emptyTrack(d.tracks.length + 1)] }))
+    setDataState((d) => d.releaseType === 'single'
+      ? d
+      : { ...d, tracks: [...d.tracks, emptyTrack(d.tracks.length + 1)] })
   }, [])
 
   const removeTrack = useCallback((id: string) => {
@@ -112,6 +119,10 @@ export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
         mainArtistRefs: track.mainArtistRefs ?? [],
         audioFileName: null,
       }))
+      if (restored.releaseType === 'single') {
+        const firstTrack = restored.tracks[0] ?? emptyTrack(1)
+        restored.tracks = [{ ...firstTrack, isFocus: true }]
+      }
       setDataState(restored)
       setCoverFileState(null)
       setAudioFiles({})
@@ -129,10 +140,13 @@ export function useIntakeForm(formConfig: FormConfigRemote | null = null) {
     draftToken: string
     updatedAt: string | null
   }) => {
+    const tracks = snapshot.data.releaseType === 'single'
+      ? [{ ...(snapshot.data.tracks[0] ?? emptyTrack(1)), isFocus: true, audioFileName: null }]
+      : snapshot.data.tracks.map((track) => ({ ...track, audioFileName: null }))
     setDataState({
       ...snapshot.data,
       coverFileName: null,
-      tracks: snapshot.data.tracks.map((track) => ({ ...track, audioFileName: null })),
+      tracks,
     })
     setCoverFileState(null)
     setAudioFiles({})
@@ -230,6 +244,7 @@ export function fieldErrors(
     if (required('notes') && !d.notes.trim()) e.notes = 'Inclua as observações solicitadas.'
   }
   if (step === 'faixas') {
+    if (d.releaseType === 'single' && d.tracks.length !== 1) e.trackCount = 'Um single deve ter exatamente uma faixa.'
     d.tracks.forEach((t, i) => {
       const p = `t${i}.`
       if (required('track.title') && !t.title.trim()) e[p + 'title'] = `Faixa ${i + 1}: informe o título.`
