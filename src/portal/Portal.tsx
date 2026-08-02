@@ -14,7 +14,7 @@ import { LiveAirtable, LiveDriveFolders, LiveIntegrations, LiveInvites, LiveOver
 type Tab = 'geral' | 'tables' | 'convites' | 'integracoes' | 'formulario' | 'emails' | 'drive' | 'airtable' | 'marca'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'geral', label: 'Visão geral' },
-  { key: 'tables', label: 'Tables' },
+  { key: 'tables', label: 'Demandas operacionais' },
   { key: 'convites', label: 'Convites' },
   { key: 'integracoes', label: 'Integrações' },
   { key: 'formulario', label: 'Formulário' },
