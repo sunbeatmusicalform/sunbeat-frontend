@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle2, Mail } from 'lucide-react'
 import {
   api,
@@ -38,6 +38,23 @@ const SAMPLE: Record<string, string> = {
   track_titles: 'Novo Horizonte, Maré, Amanhã',
 }
 
+const PLACEHOLDER_LABELS: Record<string, string> = {
+  submitter_name: 'Nome do responsável',
+  submitter_email: 'E-mail do responsável',
+  project_title: 'Nome do projeto',
+  release_date: 'Data de lançamento',
+  release_type: 'Tipo de lançamento',
+  genre: 'Gênero',
+  primary_artist: 'Artista principal',
+  draft_link: 'Link do rascunho',
+  edit_link: 'Link de edição',
+  workspace_name: 'Nome da empresa',
+  current_step: 'Etapa atual',
+  tracks_count: 'Quantidade de faixas',
+  focus_track: 'Faixa foco',
+  track_titles: 'Nomes das faixas',
+}
+
 function splitEmails(value: string): string[] {
   return Array.from(new Set(value.split(/[\n,;]+/).map((item) => item.trim().toLowerCase()).filter(Boolean)))
 }
@@ -46,20 +63,15 @@ function renderPreview(template: string): string {
   return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (token, key: string) => SAMPLE[key] ?? token)
 }
 
-function htmlToPreviewText(html: string): string {
-  const withBreaks = html
-    .replace(/<br\s*\/?\s*>/gi, '\n')
-    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
-  const parsed = new DOMParser().parseFromString(withBreaks, 'text/html')
-  return (parsed.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim()
-}
-
 export function EmailConfig({ workspace }: { workspace: string }) {
   const [workflowType, setWorkflowType] = useState<(typeof WORKFLOWS)[number]['value']>('release_intake')
   const [config, setConfig] = useState<EmailConfigRemote | null>(null)
   const [selected, setSelected] = useState<EmailEventName>('on_first_stage')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [activeTemplateField, setActiveTemplateField] = useState<'subject' | 'body'>('body')
+  const subjectRef = useRef<HTMLInputElement>(null)
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -77,7 +89,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
     const template = config.templates[selected]
     return {
       subject: renderPreview(template.subject || template.default_subject),
-      body: htmlToPreviewText(renderPreview(template.body || template.default_body)),
+      body: renderPreview(template.body || template.default_body),
     }
   }, [config, selected])
 
@@ -96,6 +108,51 @@ export function EmailConfig({ workspace }: { workspace: string }) {
         [selected]: { ...current.templates[selected], [field]: value },
       },
     } : current)
+  }
+
+  function insertTemplateText(field: 'subject' | 'body', insertion: string, suffix = '') {
+    if (!config) return
+    const element = field === 'subject' ? subjectRef.current : bodyRef.current
+    const current = config.templates[selected][field]
+    const start = element?.selectionStart ?? current.length
+    const end = element?.selectionEnd ?? start
+    const selectedText = current.slice(start, end)
+    const next = `${current.slice(0, start)}${insertion}${selectedText}${suffix}${current.slice(end)}`
+    updateTemplate(field, next)
+    requestAnimationFrame(() => {
+      element?.focus()
+      const cursor = start + insertion.length + selectedText.length + suffix.length
+      element?.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  function startFromCurrentTemplate() {
+    if (!config) return
+    const current = config.templates[selected]
+    setConfig({
+      ...config,
+      templates: {
+        ...config.templates,
+        [selected]: {
+          ...current,
+          subject: current.default_subject_template,
+          body: current.default_body_template,
+        },
+      },
+    })
+    setMessage({ ok: true, text: 'Texto atual carregado para edição. Revise e salve quando terminar.' })
+  }
+
+  function restoreSystemDefault() {
+    if (!config) return
+    setConfig({
+      ...config,
+      templates: {
+        ...config.templates,
+        [selected]: { ...config.templates[selected], subject: '', body: '' },
+      },
+    })
+    setMessage({ ok: true, text: 'O padrão do sistema será usado após salvar.' })
   }
 
   async function save() {
@@ -206,29 +263,62 @@ export function EmailConfig({ workspace }: { workspace: string }) {
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Assunto personalizado</label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Assunto do e-mail</label>
+                <span className="rounded-full bg-[#512314]/8 px-2 py-1 text-[10px] font-semibold text-[#512314]/60">
+                  {config.templates[selected].subject || config.templates[selected].body ? 'Personalizado' : 'Usando padrão atual'}
+                </span>
+              </div>
               <input
+                ref={subjectRef}
                 value={config.templates[selected].subject}
                 onChange={(event) => updateTemplate('subject', event.target.value)}
+                onFocus={() => setActiveTemplateField('subject')}
                 placeholder="Vazio = assunto padrão"
                 className={`${inputClass} mt-1.5`}
               />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={startFromCurrentTemplate}
+                  className="rounded-full border border-[#512314]/20 bg-white/45 px-3 py-1.5 text-[11px] font-semibold text-[#512314]">
+                  Editar a partir do texto atual
+                </button>
+                <button type="button" onClick={restoreSystemDefault}
+                  className="rounded-full px-3 py-1.5 text-[11px] font-semibold text-[#512314]/60 underline underline-offset-2">
+                  Voltar ao padrão
+                </button>
+              </div>
             </div>
             <div className="md:row-span-2">
               <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Prévia do e-mail efetivo</label>
-              <div className="mt-1.5 min-h-36 rounded-2xl border border-[#512314]/15 bg-white/45 p-4 text-[12px] text-[#512314]">
+              <div className="mt-1.5 overflow-hidden rounded-2xl border border-[#512314]/15 bg-white/65 p-4 text-[12px] text-[#512314]">
                 <p className="font-bold">{preview.subject || 'Este evento não possui assunto padrão.'}</p>
-                <div className="mt-3 whitespace-pre-wrap break-words text-[#512314]/70">
-                  {preview.body || 'Este evento não possui um disparo padrão neste formulário.'}
-                </div>
+                {preview.body ? (
+                  <iframe
+                    title="Prévia do corpo do e-mail"
+                    sandbox=""
+                    srcDoc={`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:13px/1.55 Arial,sans-serif;color:#512314}table{width:100%;border-collapse:collapse;margin:12px 0}td{padding:4px 8px 4px 0;vertical-align:top}td:first-child{color:#8a6a5d;width:38%}a{color:#2563eb;overflow-wrap:anywhere}p{margin:0 0 10px}ul{padding-left:18px}</style></head><body>${preview.body}</body></html>`}
+                    className="mt-3 h-64 w-full border-0 bg-transparent"
+                  />
+                ) : <p className="mt-3 text-[#512314]/60">Este evento não possui um disparo padrão neste formulário.</p>}
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Corpo em HTML</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Corpo do e-mail</label>
+              <p className="mt-1 text-[11px] text-[#512314]/50">Selecione um trecho e use os botões para formatar. A prévia aparece ao lado.</p>
+              <div className="mt-2 flex flex-wrap gap-1.5 rounded-xl border border-[#512314]/15 bg-white/35 p-2">
+                <button type="button" onClick={() => insertTemplateText('body', '<p>', '</p>')}
+                  className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-[#512314]">Parágrafo</button>
+                <button type="button" onClick={() => insertTemplateText('body', '<strong>', '</strong>')}
+                  className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-bold text-[#512314]">Negrito</button>
+                <button type="button" onClick={() => insertTemplateText('body', '<br>')}
+                  className="rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-[#512314]">Quebra de linha</button>
+              </div>
               <textarea
+                ref={bodyRef}
                 rows={7}
                 value={config.templates[selected].body}
                 onChange={(event) => updateTemplate('body', event.target.value)}
+                onFocus={() => setActiveTemplateField('body')}
                 placeholder="<p>Olá, {{submitter_name}}...</p> — vazio = template padrão"
                 className={`${inputClass} mt-1.5 font-mono text-[12px]`}
               />
@@ -236,12 +326,19 @@ export function EmailConfig({ workspace }: { workspace: string }) {
           </div>
 
           <div className="mt-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Placeholders disponíveis</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Informações dinâmicas</p>
+              <p className="text-[11px] text-[#512314]/50">Clique para inserir no {activeTemplateField === 'subject' ? 'assunto' : 'corpo'}.</p>
+            </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {config.placeholders.map((placeholder) => (
-                <code key={placeholder} className="rounded-md bg-[#512314]/8 px-2 py-1 text-[11px] text-[#512314]">
-                  {'{{'}{placeholder}{'}}'}
-                </code>
+                <button key={placeholder} type="button"
+                  title={`Insere {{${placeholder}}}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertTemplateText(activeTemplateField, `{{${placeholder}}}`)}
+                  className="rounded-full border border-[#512314]/15 bg-[#512314]/8 px-2.5 py-1.5 text-[11px] font-semibold text-[#512314] transition hover:bg-[#512314]/15">
+                  + {PLACEHOLDER_LABELS[placeholder] ?? placeholder}
+                </button>
               ))}
             </div>
           </div>

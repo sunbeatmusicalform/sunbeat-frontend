@@ -164,6 +164,8 @@ export interface EmailTemplateRemote {
   body: string
   default_subject: string
   default_body: string
+  default_subject_template: string
+  default_body_template: string
   _origin?: 'db' | 'default'
 }
 
