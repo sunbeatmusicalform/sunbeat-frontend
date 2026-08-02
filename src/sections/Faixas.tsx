@@ -71,22 +71,29 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
           onChange={(mainArtists, mainArtistRefs) => form.setTrack(track.id, { mainArtists, mainArtistRefs })}
         /> : null}
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          {form.isVisible('track.featArtists') ? <Field label={form.textFor('track.featArtists', 'label', 'Participações (feats)')} required={form.isRequired('track.featArtists')} error={all[p + 'featArtists']} hint={form.textFor('track.featArtists', 'hint', 'Deixe em branco se não houver.')}>
-            <Input className={inputCls(!!all[p + 'featArtists'])} placeholder={form.textFor('track.featArtists', 'placeholder', 'Ex.: Zé Raminho')}
-              value={track.featArtists} onChange={(ev) => form.setTrack(track.id, { featArtists: ev.target.value })} />
-          </Field> : null}
-          {form.isVisible('track.composers') ? <Field label={form.textFor('track.composers', 'label', 'Compositores e autores')} required={form.isRequired('track.composers')} error={all[p + 'composers']}
-            hint={form.textFor('track.composers', 'hint', 'Necessário para o registro do ISRC e créditos editoriais.')}>
-            <Input className={inputCls(!!all[p + 'composers'])} placeholder={form.textFor('track.composers', 'placeholder', 'Nome completo de cada autor')}
-              value={track.composers} onChange={(ev) => form.setTrack(track.id, { composers: ev.target.value })} />
-          </Field> : null}
-        </div>
-
-        {form.isVisible('track.performers') ? <Field label={form.textFor('track.performers', 'label', 'Intérpretes')} required={form.isRequired('track.performers')} error={all[p + 'performers']} hint={form.textFor('track.performers', 'hint', 'Quem executa a gravação — usado nos créditos do cadastro do ISRC.')}>
-          <Input className={inputCls(!!all[p + 'performers'])} placeholder={form.textFor('track.performers', 'placeholder', 'Ex.: Alaíde Tropical')}
-            value={track.performers} onChange={(ev) => form.setTrack(track.id, { performers: ev.target.value })} />
-        </Field> : null}
+        {(form.isVisible('track.featArtists') || form.isVisible('track.composers') || form.isVisible('track.performers')) ? (
+          <section className="rounded-2xl border border-foreground/15 bg-white/25 p-4 md:p-5">
+            <div className="mb-4">
+              <h4 className="text-sm font-bold">Créditos e participações</h4>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Informe um nome por linha. Assim a equipe consegue revisar todos os créditos sem nomes cortados.</p>
+            </div>
+            <div className="grid items-stretch gap-5 lg:grid-cols-2">
+              {form.isVisible('track.featArtists') ? <Field className="flex h-full flex-col gap-1.5 space-y-0" label={form.textFor('track.featArtists', 'label', 'Participações (feats)')} required={form.isRequired('track.featArtists')} error={all[p + 'featArtists']} hint={form.textFor('track.featArtists', 'hint', 'Informe um nome por linha. Deixe em branco se não houver.')}>
+                <Textarea rows={4} className={`${inputCls(!!all[p + 'featArtists'])} mt-auto resize-y`} placeholder={form.textFor('track.featArtists', 'placeholder', 'Ex.: Zé Raminho\nEx.: Convidada Silva')}
+                  value={track.featArtists} onChange={(ev) => form.setTrack(track.id, { featArtists: ev.target.value })} />
+              </Field> : null}
+              {form.isVisible('track.composers') ? <Field className="flex h-full flex-col gap-1.5 space-y-0" label={form.textFor('track.composers', 'label', 'Compositores e autores')} required={form.isRequired('track.composers')} error={all[p + 'composers']}
+                hint={form.textFor('track.composers', 'hint', 'Informe o nome completo de cada compositor ou autor, um por linha.')}>
+                <Textarea rows={4} className={`${inputCls(!!all[p + 'composers'])} mt-auto resize-y`} placeholder={form.textFor('track.composers', 'placeholder', 'Nome completo do autor 1\nNome completo do autor 2')}
+                  value={track.composers} onChange={(ev) => form.setTrack(track.id, { composers: ev.target.value })} />
+              </Field> : null}
+              {form.isVisible('track.performers') ? <Field className="flex h-full flex-col gap-1.5 space-y-0 lg:col-span-2" label={form.textFor('track.performers', 'label', 'Intérpretes')} required={form.isRequired('track.performers')} error={all[p + 'performers']} hint={form.textFor('track.performers', 'hint', 'Informe um nome por linha para quem executa a gravação.')}>
+                <Textarea rows={3} className={`${inputCls(!!all[p + 'performers'])} resize-y`} placeholder={form.textFor('track.performers', 'placeholder', 'Ex.: Alaíde Tropical\nEx.: Músico Convidado')}
+                  value={track.performers} onChange={(ev) => form.setTrack(track.id, { performers: ev.target.value })} />
+              </Field> : null}
+            </div>
+          </section>
+        ) : null}
 
         {form.isVisible('track.hasISRC') ? <Field label={form.textFor('track.hasISRC', 'label', 'A música já tem ISRC?')} required={form.isRequired('track.hasISRC')} error={all[p + 'hasISRC']}
           hint={form.textFor('track.hasISRC', 'hint', 'ISRC é o código internacional da gravação. Se a faixa nunca foi lançada, provavelmente ainda não tem — e nós geramos para você.')}>

@@ -33,6 +33,15 @@ function textValue(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+function normalizeCreditNames(value: string): string | null {
+  const normalized = value
+    .split(/\r?\n/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .join(', ')
+  return normalized || null
+}
+
 function yesNoBoolean(value: unknown): boolean | null {
   return value === 'yes' ? true : value === 'no' ? false : null
 }
@@ -219,9 +228,9 @@ export function buildIntakePayload(args: {
       is_focus_track: track.id === focusTrack?.id,
       primary_artists: track.mainArtists,
       primary_artist_refs: track.mainArtistRefs?.length ? track.mainArtistRefs : track.mainArtists.split(',').map((name) => name.trim()).filter(Boolean).map((name) => ({ id: null, name, status: 'unregistered' })),
-      featured_artists: track.featArtists || null,
-      interpreters: track.performers || null,
-      authors: track.composers,
+      featured_artists: normalizeCreditNames(track.featArtists),
+      interpreters: normalizeCreditNames(track.performers),
+      authors: normalizeCreditNames(track.composers) ?? '',
       phonographic_producer: track.producer,
       artist_profile_names_to_create: track.newArtistProfiles || null,
       existing_profile_links: track.existingProfileLinks || null,
