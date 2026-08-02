@@ -112,14 +112,22 @@ function PeopleLookupCard() {
 /* ---------- Painel de configuração de pastas do Drive ----------
    Lógica visível e editável por workflow: cadeia de resolução, raiz,
    subpastas padrão e travas de segurança. Persiste em localStorage. */
-function DriveConfigPanel({ workspace }: { workspace: string }) {
+type DrivePanelItem = {
+  root: string
+  subfolders: string[]
+  rootMode: string
+  artistPattern: string
+  warnings: string[]
+}
+
+function DriveConfigPanel({ workspace, driveConfigured }: { workspace: string; driveConfigured: boolean }) {
   const workflows = [
     ['release_intake', 'Lançamentos (intake)'],
     ['rights_clearance', 'Clearance'],
     ['people_registry', 'Pessoas'],
     ['company_registry', 'Empresas'],
   ] as const
-  const [cfg, setCfg] = useState<Record<string, { root: string; subfolders: string[] }>>({})
+  const [cfg, setCfg] = useState<Record<string, DrivePanelItem>>({})
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -128,12 +136,15 @@ function DriveConfigPanel({ workspace }: { workspace: string }) {
     ;(async () => {
       const results = await Promise.all(workflows.map(([workflow]) => api.getDriveConfig(workflow, workspace)))
       if (cancelled) return
-      const next: Record<string, { root: string; subfolders: string[] }> = {}
+      const next: Record<string, DrivePanelItem> = {}
       results.forEach((remote, idx) => {
         if (!remote) return
         next[workflows[idx][0]] = {
           root: String(remote.overrides?.root_folder_id ?? ''),
           subfolders: remote.subfolders ?? [],
+          rootMode: remote.root_mode ?? 'unmapped',
+          artistPattern: remote.artist_folder_pattern ?? '',
+          warnings: remote.warnings ?? [],
         }
       })
       setCfg(next)
@@ -142,8 +153,14 @@ function DriveConfigPanel({ workspace }: { workspace: string }) {
     return () => { cancelled = true }
   }, [workspace])
 
-  function update(workflow: string, patch: Partial<{ root: string; subfolders: string[] }>) {
-    setCfg((current) => ({ ...current, [workflow]: { ...(current[workflow] ?? { root: '', subfolders: [] }), ...patch } }))
+  function update(workflow: string, patch: Partial<DrivePanelItem>) {
+    setCfg((current) => ({
+      ...current,
+      [workflow]: {
+        ...(current[workflow] ?? { root: '', subfolders: [], rootMode: 'unmapped', artistPattern: '', warnings: [] }),
+        ...patch,
+      },
+    }))
     setSaved(false)
   }
 
@@ -182,22 +199,54 @@ function DriveConfigPanel({ workspace }: { workspace: string }) {
         na produção vira configuração do workspace, sem deploy.
       </p>
 
+      <div className="mt-4 rounded-2xl border border-[#16a34a]/25 bg-[#16a34a]/8 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[#16a34a]/15 px-2.5 py-1 text-[10px] font-bold text-[#166534]">✓ Intake conectado ao Google Drive da Atabaque</span>
+          <span className="text-[11px] font-semibold text-[#512314]/65">roteamento automático por cliente/artista</span>
+        </div>
+        <p className="mt-2 text-[12px] text-[#512314]/75">
+          No envio do formulário, a Sunbeat identifica o cliente no Airtable, localiza sua pasta no Drive e cria a pasta <strong>Projetos</strong> quando necessário.
+          Depois cria uma pasta para o lançamento e envia cada arquivo para o destino correto.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-[#512314]/75">
+          <span className="rounded-lg bg-white/55 px-2 py-1">Clientes</span><span>→</span>
+          <span className="rounded-lg bg-white/55 px-2 py-1">Artista</span><span>→</span>
+          <span className="rounded-lg bg-white/55 px-2 py-1">Projetos</span><span>→</span>
+          <span className="rounded-lg bg-white/55 px-2 py-1">Single/EP/Álbum_Título</span><span>→</span>
+          <span className="rounded-lg bg-white/55 px-2 py-1">Áudios · Capa · Imprensa · Imagens e Vídeos · Outros</span>
+        </div>
+        <p className="mt-2 text-[11px] text-[#512314]/60">
+          Capa → <strong>Capa</strong> · masters das faixas → <strong>Áudios</strong> · anexos adicionais → <strong>Outros</strong>. A pasta raiz não aparece como um ID fixo porque é resolvida individualmente para cada cliente.
+        </p>
+      </div>
+
       <div className="mt-4 space-y-4">
         {workflows.map(([workflow, label]) => {
-          const item = cfg[workflow] ?? { root: '', subfolders: [] }
+          const item = cfg[workflow] ?? { root: '', subfolders: [], rootMode: 'unmapped', artistPattern: '', warnings: [] }
+          const dynamicIntake = workflow === 'release_intake' && item.rootMode === 'mirror_v2_clientes' && driveConfigured
+          const fixedDestination = Boolean(item.root)
           return (
           <div key={workflow} className="rounded-2xl border border-[#512314]/15 bg-white/40 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[13px] font-bold text-[#512314]">{label}</p>
-              {item.root
+              {dynamicIntake
+                ? <span className="rounded-full bg-[#16a34a]/15 px-2 py-0.5 text-[10px] font-semibold text-[#166534]">ativo — pasta criada por cliente</span>
+                : fixedDestination
                 ? <span className="rounded-full bg-[#16a34a]/15 px-2 py-0.5 text-[10px] font-semibold text-[#166534]">destino ativo</span>
-                : <span className="rounded-full bg-[#ffb53e]/25 px-2 py-0.5 text-[10px] font-semibold text-[#8a5b00]">sem destino — pendente de definição</span>}
+                : item.rootMode === 'unmapped'
+                  ? <span className="rounded-full bg-[#512314]/10 px-2 py-0.5 text-[10px] font-semibold text-[#512314]/60">sem roteamento de arquivos</span>
+                  : <span className="rounded-full bg-[#ffb53e]/25 px-2 py-0.5 text-[10px] font-semibold text-[#8a5b00]">configuração do workflow</span>}
             </div>
+            {dynamicIntake && (
+              <p className="mt-2 text-[11px] font-medium text-[#166534]">
+                Lógica ativa: {item.artistPattern || 'Clientes/{Artista}/Projetos'} → pasta do lançamento. Não depende de uma pasta raiz única.
+              </p>
+            )}
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#512314]/50">Pasta raiz</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#512314]/50">Override manual de pasta raiz {dynamicIntake && '(opcional)'}</span>
                 <input value={item.root} onChange={(e) => update(workflow, { root: e.target.value })}
-                  placeholder="vazio = sem destino operacional"
+                  placeholder={dynamicIntake ? 'vazio = usar automaticamente a pasta do cliente' : 'ID de pasta, quando aplicável'}
                   className="mt-1 h-8 w-full rounded-lg border border-[#512314]/20 bg-white/70 px-3 text-[12px] outline-none focus:border-[#512314]/50" />
               </label>
               <label className="block">
@@ -487,7 +536,7 @@ export default function Portal() {
 
       {tab === 'drive' && (
         <div className="mt-6 space-y-6">
-          <DriveConfigPanel workspace={workspace} />
+          <DriveConfigPanel workspace={workspace} driveConfigured={Boolean(portalData?.integrations.drive?.configured)} />
           <LiveDriveFolders {...liveProps} />
         </div>
       )}
