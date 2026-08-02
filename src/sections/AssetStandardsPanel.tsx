@@ -12,11 +12,11 @@ function Guide({ title, icon, children }: { title: string; icon: ReactNode; chil
   )
 }
 
-export function AssetStandardsPanel() {
+export function AssetStandardsPanel({ title = 'Guia de assets da Atabaque', description = 'Consulte antes de gerar ou compartilhar os arquivos finais.' }: { title?: string; description?: string }) {
   return (
     <div className="rounded-3xl border-2 border-[#329fd7]/25 bg-[#329fd7]/7 p-4">
-      <p className="text-sm font-black">Guia de assets da Atabaque</p>
-      <p className="mb-3 mt-0.5 text-xs text-muted-foreground">Consulte antes de gerar ou compartilhar os arquivos finais.</p>
+      <p className="text-sm font-black">{title}</p>
+      <p className="mb-3 mt-0.5 text-xs text-muted-foreground">{description}</p>
       <div className="space-y-2">
         <Guide title="Clipe para Spotify" icon={<Film className="h-4 w-4 text-[#329fd7]" />}>
           <ul className="list-inside list-disc space-y-1">

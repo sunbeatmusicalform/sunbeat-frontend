@@ -44,8 +44,8 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
   return (
     <div className="mx-auto max-w-2xl">
       <StepHeader
-        title="Plano de divulgação"
-        description="Contexto estratégico, condições da campanha e pessoas que podem ampliar o lançamento."
+        title={form.textFor('intro.marketing', 'label', 'Plano de divulgação')}
+        description={form.textFor('intro.marketing', 'hint', 'Contexto estratégico, condições da campanha e pessoas que podem ampliar o lançamento.')}
       />
       <div className="space-y-5">
         <MarketingBlock

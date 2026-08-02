@@ -16,6 +16,7 @@ const WORKFLOWS = [
 ] as const
 
 const FEATURE_FIELDS = new Set(['track.audioAnalysis', 'track.lyricsSync'])
+const CONTENT_PREFIXES = ['welcome.', 'footer.', 'intro.', 'review.', 'project.assetGuide']
 
 function requirementLabel(value: FieldRequirement) {
   return REQUIREMENTS.find((item) => item.value === value)?.label ?? value
@@ -23,6 +24,7 @@ function requirementLabel(value: FieldRequirement) {
 
 function FieldEditor({ field, onChange }: { field: FormFieldConfigRemote; onChange: (patch: Partial<FormFieldConfigRemote>) => void }) {
   const isFeature = FEATURE_FIELDS.has(field.key)
+  const isContent = CONTENT_PREFIXES.some((prefix) => field.key.startsWith(prefix))
   return (
     <article className={`rounded-2xl border p-4 ${field.visible ? 'border-[#512314]/15 bg-white/35' : 'border-dashed border-[#512314]/15 bg-[#512314]/[0.03]'}`}>
       <div className="flex flex-wrap items-start gap-3">
@@ -40,7 +42,7 @@ function FieldEditor({ field, onChange }: { field: FormFieldConfigRemote; onChan
           <p className="mt-0.5 font-mono text-[10px] text-[#512314]/40">{field.key}</p>
           {field.locked ? <p className="mt-1 text-[10px] text-[#8a5b00]">{field.lock_reason}</p> : null}
         </div>
-        {isFeature ? <span className="rounded-full bg-[#329fd7]/12 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-[#1f6f9e]">Recurso auxiliar</span> : <label className="min-w-40 text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">
+        {isFeature || isContent ? <span className="rounded-full bg-[#329fd7]/12 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-[#1f6f9e]">{isFeature ? 'Recurso auxiliar' : 'Bloco de conteúdo'}</span> : <label className="min-w-40 text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">
           Exigência
           <select value={field.requirement} disabled={field.locked || !field.visible}
             onChange={(event) => onChange({ requirement: event.target.value as FieldRequirement })}
@@ -53,15 +55,15 @@ function FieldEditor({ field, onChange }: { field: FormFieldConfigRemote; onChan
       <details className="mt-3 border-t border-[#512314]/10 pt-3">
         <summary className="cursor-pointer text-[11px] font-semibold text-[#512314]/60">Personalizar texto</summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">Label
+          <label className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">{isContent ? 'Título ou texto principal' : 'Label'}
             <input value={field.label} onChange={(event) => onChange({ label: event.target.value })}
               className="mt-1 w-full rounded-xl border border-[#512314]/20 bg-white/60 px-3 py-2 text-[12px] normal-case text-[#512314]" />
           </label>
-          <label className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">{isFeature ? 'Texto do botão' : 'Placeholder'}
+          <label className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">{isFeature ? 'Texto do botão' : isContent ? 'Palavra de destaque / complemento' : 'Placeholder'}
             <input value={field.placeholder} onChange={(event) => onChange({ placeholder: event.target.value })}
               className="mt-1 w-full rounded-xl border border-[#512314]/20 bg-white/60 px-3 py-2 text-[12px] normal-case text-[#512314]" />
           </label>
-          <label className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/50 sm:col-span-2">Descrição de ajuda
+          <label className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/50 sm:col-span-2">{isContent ? 'Texto complementar' : 'Descrição de ajuda'}
             <textarea rows={2} value={field.hint} onChange={(event) => onChange({ hint: event.target.value })}
               className="mt-1 w-full rounded-xl border border-[#512314]/20 bg-white/60 px-3 py-2 text-[12px] font-normal normal-case text-[#512314]" />
           </label>
@@ -189,10 +191,10 @@ export function FormConfig({ workspace }: { workspace: string }) {
             <div className="mt-4 space-y-3">
               {fields.filter((field) => field.visible).map((field) => (
                 <div key={field.key} className="rounded-2xl border border-[#512314]/12 bg-white/50 p-3">
-                  <p className="text-[12px] font-bold text-[#512314]">{field.label}{FEATURE_FIELDS.has(field.key) || field.requirement === 'optional' ? '' : ' *'}</p>
+                  <p className="text-[12px] font-bold text-[#512314]">{field.label}{FEATURE_FIELDS.has(field.key) || CONTENT_PREFIXES.some((prefix) => field.key.startsWith(prefix)) || field.requirement === 'optional' ? '' : ' *'}</p>
                   {field.hint ? <p className="mt-0.5 text-[10px] text-[#512314]/55">{field.hint}</p> : null}
                   <div className="mt-2 rounded-xl border border-[#512314]/15 bg-white/70 px-3 py-2 text-[10px] text-[#512314]/35">{field.placeholder || (FEATURE_FIELDS.has(field.key) ? 'Recurso visível no formulário' : 'Campo do formulário')}</div>
-                  <p className="mt-1.5 text-[9px] font-semibold text-[#512314]/45">{FEATURE_FIELDS.has(field.key) ? 'Recurso auxiliar' : requirementLabel(field.requirement)}</p>
+                  <p className="mt-1.5 text-[9px] font-semibold text-[#512314]/45">{FEATURE_FIELDS.has(field.key) ? 'Recurso auxiliar' : CONTENT_PREFIXES.some((prefix) => field.key.startsWith(prefix)) ? 'Bloco de conteúdo' : requirementLabel(field.requirement)}</p>
                 </div>
               ))}
               {fields.every((field) => !field.visible) ? <p className="rounded-xl bg-white/40 p-3 text-[11px] text-[#512314]/60">Nenhum campo visível nesta etapa.</p> : null}

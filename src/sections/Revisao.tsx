@@ -30,8 +30,8 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
   return (
     <div className="mx-auto max-w-2xl">
       <StepHeader
-        title="Revisão final"
-        description="Confira o resumo abaixo. Se algo estiver faltando, avisamos aqui — nada de erro genérico só no fim."
+        title={form.textFor('intro.revisao', 'label', 'Revisão final')}
+        description={form.textFor('intro.revisao', 'hint', 'Confira o resumo abaixo. Se algo estiver faltando, avisamos aqui — nada de erro genérico só no fim.')}
       />
 
       <div className="mb-8 grid gap-2 sm:grid-cols-4">
@@ -102,11 +102,9 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
       </div>
 
       {/* aviso de confidencialidade */}
-      <p className="mt-5 rounded-xl border-2 border-foreground/10 bg-white/40 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
-        🔒 Materiais enviados neste formulário podem conter informações confidenciais de projeto musical.
-        Compartilhe apenas arquivos necessários ao fluxo e evite encaminhar links de rascunho, edição ou
-        download para pessoas não envolvidas.
-      </p>
+      {form.isVisible('review.confidentiality') && <p className="mt-5 rounded-xl border-2 border-foreground/10 bg-white/40 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
+        🔒 {form.textFor('review.confidentiality', 'hint', 'Materiais enviados neste formulário podem conter informações confidenciais de projeto musical. Compartilhe apenas arquivos necessários ao fluxo e evite encaminhar links de rascunho, edição ou download para pessoas não envolvidas.')}
+      </p>}
 
       {/* consentimento LGPD */}
       {form.isVisible('consentTruth') && <div className={`mt-4 rounded-2xl border-2 p-4 ${reviewErrors.consentTruth ? 'border-accent bg-accent/5' : 'border-foreground/15 bg-white/50'}`}>
@@ -114,11 +112,7 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
           <Checkbox id="consent" className="mt-0.5" checked={d.consentTruth}
             onCheckedChange={(v) => form.setData('consentTruth', v === true)} />
           <span className="text-xs leading-relaxed text-foreground/85">
-            Ao enviar este formulário, confirmo que as informações fornecidas são verdadeiras e autorizo
-            seu uso pela <strong>Atabaque</strong> e pela <strong>Sunbeat</strong> para fins de análise, cadastro,
-            operação de lançamento, clearance, contratos, comunicação e organização dos materiais relacionados
-            ao projeto. Os dados serão tratados conforme a política de privacidade aplicável e compartilhados
-            apenas com pessoas e sistemas necessários para a execução do fluxo.
+            {form.textFor('consentTruth', 'hint', 'Ao enviar este formulário, confirmo que as informações fornecidas são verdadeiras e autorizo seu uso pela Atabaque e pela Sunbeat para fins de análise, cadastro, operação de lançamento, clearance, contratos, comunicação e organização dos materiais relacionados ao projeto. Os dados serão tratados conforme a política de privacidade aplicável e compartilhados apenas com pessoas e sistemas necessários para a execução do fluxo.')}
           </span>
         </Label>
         {reviewErrors.consentTruth && (

@@ -28,8 +28,8 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
   return (
     <div className="mx-auto max-w-xl">
       <StepHeader
-        title="Sobre o projeto"
-        description="O essencial do lançamento: nome, formato, data e identidade. A partir da data, montamos o cronograma de distribuição."
+        title={form.textFor('intro.projeto', 'label', 'Sobre o projeto')}
+        description={form.textFor('intro.projeto', 'hint', 'O essencial do lançamento: nome, formato, data e identidade. A partir da data, montamos o cronograma de distribuição.')}
       />
       <div className="space-y-6">
         {form.isVisible('projectName') ? <Field label={form.textFor('projectName', 'label', 'Nome do projeto')} required={form.isRequired('projectName')} error={e.projectName}
@@ -116,7 +116,10 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
             value={form.data.additionalFiles ?? ''} onChange={(ev) => form.setData('additionalFiles', ev.target.value)} />
         </Field> : null}
 
-        {form.isVisible('coverFileName') || form.isVisible('track.audio') ? <AssetStandardsPanel /> : null}
+        {form.isVisible('project.assetGuide') && (form.isVisible('coverFileName') || form.isVisible('track.audio')) ? <AssetStandardsPanel
+          title={form.textFor('project.assetGuide', 'label', 'Guia de assets da Atabaque')}
+          description={form.textFor('project.assetGuide', 'hint', 'Consulte antes de gerar ou compartilhar os arquivos finais.')}
+        /> : null}
 
         {form.isVisible('notes') ? <Field label={form.textFor('notes', 'label', 'Observações do projeto')} required={form.isRequired('notes')} error={e.notes}
           hint={form.textFor('notes', 'hint', 'Contexto, referências, restrições de datas, territórios — qualquer coisa que ajude a equipe.')}>

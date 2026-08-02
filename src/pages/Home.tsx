@@ -287,6 +287,7 @@ export default function Home() {
         )}
         {step === 'welcome' && (
           <Welcome
+            form={form}
             hasDraft={form.hasDraft()}
             onStart={() => goTo('identificacao')}
             onResume={() => { if (form.resumeDraft()) window.scrollTo({ top: 0 }) }}
@@ -351,14 +352,14 @@ export default function Home() {
             )}
           </div>
         )}
-        {!whiteLabel && (
+        {!whiteLabel && workspaceSlug !== 'atabaque' && form.isVisible('footer.poweredBy') && (
           <div className="border-t border-foreground/10 bg-foreground/[0.04]">
             <div className="mx-auto flex max-w-4xl items-center justify-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold text-muted-foreground">
-              Este formulário roda na plataforma
+              {form.textFor('footer.poweredBy', 'label', 'Este formulário roda na plataforma Sunbeat').replace(/\s*Sunbeat\s*$/i, '')}
               <a href="https://sunbeat.pro" target="_blank" rel="noreferrer" className="font-black text-foreground/70 hover:text-foreground underline underline-offset-2">
                 Sunbeat
               </a>
-              · intake inteligente para operações criativas
+              · {form.textFor('footer.poweredBy', 'hint', 'intake inteligente para operações criativas')}
             </div>
           </div>
         )}

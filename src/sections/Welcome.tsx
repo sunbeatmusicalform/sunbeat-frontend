@@ -1,62 +1,68 @@
 import { Button } from '@/components/ui/button'
 import { ArrowRight, FileAudio, Image as ImageIcon, Mail, Clock3 } from 'lucide-react'
 import type { StepId } from '@/hooks/useIntakeForm'
+import { type useIntakeForm } from '@/hooks/useIntakeForm'
+
+type F = ReturnType<typeof useIntakeForm>
 
 export function Welcome({
-  onStart, onResume, onEdit, hasDraft,
+  form, onStart, onResume, onEdit, hasDraft,
 }: {
+  form: F
   onStart: () => void
   onResume: () => void
   onEdit: () => void
   hasDraft: boolean
 }) {
   const resume = hasDraft && onResume
+  const title = form.textFor('welcome.title', 'label', 'Formulário de lançamento')
+  const accentWord = form.textFor('welcome.title', 'placeholder', 'lançamento')
+  const titleParts = accentWord && title.includes(accentWord) ? title.split(accentWord) : null
+  const cards = [
+    { key: 'welcome.estimateCard', icon: Clock3, title: '10–15 minutos', desc: 'E salva rascunho automaticamente — volte quando quiser.' },
+    { key: 'welcome.haveReadyCard', icon: FileAudio, title: 'Tenha em mãos', desc: 'Áudios em WAV ou FLAC, capa quadrada (ideal 3000×3000) e créditos completos.' },
+    { key: 'welcome.validationCard', icon: ImageIcon, title: 'Validação automática', desc: 'Analisamos áudio e capa na hora e avisamos se algo precisa de ajuste.' },
+    { key: 'welcome.trackingCard', icon: Mail, title: 'Acompanhamento', desc: 'Você recebe e-mails a cada etapa: recebido, em análise, ajustes e aprovado.' },
+  ]
   return (
     <div className="mx-auto max-w-2xl text-center py-10">
-      <div className="sun-chip mx-auto mb-3">Atabaque · Um Ritmo de Pensar Música</div>
-      <p className="mb-6 text-xs font-semibold text-muted-foreground flex items-center justify-center gap-1.5">
-        🔒 Formulário restrito a parceiros — se você chegou aqui por engano, fale com a equipe Atabaque.
-      </p>
-      <h1 className="font-display text-4xl md:text-5xl font-black leading-tight">
-        Formulário de <span className="text-accent">lançamento</span>
-      </h1>
-      <p className="mt-4 text-muted-foreground leading-relaxed">
-        Envie os dados, créditos e arquivos do seu próximo lançamento. Nossa equipe revisa,
-        valida os metadados e prepara a distribuição — você acompanha tudo por e-mail.
-      </p>
+      {form.isVisible('welcome.chip') && <div className="sun-chip mx-auto mb-3">{form.textFor('welcome.chip', 'label', 'Atabaque · Um Ritmo de Pensar Música')}</div>}
+      {form.isVisible('welcome.restrictedNotice') && <p className="mb-6 text-xs font-semibold text-muted-foreground flex items-center justify-center gap-1.5">
+        🔒 {form.textFor('welcome.restrictedNotice', 'label', 'Formulário restrito a parceiros')} — {form.textFor('welcome.restrictedNotice', 'hint', 'se você chegou aqui por engano, fale com a equipe Atabaque.')}
+      </p>}
+      {form.isVisible('welcome.title') && <h1 className="font-display text-4xl md:text-5xl font-black leading-tight">
+        {titleParts ? <>{titleParts[0]}<span className="text-accent">{accentWord}</span>{titleParts.slice(1).join(accentWord)}</> : title}
+      </h1>}
+      {form.isVisible('welcome.subtitle') && <p className="mt-4 text-muted-foreground leading-relaxed">
+        {form.textFor('welcome.subtitle', 'hint', 'Envie os dados, créditos e arquivos do seu próximo lançamento. Nossa equipe revisa, valida os metadados e prepara a distribuição — você acompanha tudo por e-mail.')}
+      </p>}
 
       <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
-        {[
-          { icon: Clock3, t: '10–15 minutos', d: 'E salva rascunho automaticamente — volte quando quiser.' },
-          { icon: FileAudio, t: 'Tenha em mãos', d: 'Áudios em WAV ou FLAC, capa quadrada (ideal 3000×3000) e créditos completos.' },
-          { icon: ImageIcon, t: 'Validação automática', d: 'Analisamos áudio e capa na hora e avisamos se algo precisa de ajuste.' },
-          { icon: Mail, t: 'Acompanhamento', d: 'Você recebe e-mails a cada etapa: recebido, em análise, ajustes e aprovado.' },
-        ].map(({ icon: Icon, t, d }) => (
-          <div key={t} className="sun-card rounded-2xl p-4">
-            <div className="flex items-center gap-2 font-bold text-sm"><Icon className="h-4 w-4 text-accent" />{t}</div>
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{d}</p>
+        {cards.filter((card) => form.isVisible(card.key)).map(({ key, icon: Icon, title: cardTitle, desc }) => (
+          <div key={key} className="sun-card rounded-2xl p-4">
+            <div className="flex items-center gap-2 font-bold text-sm"><Icon className="h-4 w-4 text-accent" />{form.textFor(key, 'label', cardTitle)}</div>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{form.textFor(key, 'hint', desc)}</p>
           </div>
         ))}
       </div>
 
       <div className="mt-8 flex flex-col items-center gap-3">
-        <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-8 h-12 text-base shadow-[4px_4px_0_0_rgba(81,35,20,0.25)]" onClick={onStart}>
-          Começar <ArrowRight className="ml-1 h-5 w-5" />
-        </Button>
+        {form.isVisible('welcome.startButton') && <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-8 h-12 text-base shadow-[4px_4px_0_0_rgba(81,35,20,0.25)]" onClick={onStart}>
+          {form.textFor('welcome.startButton', 'label', 'Começar')} <ArrowRight className="ml-1 h-5 w-5" />
+        </Button>}
         <div className="flex gap-4 text-sm">
-          {resume && (
+          {resume && form.isVisible('welcome.resumeLink') && (
             <button className="font-semibold underline underline-offset-4 text-foreground/80 hover:text-foreground" onClick={onResume}>
-              Continuar meu rascunho
+              {form.textFor('welcome.resumeLink', 'label', 'Continuar meu rascunho')}
             </button>
           )}
-          <button className="font-semibold underline underline-offset-4 text-muted-foreground hover:text-foreground" onClick={onEdit}>
-            Editar uma submissão enviada
-          </button>
+          {form.isVisible('welcome.editLink') && <button className="font-semibold underline underline-offset-4 text-muted-foreground hover:text-foreground" onClick={onEdit}>
+            {form.textFor('welcome.editLink', 'label', 'Editar uma submissão enviada')}
+          </button>}
         </div>
-        <p className="max-w-md text-[11px] leading-relaxed text-muted-foreground">
-          Seus dados são usados apenas para analisar e operar o seu lançamento, conforme a política de
-          privacidade. Antes de enviar, você revisa tudo e confirma uma declaração de veracidade.
-        </p>
+        {form.isVisible('welcome.privacyNote') && <p className="max-w-md text-[11px] leading-relaxed text-muted-foreground">
+          {form.textFor('welcome.privacyNote', 'hint', 'Seus dados são usados apenas para analisar e operar o seu lançamento, conforme a política de privacidade. Antes de enviar, você revisa tudo e confirma uma declaração de veracidade.')}
+        </p>}
       </div>
     </div>
   )

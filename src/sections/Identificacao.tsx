@@ -9,8 +9,8 @@ export function Identificacao({ form, showErrors }: { form: F; showErrors: boole
   return (
     <div className="mx-auto max-w-xl">
       <StepHeader
-        title="Vamos começar?"
-        description="Conta pra gente quem está por trás deste lançamento. Esses dados são só para a gente se manter em contato e te enviar atualizações."
+        title={form.textFor('intro.identificacao', 'label', 'Vamos começar?')}
+        description={form.textFor('intro.identificacao', 'hint', 'Conta pra gente quem está por trás deste lançamento. Esses dados são só para a gente se manter em contato e te enviar atualizações.')}
       />
       <div className="space-y-6">
         {form.isVisible('responsibleName') ? <Field label={form.textFor('responsibleName', 'label', 'Seu nome')} required={form.isRequired('responsibleName')} error={e.responsibleName}

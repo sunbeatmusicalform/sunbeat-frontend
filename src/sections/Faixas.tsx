@@ -179,8 +179,8 @@ export function Faixas({ form, showErrors, workspaceSlug }: { form: F; showError
   return (
     <div className="mx-auto max-w-2xl">
       <StepHeader
-        title="Faixas e créditos"
-        description="Cadastre cada música com seus créditos. Capriche aqui: é desses dados que saem o ISRC, os créditos nas plataformas e a distribuição."
+        title={form.textFor('intro.faixas', 'label', 'Faixas e créditos')}
+        description={form.textFor('intro.faixas', 'hint', 'Cadastre cada música com seus créditos. Capriche aqui: é desses dados que saem o ISRC, os créditos nas plataformas e a distribuição.')}
       />
       {form.isVisible('focusTrack') && all.focusTrack && (
         <p className="mb-4 rounded-xl border-2 border-accent/50 bg-accent/10 p-3 text-xs font-semibold text-accent">

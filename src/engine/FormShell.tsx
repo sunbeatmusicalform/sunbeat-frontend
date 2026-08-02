@@ -231,14 +231,14 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
             )}
           </div>
         )}
-        {!whiteLabel && (
+        {!whiteLabel && workspaceSlug !== 'atabaque' && publishedConfig?.fields['footer.poweredBy']?.visible !== false && (
           <div className="border-t border-foreground/10 bg-foreground/[0.04]">
             <div className="mx-auto flex max-w-4xl items-center justify-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold text-muted-foreground">
-              Este formulário roda na plataforma
+              {(publishedConfig?.fields['footer.poweredBy']?.label || 'Este formulário roda na plataforma Sunbeat').replace(/\s*Sunbeat\s*$/i, '')}
               <a href="https://sunbeat.pro" target="_blank" rel="noreferrer" className="font-black text-foreground/70 hover:text-foreground underline underline-offset-2">
                 Sunbeat
               </a>
-              · formulários inteligentes para operações criativas
+              · {publishedConfig?.fields['footer.poweredBy']?.hint || 'formulários inteligentes para operações criativas'}
             </div>
           </div>
         )}
