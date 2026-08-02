@@ -107,6 +107,18 @@ const phaseOrder = [
   'Relatorio D+28', 'Lançamento',
 ]
 
+const operationalCadence = [
+  { label: 'Clearance', period: 'D−60 → D−21' },
+  { label: 'Plano de Marketing', period: 'D−55 → D−40' },
+  { label: 'Operacional', period: 'D−45 → D−14' },
+  { label: 'Plano de Mídia', period: 'D−40 → D−10' },
+  { label: 'Videoclipe', period: 'D−21 → D−7' },
+  { label: 'Imprensa', period: 'D−21 → D−15' },
+  { label: 'Relatório D+7', period: 'D+7 → D+10' },
+  { label: 'Relatório D+15', period: 'D+15 → D+18' },
+  { label: 'Relatório D+28', period: 'D+28 → D+33' },
+]
+
 function phaseRank(value: string) {
   const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
   const index = phaseOrder.findIndex((phase) => phase.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR') === normalized)
@@ -152,6 +164,13 @@ function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[
           <div className="flex rounded-full bg-[#512314]/8 p-0.5 text-[10px] font-semibold text-[#512314]/60">
             {([30, 90, 180] as const).map((days) => <button key={days} onClick={() => setWindowDays(days)} className={`rounded-full px-2.5 py-1 ${windowDays === days ? 'bg-white/80 text-[#512314]' : ''}`}>{days} dias</button>)}
           </div>
+        </div>
+      </div>
+      <div className="border-b border-[#512314]/10 bg-[#512314]/[0.025] px-4 py-3">
+        <p className="text-[11px] font-semibold text-[#512314]">Régua operacional configurada atualmente</p>
+        <p className="mt-0.5 text-[10px] leading-relaxed text-[#512314]/60"><strong>D0</strong> é a data de lançamento. <strong>D−</strong> indica dias antes e <strong>D+</strong> dias depois. Cada intervalo abaixo define o início planejado e o limite da etapa; a régua pode ser revisada pela operação.</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {operationalCadence.map((item) => <span key={item.label} className="rounded-full border border-[#512314]/10 bg-white/55 px-2 py-1 text-[9px] text-[#512314]/65"><strong className="text-[#512314]">{item.label}</strong> · {item.period}</span>)}
         </div>
       </div>
       {rows.length ? <div className="overflow-x-auto">
