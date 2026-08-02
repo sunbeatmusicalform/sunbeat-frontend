@@ -16,7 +16,7 @@ function representative(values: FormValues, prefix: string) {
   }
 }
 
-export function buildCompanyPayload(values: FormValues, workspaceSlug: string, draftToken: string) {
+export function buildCompanyPayload(values: FormValues, workspaceSlug: string, draftToken: string, editToken?: string | null) {
   const contractSameAsLegal = text(values, 'contract_same_as_legal')
   const financialSameAsLegal = text(values, 'financial_same_as_legal')
   const financialSameAsContract = text(values, 'financial_same_as_contract')
@@ -25,6 +25,7 @@ export function buildCompanyPayload(values: FormValues, workspaceSlug: string, d
     draft_token: draftToken,
     workspace_slug: workspaceSlug,
     workflow_type: 'company_registry',
+    edit_token: editToken || null,
     company_data: {
       document_type: text(values, 'document_type'),
       document_number: text(values, 'document_number'),
@@ -65,11 +66,11 @@ export function buildCompanyPayload(values: FormValues, workspaceSlug: string, d
   }
 }
 
-export async function submitCompany(values: FormValues, workspaceSlug: string, draftToken: string) {
+export async function submitCompany(values: FormValues, workspaceSlug: string, draftToken: string, editToken?: string | null) {
   const response = await fetch('/submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
-    body: JSON.stringify(buildCompanyPayload(values, workspaceSlug, draftToken)),
+    body: JSON.stringify(buildCompanyPayload(values, workspaceSlug, draftToken, editToken)),
   })
   if (!response.ok) {
     const payload = await response.json().catch(() => null) as { detail?: unknown } | null

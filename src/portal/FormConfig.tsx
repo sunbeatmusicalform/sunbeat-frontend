@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle2, Eye, EyeOff, FileSliders, Lock, RotateCcw } from 'lucide-react'
-import { api, type FieldRequirement, type FormConfigRemote, type FormFieldConfigRemote } from '../lib/api'
+import { AlertCircle, CheckCircle2, Eye, EyeOff, FileSliders, KeyRound, Lock, RotateCcw } from 'lucide-react'
+import { api, type EditAccessItemRemote, type EditPolicy, type FieldRequirement, type FormConfigRemote, type FormFieldConfigRemote } from '../lib/api'
 import { HelpConfig } from './HelpConfig'
 
 const REQUIREMENTS: { value: FieldRequirement; label: string; description: string }[] = [
@@ -18,6 +18,71 @@ const WORKFLOWS = [
 
 const FEATURE_FIELDS = new Set(['track.audioAnalysis', 'track.lyricsSync'])
 const CONTENT_PREFIXES = ['welcome.', 'footer.', 'intro.', 'review.', 'project.assetGuide']
+
+const EDIT_POLICIES: { value: EditPolicy; label: string; description: string }[] = [
+  { value: 'link_after_submit', label: 'Link automático no e-mail', description: 'O responsável e os destinatários configurados recebem o link seguro após o envio.' },
+  { value: 'admin_authorized', label: 'Somente com autorização', description: 'A submissão fica bloqueada; o portal gera e envia um novo link quando a equipe autorizar.' },
+  { value: 'disabled', label: 'Edição desativada', description: 'Nenhum link de edição é aceito para este formulário.' },
+]
+
+function EditAccessConfig({ workspace, workflowType }: { workspace: string; workflowType: string }) {
+  const [policy, setPolicy] = useState<EditPolicy | null>(null)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    setPolicy(null)
+    void api.getEditConfig(workspace).then((result) => setPolicy(result?.workflows[workflowType]?.policy ?? null))
+  }, [workspace, workflowType])
+
+  async function change(next: EditPolicy) {
+    setSaving(true)
+    const result = await api.patchEditConfig(workspace, workflowType, next)
+    if (result) setPolicy(result.policy)
+    setSaving(false)
+  }
+
+  return (
+    <section className="sun-card p-5">
+      <div className="flex items-start gap-3"><KeyRound className="mt-0.5 text-[#329fd7]" size={20} /><div>
+        <h2 className="text-[15px] font-bold text-[#512314]">Edição após a submissão</h2>
+        <p className="mt-0.5 text-[12px] text-[#512314]/60">O botão genérico não é usado. A edição acontece somente por links individuais e auditáveis.</p>
+      </div></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {EDIT_POLICIES.map((item) => <button key={item.value} type="button" disabled={saving || policy === null} onClick={() => change(item.value)}
+          className={`rounded-2xl border p-3 text-left ${policy === item.value ? 'border-[#512314] bg-[#512314]/8' : 'border-[#512314]/15 bg-white/35'}`}>
+          <span className="text-[12px] font-bold text-[#512314]">{item.label}</span>
+          <span className="mt-1 block text-[10.5px] leading-relaxed text-[#512314]/60">{item.description}</span>
+        </button>)}
+      </div>
+    </section>
+  )
+}
+
+function EditAuthorizationPanel({ workspace }: { workspace: string }) {
+  const [items, setItems] = useState<EditAccessItemRemote[]>([])
+  const [busy, setBusy] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
+  useEffect(() => { void api.getEditAccess(workspace).then((result) => setItems(result?.items ?? [])) }, [workspace])
+  async function issue(item: EditAccessItemRemote) {
+    setBusy(item.record_id); setMessage('')
+    const result = await api.issueEditAccess(workspace, item.workflow_type, item.record_id)
+    setBusy(null)
+    setMessage(result ? `Link autorizado e enviado para ${result.to_email}.` : 'Não foi possível autorizar. Confira o e-mail do cadastro.')
+  }
+  return (
+    <section className="sun-card p-5">
+      <h2 className="text-[15px] font-bold text-[#512314]">Autorizações de People e Company</h2>
+      <p className="mt-0.5 text-[12px] text-[#512314]/60">Cada autorização invalida o token anterior, registra o novo acesso e envia o link ao responsável com os destinatários configurados em cópia.</p>
+      <div className="mt-4 max-h-72 space-y-2 overflow-auto">
+        {items.map((item) => <div key={`${item.workflow_type}:${item.record_id}`} className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#512314]/12 bg-white/35 p-3">
+          <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold text-[#512314]">{item.title}</p><p className="text-[10.5px] text-[#512314]/55">{item.workflow_type === 'people_registry' ? 'Pessoa' : 'Empresa'} · {item.email || 'sem e-mail'}</p></div>
+          <button type="button" disabled={busy === item.record_id || !item.email} onClick={() => issue(item)} className="rounded-full bg-[#512314] px-3 py-1.5 text-[10.5px] font-bold text-[#ebdbba] disabled:opacity-40">{busy === item.record_id ? 'enviando…' : 'Autorizar e enviar link'}</button>
+        </div>)}
+        {!items.length && <p className="text-[11px] text-[#512314]/55">Nenhum cadastro real disponível para autorização.</p>}
+      </div>
+      {message && <p className="mt-3 text-[11px] font-semibold text-[#166534]">{message}</p>}
+    </section>
+  )
+}
 
 function requirementLabel(value: FieldRequirement) {
   return REQUIREMENTS.find((item) => item.value === value)?.label ?? value
@@ -138,6 +203,8 @@ export function FormConfig({ workspace }: { workspace: string }) {
   return (
     <div className="mt-6 space-y-5">
       <HelpConfig workspace={workspace} />
+      <EditAccessConfig workspace={workspace} workflowType={workflowType} />
+      <EditAuthorizationPanel workspace={workspace} />
       <section className="sun-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">

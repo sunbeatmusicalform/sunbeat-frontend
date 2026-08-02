@@ -87,6 +87,17 @@ export async function submitPerson(values: FormValues, structural: InviteStructu
   return payload
 }
 
+export async function submitPersonEdit(values: FormValues, structural: InviteStructural, editToken: string) {
+  const response = await fetch(`/people-registry/records/edit/${encodeURIComponent(editToken)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildPersonPayload(values, structural)),
+  })
+  const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null
+  if (!response.ok) throw new Error(payload?.error?.message || 'Não foi possível atualizar o cadastro.')
+  return payload
+}
+
 export interface ParticipationPayload {
   confirmation_status?: string
   musical_role?: string

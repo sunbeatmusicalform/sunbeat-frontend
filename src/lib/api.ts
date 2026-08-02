@@ -263,6 +263,25 @@ export interface PortalDataRemote {
   integrations: Record<string, { configured: boolean; status: string }>
 }
 
+export type EditPolicy = 'link_after_submit' | 'admin_authorized' | 'disabled'
+export interface EditConfigRemote {
+  ok: boolean
+  workspace_slug: string
+  workflows: Record<string, { policy: EditPolicy }>
+}
+export interface EditAccessItemRemote {
+  record_id: string
+  workflow_type: 'company_registry' | 'people_registry'
+  title: string
+  email: string
+  created_at?: string | null
+}
+export interface EditAccessListRemote { ok: boolean; items: EditAccessItemRemote[] }
+export interface EditAccessIssueRemote {
+  ok: boolean; record_id: string; workflow_type: string; to_email: string
+  edit_url: string; email_status?: string | null
+}
+
 export const api = {
   lookupArtists: (query: string, workspace = WORKSPACE) =>
     get<PeopleLookupResponse>(`/people-registry/lookup?workspace_slug=${encodeURIComponent(workspace)}&roles=artista&limit=8&query=${encodeURIComponent(query)}`),
@@ -307,4 +326,16 @@ export const api = {
 
   getPortalData: (workspace: string) =>
     get<PortalDataRemote>(`/workspaces/${encodeURIComponent(workspace)}/portal-data`),
+
+  getEditConfig: (workspace: string) =>
+    get<EditConfigRemote>(`/workspaces/${encodeURIComponent(workspace)}/edit-config`),
+
+  patchEditConfig: (workspace: string, workflowType: string, policy: EditPolicy) =>
+    send<{ ok: boolean; policy: EditPolicy }>('PATCH', `/workspaces/${encodeURIComponent(workspace)}/workflows/${encodeURIComponent(workflowType)}/edit-config`, { policy }),
+
+  getEditAccess: (workspace: string) =>
+    get<EditAccessListRemote>(`/workspaces/${encodeURIComponent(workspace)}/edit-access`),
+
+  issueEditAccess: (workspace: string, workflowType: string, recordId: string) =>
+    send<EditAccessIssueRemote>('POST', `/workspaces/${encodeURIComponent(workspace)}/edit-access/${encodeURIComponent(workflowType)}/${encodeURIComponent(recordId)}`, {}),
 }

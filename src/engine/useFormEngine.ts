@@ -86,11 +86,11 @@ export function fieldErrors(step: StepDef, values: FormValues, phase: Validation
   return e
 }
 
-export function useFormEngine(config: FormConfig, prefill?: Partial<FormValues>) {
+export function useFormEngine(config: FormConfig, prefill?: Partial<FormValues>, initialMode: Mode = 'new') {
   const DRAFT_KEY = `sunbeat.${config.slug}.draft`
-  const [step, setStep] = useState<EngineStep>('welcome')
+  const [step, setStep] = useState<EngineStep>(() => initialMode === 'edit' ? activeSteps(config, { ...emptyValues(config), ...prefill })[0]?.id ?? 'revisao' : 'welcome')
   const [values, setValuesState] = useState<FormValues>(() => ({ ...emptyValues(config), ...prefill }))
-  const [mode, setMode] = useState<Mode>('new')
+  const [mode, setMode] = useState<Mode>(initialMode)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 

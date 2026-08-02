@@ -13,16 +13,16 @@ import { useBranding, BrandLogo } from '@/lib/brand'
 import { StepHeader } from '@/sections/ui'
 import { AutomationDialog } from '@/sections/AutomationDialog'
 import { HelpChat } from '@/components/HelpChat'
-import { useFormEngine, isVisible, type Engine } from './useFormEngine'
+import { useFormEngine, isVisible, type Engine, type Mode } from './useFormEngine'
 import { FieldRenderer, reviewValue } from './FieldRenderer'
 import { CONFIDENTIALITY_NOTICE, consentLabel } from './consent'
 import type { FieldDef, FormConfig, FormValues } from './types'
 import { applyPublishedFormConfig, usePublicFormConfig } from '@/lib/form-config'
 
-export function FormShell({ config: baseConfig, workspaceSlug, workflowType, prefill, banner, onSubmit, onSubmitted }: { config: FormConfig; workspaceSlug: string; workflowType: string; prefill?: Partial<FormValues>; banner?: ReactNode; onSubmit?: (values: FormValues) => Promise<void>; onSubmitted?: (values: FormValues) => void }) {
+export function FormShell({ config: baseConfig, workspaceSlug, workflowType, prefill, initialMode = 'new', banner, onSubmit, onSubmitted }: { config: FormConfig; workspaceSlug: string; workflowType: string; prefill?: Partial<FormValues>; initialMode?: Mode; banner?: ReactNode; onSubmit?: (values: FormValues) => Promise<void>; onSubmitted?: (values: FormValues) => void }) {
   const { config: publishedConfig } = usePublicFormConfig(workspaceSlug, workflowType)
   const config = useMemo(() => applyPublishedFormConfig(baseConfig, publishedConfig), [baseConfig, publishedConfig])
-  const engine = useFormEngine(config, prefill)
+  const engine = useFormEngine(config, prefill, initialMode)
   const { branding, loaded: brandingLoaded } = useBranding(workspaceSlug)
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)

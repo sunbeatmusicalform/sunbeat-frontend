@@ -11,7 +11,7 @@ function optional(values: FormValues, key: string): string | null {
   return text(values, key) || null
 }
 
-export function buildClearancePayload(values: FormValues, workspaceSlug: string, draftToken: string, supportingFiles: UploadedFileRef[] = []) {
+export function buildClearancePayload(values: FormValues, workspaceSlug: string, draftToken: string, supportingFiles: UploadedFileRef[] = [], editToken?: string | null) {
   const format = text(values, 'clearance_format') as ClearanceFormat
   const isRelease = format === 'music_release_clearance_intake'
   const isAudiovisual = format === 'audiovisual_product_sync'
@@ -32,6 +32,7 @@ export function buildClearancePayload(values: FormValues, workspaceSlug: string,
     draft_token: draftToken,
     workspace_slug: workspaceSlug,
     workflow_type: 'rights_clearance',
+    edit_token: editToken || null,
     requester_identification: {
       requester_name: text(values, 'requester_name'),
       requester_email: text(values, 'requester_email'),
@@ -82,16 +83,16 @@ export function buildClearancePayload(values: FormValues, workspaceSlug: string,
   }
 }
 
-export async function submitClearance(values: FormValues, workspaceSlug: string, draftToken: string) {
+export async function submitClearance(values: FormValues, workspaceSlug: string, draftToken: string, editToken?: string | null, existingFiles: UploadedFileRef[] = []) {
   const format = text(values, 'clearance_format')
   const fileValue = values[format === 'audiovisual_product_sync' ? 'supporting_files_av' : 'supporting_files']
   const supportingFiles = fileValue instanceof File
     ? [await uploadIntakeFile({ file: fileValue, kind: 'asset', workspaceSlug, draftToken })]
-    : []
+    : existingFiles
   const response = await fetch('/submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
-    body: JSON.stringify(buildClearancePayload(values, workspaceSlug, draftToken, supportingFiles)),
+    body: JSON.stringify(buildClearancePayload(values, workspaceSlug, draftToken, supportingFiles, editToken)),
   })
   if (!response.ok) {
     const payload = await response.json().catch(() => null) as { detail?: unknown } | null

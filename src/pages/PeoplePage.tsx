@@ -4,7 +4,7 @@ import { Link2 } from 'lucide-react'
 import { FormShell } from '@/engine/FormShell'
 import { peopleConfig } from '@/forms/people'
 import { findInvite, INVITE_STATUS_LABEL, markInviteResponded, type PeopleInvite } from '@/forms/invites'
-import { buildInviteEnvelope, submitPerson, type InviteStructural } from '@/forms/peopleAdapter'
+import { buildInviteEnvelope, submitPerson, submitPersonEdit, type InviteStructural } from '@/forms/peopleAdapter'
 import { api } from '@/lib/api'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
 
@@ -17,6 +17,7 @@ export default function PeoplePage() {
   const { workspace = 'atabaque' } = useParams()
   const [params] = useSearchParams()
   const token = params.get('invite')
+  const editToken = params.get('edit_token')
   const intakeName = params.get('name')?.trim() ?? ''
   const intakeRole = params.get('role')?.trim() ?? ''
   const intakePrefill = useMemo(() => intakeName ? {
@@ -32,6 +33,21 @@ export default function PeoplePage() {
     workspace_slug: 'atabaque',
     profile: 'atabaque_people_v1',
   })
+  const [editPrefill, setEditPrefill] = useState<Record<string, unknown> | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!editToken) return
+    void fetch(`/people-registry/records/edit/${encodeURIComponent(editToken)}`).then(async (response) => {
+      if (!response.ok) throw new Error('Este link ainda não foi autorizado ou foi substituído.')
+      const payload = await response.json() as { data?: Record<string, Record<string, unknown>> }
+      const data = payload.data ?? {}
+      setEditPrefill({
+        ...(data.party ?? {}), ...(data.contact ?? {}), ...(data.address ?? {}),
+        ...(data.banking ?? {}), ...(data.additional_info ?? {}), consentTruth: true,
+      })
+    }).catch((reason: Error) => setEditError(reason.message))
+  }, [editToken])
 
   useEffect(() => {
     let cancelled = false
@@ -85,13 +101,19 @@ export default function PeoplePage() {
     )
   }
 
+  if (editToken && editError) return <div className="flex min-h-screen items-center justify-center px-6 text-center text-sm font-semibold text-red-700">{editError}</div>
+  if (editToken && !editPrefill) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Carregando cadastro autorizado…</div>
+
   if (!invite) return (
     <FormShell
       config={peopleConfig}
       workspaceSlug={workspace}
       workflowType="people_registry"
-      prefill={intakePrefill}
-      onSubmit={(values) => submitPerson(values, { workspace_slug: workspace, profile: 'atabaque_people_v1' }).then(() => undefined)}
+      prefill={editPrefill ?? intakePrefill}
+      initialMode={editToken ? 'edit' : 'new'}
+      onSubmit={(values) => (editToken
+        ? submitPersonEdit(values, { workspace_slug: workspace, profile: 'atabaque_people_v1' }, editToken)
+        : submitPerson(values, { workspace_slug: workspace, profile: 'atabaque_people_v1' })).then(() => undefined)}
     />
   )
 
