@@ -248,7 +248,7 @@ export interface PortalProjectRemote {
 export interface PortalStageRemote {
   id: string; project_id: string; project: string; name: string; macroarea: string
   status: string; active: boolean; responsible: string; start_date?: string | null
-  end_date?: string | null; release_date?: string | null; risk: string
+  end_date?: string | null; completion_date?: string | null; release_date?: string | null; risk: string
 }
 
 export interface PortalDemandRemote {

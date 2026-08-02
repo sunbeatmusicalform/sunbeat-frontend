@@ -37,8 +37,24 @@ type TimelineRow = {
   status: string
   start: number
   end: number
+  completionDate: number | null
   milestone: boolean
   duplicateCount: number
+}
+
+const closedStage = (status: string) => /conclu|aprova|distribu|cancelad|n[aã]o se aplica/i.test(status)
+
+function deadlineState(row: TimelineRow, today: number, day: number) {
+  if (closedStage(row.status)) {
+    return {
+      kind: 'done',
+      label: row.completionDate ? `Concluído em ${fmt(new Date(row.completionDate).toISOString())}` : 'Concluído · sem data registrada',
+    }
+  }
+  const remaining = Math.ceil((row.end - today) / day)
+  if (remaining < 0) return { kind: 'overdue', label: `Atrasado ${Math.abs(remaining)} dia${remaining === -1 ? '' : 's'}` }
+  if (remaining === 0) return { kind: 'today', label: 'Prazo final hoje' }
+  return { kind: 'open', label: `Faltam ${remaining} dia${remaining === 1 ? '' : 's'}` }
 }
 
 function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote[]): TimelineRow[] {
@@ -54,6 +70,7 @@ function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote
       status: stage.status,
       start: Math.min(start, end),
       end: Math.max(start, end),
+      completionDate: dateValue(stage.completion_date),
       milestone: start === end,
       duplicateCount: 1,
     }]
@@ -76,6 +93,7 @@ function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote
       status: project.status,
       start: release,
       end: release,
+      completionDate: closedStage(project.status) ? release : null,
       milestone: true,
       duplicateCount: 1,
     }]
@@ -117,6 +135,11 @@ function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[
   const position = (value: number) => Math.max(0, Math.min(100, ((value - first) / duration) * 100))
   const ticks = Array.from({ length: 6 }, (_, index) => first + ((duration * index) / 5))
   const todayPosition = position(now.getTime())
+  const badgeClass = (kind: string) => kind === 'done'
+    ? 'bg-[#0f9f74]/10 text-[#087658]'
+    : kind === 'overdue' || kind === 'today'
+      ? 'bg-[#ff5a45]/12 text-[#b83224]'
+      : 'bg-[#329fd7]/10 text-[#176f98]'
 
   return (
     <div className="sun-card overflow-hidden">
@@ -133,24 +156,29 @@ function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[
       </div>
       {rows.length ? <div className="overflow-x-auto">
         <div className="min-w-[900px] p-4">
-          <div className="grid grid-cols-[230px_1fr] border-b border-[#512314]/10 pb-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/45">Etapa · projeto</p>
+          <div className="grid grid-cols-[340px_1fr] border-b border-[#512314]/10 pb-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/45">Projeto · ciclo · prazo</p>
             <div className="relative h-5">
               {ticks.map((tick, index) => <span key={index} className="absolute -translate-x-1/2 whitespace-nowrap text-[10px] text-[#512314]/45" style={{ left: `${position(tick)}%` }}>{fmt(new Date(tick).toISOString())}</span>)}
             </div>
           </div>
           <div className="relative">
-            {todayPosition !== null && <div className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-[#ff5a45]" style={{ left: `calc(230px + (100% - 230px) * ${todayPosition / 100})` }}><span className="absolute -top-1 -translate-x-1/2 rounded-full bg-[#ff5a45] px-1.5 py-0.5 text-[8px] font-bold text-white">hoje</span></div>}
+            {todayPosition !== null && <div className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-[#ff5a45]" style={{ left: `calc(340px + (100% - 340px) * ${todayPosition / 100})` }}><span className="absolute -top-1 -translate-x-1/2 rounded-full bg-[#ff5a45] px-1.5 py-0.5 text-[8px] font-bold text-white">hoje</span></div>}
             {groups.map((group) => <section key={group.phase} className="border-b border-[#512314]/12 last:border-b-0">
-              <div className="grid grid-cols-[230px_1fr] items-center bg-[#512314]/[0.045] py-2">
+              <div className="grid grid-cols-[340px_1fr] items-center bg-[#512314]/[0.045] py-2">
                 <div className="flex items-center gap-2 pr-4"><span className="h-2 w-2 rounded-full bg-[#ff5a45]"/><p className="text-[11px] font-bold uppercase tracking-wide text-[#512314]">{group.phase}</p><span className="rounded-full bg-white/60 px-1.5 py-0.5 text-[9px] font-semibold text-[#512314]/55">{group.items.length}</span></div>
-                <p className="text-[9px] text-[#512314]/40">Projetos com esta etapa dentro da janela selecionada</p>
+                <p className="text-[9px] text-[#512314]/50">{(() => { const states = group.items.map((item) => deadlineState(item, now.getTime(), day)); const done = states.filter((state) => state.kind === 'done').length; const overdue = states.filter((state) => state.kind === 'overdue').length; const open = states.length - done - overdue; return `${done} concluído${done === 1 ? '' : 's'} · ${open} no prazo · ${overdue} atrasado${overdue === 1 ? '' : 's'}` })()}</p>
               </div>
               {group.items.map((row) => {
                 const left = position(row.start)
                 const width = Math.max(1.5, position(row.end) - left)
-                return <div key={row.id} className="grid min-h-11 grid-cols-[230px_1fr] items-center border-t border-[#512314]/6">
-                  <div className="min-w-0 pr-4 pl-4"><p className="truncate text-[11px] font-semibold text-[#512314]">{row.project}</p><p className="truncate text-[10px] text-[#512314]/55">{row.status}{row.duplicateCount > 1 ? ` · ${row.duplicateCount} registros iguais na base` : ''}</p></div>
+                const deadline = deadlineState(row, now.getTime(), day)
+                return <div key={row.id} className="grid min-h-16 grid-cols-[340px_1fr] items-center border-t border-[#512314]/6">
+                  <div className="min-w-0 py-2 pr-4 pl-4">
+                    <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#512314]">{row.project}</p><span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ${badgeClass(deadline.kind)}`}>{deadline.label}</span></div>
+                    <p className="mt-1 text-[10px] font-medium text-[#512314]/65">Início {fmt(new Date(row.start).toISOString())} · Fim {fmt(new Date(row.end).toISOString())}</p>
+                    <p className="truncate text-[9px] text-[#512314]/45">{row.status}{row.duplicateCount > 1 ? ` · ${row.duplicateCount} registros iguais na base` : ''}</p>
+                  </div>
                   <div className="relative h-6 rounded-full bg-[#512314]/5">
                     {row.milestone ? <span title={`${row.label}: ${fmt(new Date(row.start).toISOString())}`} className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]" style={{ left: `${left}%`, backgroundColor: stageColor(row.status) }} /> : <span title={`${fmt(new Date(row.start).toISOString())} — ${fmt(new Date(row.end).toISOString())}`} className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-full" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: stageColor(row.status) }} />}
                   </div>
