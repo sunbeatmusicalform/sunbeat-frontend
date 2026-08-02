@@ -1,4 +1,5 @@
-import { CalendarClock, CheckCircle2, CircleAlert, ExternalLink, Folder, ListTodo, RefreshCw, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { CalendarClock, CheckCircle2, CircleAlert, ExternalLink, FileAudio, Folder, Image, ListTodo, RefreshCw, ShieldCheck } from 'lucide-react'
 import type { PortalDataRemote, PortalProjectRemote, PortalStageRemote } from '../lib/api'
 
 type Props = { data: PortalDataRemote | null; loading: boolean; reload: () => void }
@@ -66,37 +67,37 @@ function timelineRows(projects: PortalProjectRemote[], stages: PortalStageRemote
       milestone: true,
     }]
   })
-  return [...rows, ...releases].sort((a, b) => a.start - b.start || a.project.localeCompare(b.project)).slice(0, 50)
+  return [...rows, ...releases].sort((a, b) => a.start - b.start || a.project.localeCompare(b.project))
 }
 
 function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[]; stages: PortalStageRemote[] }) {
-  const rows = timelineRows(projects, stages)
-  if (!rows.length) return <Empty>O Airtable ainda não possui datas de etapas ou lançamento suficientes para montar o Gantt.</Empty>
-
+  const [windowDays, setWindowDays] = useState<30 | 90 | 180>(90)
+  const allRows = timelineRows(projects, stages)
   const day = 24 * 60 * 60 * 1000
-  const first = Math.min(...rows.map((row) => row.start)) - (3 * day)
-  const last = Math.max(...rows.map((row) => row.end)) + (3 * day)
+  const now = new Date(); now.setHours(12, 0, 0, 0)
+  const daysBack = windowDays === 30 ? 7 : windowDays === 90 ? 30 : 60
+  const first = now.getTime() - (daysBack * day)
+  const last = first + (windowDays * day)
+  const rows = allRows.filter((row) => row.end >= first && row.start <= last).slice(0, 50)
   const duration = Math.max(last - first, day)
   const position = (value: number) => Math.max(0, Math.min(100, ((value - first) / duration) * 100))
   const ticks = Array.from({ length: 6 }, (_, index) => first + ((duration * index) / 5))
-  const today = new Date(); today.setHours(12, 0, 0, 0)
-  const todayPosition = today.getTime() >= first && today.getTime() <= last ? position(today.getTime()) : null
+  const todayPosition = position(now.getTime())
 
   return (
     <div className="sun-card overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#512314]/10 p-4">
         <div>
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-[#512314]"><CalendarClock size={17} /> Cronograma da operação</h2>
-          <p className="mt-1 text-[11px] text-[#512314]/55">Etapas e lançamentos com datas cadastradas no Airtable.</p>
+          <p className="mt-1 text-[11px] text-[#512314]/55">Janela atualizada em torno de hoje; etapas antigas permanecem fora da visão inicial.</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-[10px] text-[#512314]/60">
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-[#329fd7]"/>Planejado</span>
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-[#ffb53e]"/>Em andamento</span>
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-[#0f9f74]"/>Concluído</span>
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-[#ff5a45]"/>Ajuste/risco</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full bg-[#512314]/8 p-0.5 text-[10px] font-semibold text-[#512314]/60">
+            {([30, 90, 180] as const).map((days) => <button key={days} onClick={() => setWindowDays(days)} className={`rounded-full px-2.5 py-1 ${windowDays === days ? 'bg-white/80 text-[#512314]' : ''}`}>{days} dias</button>)}
+          </div>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      {rows.length ? <div className="overflow-x-auto">
         <div className="min-w-[900px] p-4">
           <div className="grid grid-cols-[230px_1fr] border-b border-[#512314]/10 pb-2">
             <p className="text-[10px] font-bold uppercase tracking-wide text-[#512314]/45">Projeto · etapa</p>
@@ -118,7 +119,7 @@ function OperationalGantt({ projects, stages }: { projects: PortalProjectRemote[
             })}
           </div>
         </div>
-      </div>
+      </div> : <div className="p-4"><Empty>Nenhuma etapa ou lançamento possui data dentro desta janela. Selecione um período maior ou atualize as datas no Airtable.</Empty></div>}
     </div>
   )
 }
@@ -148,7 +149,7 @@ export function LiveOverview(props: Props) {
 export function LiveTables(props: Props) {
   const state = State(props); if (state) return <div className="mt-6">{state}</div>
   const data = props.data!
-  return <div className="mt-6 space-y-4"><div><h2 className="text-[18px] font-semibold text-[#512314]">Demandas operacionais</h2><p className="mt-1 text-xs text-[#512314]/60">Acompanhamento dos tickets, prazos e uploads registrados na tabela <strong>[V2] Demandas Operacionais</strong> do Airtable.</p></div>{data.demands.length ? <div className="sun-card overflow-x-auto p-4"><table className="w-full min-w-[760px] text-left text-xs"><thead><tr className="border-b border-[#512314]/15 text-[#512314]/50"><th className="py-2">Ticket</th><th>Produto</th><th>Tipo</th><th>Status</th><th>Prazo</th><th>Upload</th></tr></thead><tbody>{data.demands.map(d => <tr key={d.id} className="border-b border-[#512314]/8"><td className="py-2 font-mono">{d.ticket || '—'}</td><td className="font-semibold">{d.product || '—'}</td><td>{d.type || '—'}</td><td>{d.status}</td><td>{fmt(d.deadline)}</td><td>{d.upload_status || '—'}</td></tr>)}</tbody></table></div> : <Empty>Nenhuma demanda operacional real encontrada.</Empty>}</div>
+  return <div className="mt-6 space-y-4"><div><h2 className="text-[18px] font-semibold text-[#512314]">Demandas operacionais</h2><p className="mt-1 text-xs text-[#512314]/60">Acompanhamento dos tickets, prazos, uploads e arquivos vinculados aos projetos musicais no Airtable.</p></div>{data.demands.length ? <div className="sun-card overflow-x-auto p-4"><table className="w-full min-w-[900px] text-left text-xs"><thead><tr className="border-b border-[#512314]/15 text-[#512314]/50"><th className="py-2">Ticket</th><th>Projeto / produto</th><th>Tipo</th><th>Status</th><th>Prazo</th><th>Upload</th><th>Arquivos</th></tr></thead><tbody>{data.demands.map(d => <tr key={d.id} className="border-b border-[#512314]/8 align-top"><td className="py-3 font-mono">{d.ticket || '—'}</td><td className="py-3"><p className="font-semibold">{d.project_title || d.product || '—'}</p>{d.project_title && d.product && d.project_title !== d.product ? <p className="mt-0.5 text-[10px] text-[#512314]/45">{d.product}</p> : null}</td><td className="py-3">{d.type || '—'}</td><td className="py-3">{d.status}</td><td className="py-3">{fmt(d.deadline)}</td><td className="py-3">{d.upload_status || '—'}</td><td className="py-3">{d.project_id ? (d.file_links?.length ? <div className="flex max-w-64 flex-wrap gap-1.5">{d.file_links.map((file, index) => <a key={`${file.url}-${index}`} href={file.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-[#512314]/15 bg-white/45 px-2 py-1 text-[10px] font-semibold text-[#1f6f9e] hover:bg-white/75">{file.label === 'Pasta do projeto' ? <Folder size={11}/> : file.label === 'Capa' ? <Image size={11}/> : <FileAudio size={11}/>} {file.label}<ExternalLink size={9}/></a>)}</div> : <span className="text-[10px] text-[#512314]/45">Projeto vinculado · arquivos ainda não localizados</span>) : <span className="text-[10px] text-[#512314]/35">Sem projeto musical vinculado</span>}</td></tr>)}</tbody></table></div> : <Empty>Nenhuma demanda operacional real encontrada.</Empty>}</div>
 }
 
 export function LiveInvites(props: Props) {

@@ -254,14 +254,15 @@ export interface PortalStageRemote {
 export interface PortalDemandRemote {
   id: string; ticket: string; product: string; type: string; status: string
   release_date?: string | null; deadline?: string | null; days_remaining?: number | string | null
-  upload_status: string
+  upload_status: string; project_id?: string; project_title?: string
+  file_links?: { label: string; url: string }[]
 }
 
 export interface PortalDataRemote {
   ok: boolean; workspace_slug: string; source: 'airtable' | 'supabase'; source_error?: string | null
   projects: PortalProjectRemote[]; stages: PortalStageRemote[]; demands: PortalDemandRemote[]
   invites: InviteRemotePayload[]
-  drive_folders: { submission_id: string; project: string; folder_id: string; url: string; created_at?: string | null }[]
+  drive_folders: { submission_id: string; project: string; project_id?: string; folder_id: string; url: string; created_at?: string | null }[]
   email_activity: { submission_id: string; project: string; status: string; sent_at?: string | null }[]
   sync_summary: { total: number; synced: number; failed: number }
   integrations: Record<string, { configured: boolean; status: string }>
