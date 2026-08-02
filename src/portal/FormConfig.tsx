@@ -61,12 +61,14 @@ function EditAuthorizationPanel({ workspace }: { workspace: string }) {
   const [items, setItems] = useState<EditAccessItemRemote[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const [issuedUrl, setIssuedUrl] = useState('')
   useEffect(() => { void api.getEditAccess(workspace).then((result) => setItems(result?.items ?? [])) }, [workspace])
   async function issue(item: EditAccessItemRemote) {
-    setBusy(item.record_id); setMessage('')
+    setBusy(item.record_id); setMessage(''); setIssuedUrl('')
     const result = await api.issueEditAccess(workspace, item.workflow_type, item.record_id)
     setBusy(null)
     setMessage(result ? `Link autorizado e enviado para ${result.to_email}.` : 'Não foi possível autorizar. Confira o e-mail do cadastro.')
+    if (result) setIssuedUrl(result.edit_url)
   }
   return (
     <section className="sun-card p-5">
@@ -80,6 +82,10 @@ function EditAuthorizationPanel({ workspace }: { workspace: string }) {
         {!items.length && <p className="text-[11px] text-[#512314]/55">Nenhum cadastro real disponível para autorização.</p>}
       </div>
       {message && <p className="mt-3 text-[11px] font-semibold text-[#166534]">{message}</p>}
+      {issuedUrl && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#16a34a]/20 bg-[#16a34a]/8 p-2.5">
+        <a href={issuedUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-[10.5px] font-semibold text-[#1f6f9e] underline">{issuedUrl}</a>
+        <button type="button" onClick={() => void navigator.clipboard.writeText(issuedUrl)} className="rounded-full border border-[#512314]/20 px-3 py-1 text-[10px] font-bold text-[#512314]">Copiar link</button>
+      </div>}
     </section>
   )
 }
