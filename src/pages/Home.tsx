@@ -32,7 +32,7 @@ export default function Home() {
   const { workspace } = useParams<{ workspace?: string }>()
   const workspaceSlug = workspace ?? 'atabaque'
   const { branding, loaded: brandingLoaded } = useBranding(workspaceSlug)
-  const { config: formConfig } = usePublicFormConfig(workspaceSlug)
+  const { config: formConfig, loaded: formConfigLoaded } = usePublicFormConfig(workspaceSlug)
   const form = useIntakeForm(formConfig)
   const [showErrors, setShowErrors] = useState(false)
   const [autoOpen, setAutoOpen] = useState(false)
@@ -280,6 +280,11 @@ export default function Home() {
 
       {/* body */}
       <main className="mx-auto max-w-4xl px-4 py-10 pb-40">
+        {!formConfigLoaded ? (
+          <div role="status" className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-white/50 p-4 text-sm font-semibold">
+            <Loader2 className="h-4 w-4 animate-spin" /> Preparando formulário…
+          </div>
+        ) : <>
         {draftLoading && (
           <div role="status" className="mx-auto mb-6 flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-white/50 p-4 text-sm font-semibold">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando rascunho…
@@ -307,6 +312,7 @@ export default function Home() {
             {submitError}
           </div>
         )}
+        </>}
       </main>
 
       {draftNotice && (
