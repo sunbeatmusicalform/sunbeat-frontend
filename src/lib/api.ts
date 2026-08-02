@@ -162,6 +162,8 @@ export interface EmailEventRemote {
 export interface EmailTemplateRemote {
   subject: string
   body: string
+  default_subject: string
+  default_body: string
   _origin?: 'db' | 'default'
 }
 
@@ -180,7 +182,7 @@ export interface EmailConfigRemote {
 
 export interface EmailConfigPatchRemote {
   events?: Partial<Record<EmailEventName, Omit<EmailEventRemote, '_origin'>>>
-  templates?: Partial<Record<EmailEventName, Omit<EmailTemplateRemote, '_origin'>>>
+  templates?: Partial<Record<EmailEventName, Pick<EmailTemplateRemote, 'subject' | 'body'>>>
   cc_addresses?: string[]
   bcc_addresses?: string[]
 }

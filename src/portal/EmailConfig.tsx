@@ -46,6 +46,14 @@ function renderPreview(template: string): string {
   return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (token, key: string) => SAMPLE[key] ?? token)
 }
 
+function htmlToPreviewText(html: string): string {
+  const withBreaks = html
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
+  const parsed = new DOMParser().parseFromString(withBreaks, 'text/html')
+  return (parsed.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 export function EmailConfig({ workspace }: { workspace: string }) {
   const [workflowType, setWorkflowType] = useState<(typeof WORKFLOWS)[number]['value']>('release_intake')
   const [config, setConfig] = useState<EmailConfigRemote | null>(null)
@@ -66,9 +74,10 @@ export function EmailConfig({ workspace }: { workspace: string }) {
   const selectedMeta = EVENTS.find((event) => event.key === selected) ?? EVENTS[0]
   const preview = useMemo(() => {
     if (!config) return { subject: '', body: '' }
+    const template = config.templates[selected]
     return {
-      subject: renderPreview(config.templates[selected].subject),
-      body: renderPreview(config.templates[selected].body),
+      subject: renderPreview(template.subject || template.default_subject),
+      body: htmlToPreviewText(renderPreview(template.body || template.default_body)),
     }
   }, [config, selected])
 
@@ -136,7 +145,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
           <div>
             <h2 className="text-[15px] font-bold text-[#512314]">E-mails do intake</h2>
             <p className="mt-0.5 text-[12px] text-[#512314]/60">
-              Defina quem recebe cada evento e personalize assunto e corpo. Campos vazios mantêm o template padrão da Sunbeat.
+              Defina quem recebe cada evento e personalize assunto e corpo. Campos vazios mantêm o template atual do sistema.
             </p>
           </div>
           </div>
@@ -206,11 +215,11 @@ export function EmailConfig({ workspace }: { workspace: string }) {
               />
             </div>
             <div className="md:row-span-2">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Prévia com dados fictícios</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Prévia do e-mail efetivo</label>
               <div className="mt-1.5 min-h-36 rounded-2xl border border-[#512314]/15 bg-white/45 p-4 text-[12px] text-[#512314]">
-                <p className="font-bold">{preview.subject || 'Assunto padrão da Sunbeat'}</p>
+                <p className="font-bold">{preview.subject || 'Este evento não possui assunto padrão.'}</p>
                 <div className="mt-3 whitespace-pre-wrap break-words text-[#512314]/70">
-                  {preview.body || 'O corpo padrão será usado para este evento.'}
+                  {preview.body || 'Este evento não possui um disparo padrão neste formulário.'}
                 </div>
               </div>
             </div>
