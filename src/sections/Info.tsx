@@ -35,21 +35,21 @@ export function IntelligentForms() {
 const STEPS = [
   {
     num: '01',
-    title: 'Conte o que precisa',
-    desc: 'Um chat com IA. Arraste documentos, imagens, planilhas — ela entende sua operação e traduz em campos, regras e validações.',
-    highlights: ['Análise de áudio e arte', 'Extração de metadados', 'Validação automática'],
+    title: 'Describe what you need',
+    desc: 'Start with an AI conversation. Add documents, images or spreadsheets — Sunbeat translates your operation into fields, rules and validations.',
+    highlights: ['Audio and artwork analysis', 'Metadata extraction', 'Automatic validation'],
   },
   {
     num: '02',
-    title: 'Veja o formulário nascer',
-    desc: 'Preview gerado na hora, com a sua marca: logo, cores, textos e fluxo de etapas. Revisa, ajusta, aprova.',
-    highlights: ['Branding próprio', 'Preview instantâneo', 'Ajustes por conversa'],
+    title: 'Watch your form take shape',
+    desc: 'Get an instant preview with your brand, colors, copy and workflow. Review it, refine it and approve it.',
+    highlights: ['Custom branding', 'Instant preview', 'Conversational updates'],
   },
   {
     num: '03',
-    title: 'Conecte e opere',
-    desc: 'Integrações configuradas — Airtable, Google Drive, e-mail, seu stack. Formulário no ar, submissões organizadas, operação rodando.',
-    highlights: ['Airtable & Drive sync', 'E-mails operacionais', 'Rascunho e edição contínuos'],
+    title: 'Connect and operate',
+    desc: 'Connect Airtable, Google Drive, email and the tools you already use. Publish the form and keep every submission organized.',
+    highlights: ['Airtable and Drive sync', 'Operational emails', 'Continuous drafts and editing'],
   },
 ]
 
@@ -57,12 +57,12 @@ export function Showcase() {
   return (
     <section className="border-y border-white/10 bg-white/[0.03]">
       <div className="mx-auto max-w-5xl px-6 py-24">
-        <p className="story-kicker text-center">Como funciona</p>
+        <p className="story-kicker text-center">How it works</p>
         <h2 className="mt-4 text-center font-display text-3xl md:text-4xl">
-          Seu formulário, do jeito da sua operação.
+          Your form, built around your operation.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-center leading-relaxed text-white/55">
-          Nada de templates genéricos. Cada formulário nasce de uma conversa sobre o que você realmente faz.
+          No generic templates. Each form starts with a conversation about how your work actually happens.
         </p>
 
         <div className="mt-14 grid gap-5 md:grid-cols-3">
@@ -86,8 +86,8 @@ export function Showcase() {
         </div>
 
         <p className="mx-auto mt-12 max-w-2xl text-center text-xs leading-relaxed text-white/40">
-          A prova social? Clientes como a Atabaque já operam com formulários de lançamento,
-          clearance, cadastro de pessoas e empresas — todos gerados por essa mesma engrenagem.
+          One platform can support release intake, rights clearance, people registration
+          and company onboarding — all powered by the same operational engine.
         </p>
       </div>
     </section>

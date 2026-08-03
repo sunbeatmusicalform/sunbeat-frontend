@@ -10,6 +10,39 @@ const INTEGRATIONS = ['Airtable', 'Google Drive', 'Notion', 'Slack', 'Gmail', 'S
 export default function Landing() {
   const navigate = useNavigate()
 
+  useEffect(() => {
+    const original = {
+      lang: document.documentElement.lang,
+      title: document.title,
+      description: document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '',
+      ogTitle: document.querySelector('meta[property="og:title"]')?.getAttribute('content') ?? '',
+      ogDescription: document.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? '',
+    }
+
+    document.documentElement.lang = 'en'
+    document.title = 'Sunbeat — Intelligent infrastructure for creative operations'
+    document.querySelector('meta[name="description"]')?.setAttribute(
+      'content',
+      'Sunbeat connects intelligent intake forms, rights clearance, operational email and integrations for creative teams.',
+    )
+    document.querySelector('meta[property="og:title"]')?.setAttribute(
+      'content',
+      'Sunbeat — Intelligent infrastructure for creative operations',
+    )
+    document.querySelector('meta[property="og:description"]')?.setAttribute(
+      'content',
+      'Intelligent forms, operational email and integrations for creative teams — connected in one platform.',
+    )
+
+    return () => {
+      document.documentElement.lang = original.lang
+      document.title = original.title
+      document.querySelector('meta[name="description"]')?.setAttribute('content', original.description)
+      document.querySelector('meta[property="og:title"]')?.setAttribute('content', original.ogTitle)
+      document.querySelector('meta[property="og:description"]')?.setAttribute('content', original.ogDescription)
+    }
+  }, [])
+
   // links antigos de edição apontavam para a raiz com ?edit_token=... — redireciona para o intake
   useEffect(() => {
     const qs = window.location.search
@@ -44,7 +77,7 @@ export default function Landing() {
               Intelligent infrastructure for creative markets
             </span>
             <Link to="/portal" className="text-xs font-bold text-white/70 transition-colors hover:text-[#fbbb1e]">
-              Área do cliente
+              Client area
             </Link>
           </div>
         </header>
