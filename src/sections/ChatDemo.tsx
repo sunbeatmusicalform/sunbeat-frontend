@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { SendHorizonal, Sparkles } from 'lucide-react'
+import { CheckCircle2, SendHorizonal, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Msg {
@@ -10,10 +10,12 @@ interface Msg {
 }
 
 const PLANS = [
-  { name: 'Free', price: '$0', note: 'Test your intake workflow', items: '50 submissions/mo · 1 form' },
-  { name: 'Starter', price: '$19/mo', note: 'Steady operation', items: '500 submissions/mo · Airtable 2-way', hot: true },
-  { name: 'Pro', price: '$49/mo', note: 'Full operation', items: '2,000 submissions/mo · AI + white-label' },
-]
+  { id: 'free', name: 'Free', price: '$0', note: 'Test your intake workflow', items: '50 submissions/mo · 1 form', hot: false },
+  { id: 'starter', name: 'Starter', price: '$19/mo', note: 'Steady operation', items: '500 submissions/mo · Airtable 2-way', hot: true },
+  { id: 'pro', name: 'Pro', price: '$49/mo', note: 'Full operation', items: '2,000 submissions/mo · AI + white-label', hot: false },
+] as const
+
+type Plan = (typeof PLANS)[number]
 
 const SCRIPT: Record<string, { answer: string; plans?: boolean; followups: string[] }> = {
   'What is Sunbeat?': {
@@ -47,6 +49,7 @@ export function ChatDemo({ compact = false }: { compact?: boolean }) {
   ])
   const [typing, setTyping] = useState(false)
   const [used, setUsed] = useState<string[]>([])
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const lastSun = [...msgs].reverse().find((m) => m.from === 'sun' && m.text)?.text
@@ -55,7 +58,7 @@ export function ChatDemo({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
-  }, [msgs, typing])
+  }, [msgs, typing, selectedPlan])
 
   function ask(prompt: string) {
     const entry = SCRIPT[prompt]
@@ -101,11 +104,40 @@ export function ChatDemo({ compact = false }: { compact?: boolean }) {
                         <div className="font-bold">{p.name} <span className="text-[#fbbb1e]">{p.price}</span></div>
                         <div className="text-xs text-white/50">{p.note} · {p.items}</div>
                       </div>
-                      <Button size="sm" className="bg-[#fbbb1e] text-[#000e14] hover:bg-[#fbbb1e]/90 font-bold shrink-0">
-                        Subscribe
+                      <Button
+                        size="sm"
+                        type="button"
+                        onClick={() => setSelectedPlan(p)}
+                        aria-label={`${selectedPlan?.id === p.id ? 'Selected' : 'Subscribe to'} ${p.name}`}
+                        aria-pressed={selectedPlan?.id === p.id}
+                        className="bg-[#fbbb1e] text-[#000e14] hover:bg-[#fbbb1e]/90 font-bold shrink-0"
+                      >
+                        {selectedPlan?.id === p.id ? 'Selected' : 'Subscribe'}
                       </Button>
                     </div>
                   ))}
+                  {selectedPlan && (
+                    <div className="mt-1 rounded-xl border border-[#fbbb1e]/40 bg-black/35 p-3.5" role="status">
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                        <div>
+                          <p className="font-bold text-white">{selectedPlan.name} selected.</p>
+                          <p className="mt-1 text-xs text-white/55">
+                            Online checkout is opening soon. Join the waitlist and we'll contact you when access is available.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 pl-6">
+                        <Button asChild size="sm" className="bg-[#fbbb1e] text-[#000e14] hover:bg-[#fbbb1e]/90 font-bold">
+                          <a
+                            href={`mailto:hello@sunbeat.pro?subject=${encodeURIComponent(`Sunbeat ${selectedPlan.name} waitlist`)}&body=${encodeURIComponent(`Hi Sunbeat,\n\nI'd like to join the ${selectedPlan.name} plan waitlist.\n`)}`}
+                          >
+                            Join waitlist
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

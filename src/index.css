@@ -87,3 +87,82 @@
 .typing-dot:nth-child(3) { animation-delay: .3s; }
 .kenburns { animation: kenburns 30s ease-in-out infinite alternate; }
 .story-kicker { @apply text-xs font-bold uppercase tracking-[0.25em] text-[#fbbb1e]/80; }
+
+/* ------- Sunbeat cinematic concept ------- */
+.concept-page {
+  background-image: none;
+  isolation: isolate;
+}
+.concept-vignette {
+  background:
+    radial-gradient(circle at 50% 48%, transparent 15%, rgba(0, 4, 7, 0.18) 58%, rgba(0, 4, 7, 0.78) 100%),
+    linear-gradient(90deg, rgba(0, 7, 12, 0.62) 0%, transparent 58%, rgba(0, 7, 12, 0.18) 100%);
+}
+.concept-data-drift span {
+  position: absolute;
+  left: var(--drift-x);
+  top: var(--drift-y);
+  color: rgba(165, 223, 228, 0.2);
+  font-size: clamp(0.58rem, 0.9vw, 0.76rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  animation: concept-drift calc(10s + var(--drift-index) * 1.3s) ease-in-out infinite alternate;
+}
+@keyframes concept-drift {
+  from { transform: translate3d(-10px, 8px, 0); filter: blur(0.2px); }
+  to { transform: translate3d(22px, -18px, 0); filter: blur(1.5px); }
+}
+.concept-static-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 58%, rgba(251, 187, 30, 0.16), transparent 9%),
+    radial-gradient(circle at 50% 40%, #073340 0%, #00131c 38%, #00070c 78%);
+}
+.concept-static-ray {
+  position: absolute;
+  left: 50%;
+  top: -8%;
+  width: min(54vw, 620px);
+  height: 86%;
+  transform: translateX(-50%);
+  clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%);
+  background: linear-gradient(to bottom, rgba(251, 187, 30, 0.24), rgba(251, 187, 30, 0));
+  filter: blur(16px);
+}
+.concept-static-sun {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: clamp(100px, 13vw, 180px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #ffd663;
+  box-shadow: 0 0 45px rgba(251, 187, 30, 0.55), 0 0 150px rgba(251, 187, 30, 0.28);
+}
+.concept-static-wave {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 20%;
+  border-top: 1px solid rgba(144, 215, 223, 0.28);
+  border-radius: 50%;
+}
+.concept-static-wave-1 { top: 68%; transform: rotate(-1deg); }
+.concept-static-wave-2 { top: 73%; transform: rotate(1deg); opacity: 0.6; }
+
+@media (max-width: 767px) {
+  .concept-vignette {
+    background: linear-gradient(to bottom, rgba(0, 7, 12, 0.15), rgba(0, 7, 12, 0.2) 42%, rgba(0, 7, 12, 0.82));
+  }
+  .concept-data-drift span:nth-child(even) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .concept-data-drift span,
+  .concept-page .animate-bounce {
+    animation: none !important;
+  }
+}

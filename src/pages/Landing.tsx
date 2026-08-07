@@ -1,14 +1,179 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowDown } from 'lucide-react'
-import { BeachScene } from '@/components/BeachScene'
+import { ArrowRight, BookOpen, Check, FileCheck2, X } from 'lucide-react'
+import { resolveConceptLocale, type ConceptLocale } from '@/concept/copy'
 import { IntelligentForms, Showcase } from '@/sections/Info'
-import { ChatDemo } from '@/sections/ChatDemo'
 
-const INTEGRATIONS = ['Airtable', 'Google Drive', 'Notion', 'Slack', 'Gmail', 'Sheets', 'Asana', 'Webhooks']
+const CinematicJourney = lazy(() => import('./ConceptPage').then((module) => ({ default: module.CinematicJourney })))
+
+const LANDING_COPY = {
+  en: {
+    metaTitle: 'Sunbeat | Intelligent intake for creative operations',
+    metaDescription: 'Sunbeat connects intelligent intake forms, rights clearance, operational email and integrations for creative teams.',
+    plansKicker: 'Plans',
+    plansTitle: 'Start with the core. Add power as your operation grows.',
+    plansBody: "Every plan includes Sunbeat's file audit for audio, artwork and metadata. Paid plans expand volume, retention, integrations and operational control.",
+    coreIncluded: 'Core included',
+    startFree: 'Start Free',
+    joinPlan: (name: string) => `Join ${name} waitlist`,
+    enterpriseTitle: 'Enterprise from $199/mo',
+    enterpriseBody: 'Unlimited scale, dedicated onboarding, SLA and custom operational architecture.',
+    enterpriseCta: 'Talk to Sunbeat',
+    clientArea: 'Client area',
+    footer: 'Intelligent infrastructure for creative markets',
+    academyKicker: 'Sunbeat Academy',
+    academyTitle: 'Learn the systems behind reliable creative work.',
+    academyBody: 'Practical guides on music data, release operations, rights, files and intelligent intake — built from real operational problems.',
+    academyCta: 'Explore the Academy',
+    dialog: {
+      close: 'Close form', early: 'Early access', enterprise: 'Enterprise',
+      waitlistTitle: (plan: string) => `Join the ${plan} waitlist`, enterpriseTitle: 'Talk to Sunbeat Enterprise',
+      waitlistBody: 'Leave your details and we will contact you when onboarding opens.', enterpriseBody: 'Tell us about your operation, scale and integration needs.',
+      name: 'Name', email: 'Email', company: 'Company or operation', optional: '(optional)', message: 'Message',
+      enterprisePlaceholder: 'Team size, monthly volume, integrations…', waitlistPlaceholder: 'Anything you would like us to know?',
+      sendEnterprise: 'Send Enterprise request', join: 'Join the waitlist', sending: 'Sending…',
+      privacy: 'Your details are sent directly to Sunbeat and used only to reply to this request.',
+      error: 'We could not send your message. Please try again.', success: 'Message received.',
+      successBody: 'Thank you. Felipe will receive your details and get back to you.', done: 'Done',
+    },
+    plans: [
+      { name: 'Free', price: '$0', description: 'A real workflow for testing Sunbeat with no time-limited trial.', features: ['50 submissions per month', '1 live intake form', 'Audio, artwork and metadata file audit', 'Assets stored for 60 days', 'Structured database with a fair-use limit during early access', 'Drafts and submission summaries'], note: 'File auditing stays free — it is part of the Sunbeat core.', featured: true },
+      { name: 'Starter', price: '$19/mo', description: 'For teams running a steady intake operation with connected data.', features: ['500 submissions per month', '2 live intake forms', 'Everything in Free, including file audit', 'Extended asset retention', 'Airtable two-way sync and visual field mapping', 'Larger upload limits and priority email support'], note: 'Best for small labels, managers and creative teams.', featured: false },
+      { name: 'Pro', price: '$49/mo', description: 'For complete operations that need automation, AI and their own brand.', features: ['2,000 submissions per month', '5 live intake forms', 'Everything in Starter, including file audit', 'Google Drive and Google Sheets integrations', 'AI-assisted setup and operational guidance', 'Custom branding, white-label and higher upload limits'], note: 'Best for growing operations with multiple workflows.', featured: false },
+    ],
+  },
+  'pt-BR': {
+    metaTitle: 'Sunbeat | Intake inteligente para operações criativas',
+    metaDescription: 'A Sunbeat conecta formulários inteligentes, liberação de direitos, e-mails operacionais e integrações para equipes criativas.',
+    plansKicker: 'Planos',
+    plansTitle: 'Comece com o essencial. Ganhe potência conforme sua operação cresce.',
+    plansBody: 'Todos os planos incluem a auditoria Sunbeat para áudio, capas e metadados. Os planos pagos ampliam volume, retenção, integrações e controle operacional.',
+    coreIncluded: 'Essencial incluído',
+    startFree: 'Começar grátis',
+    joinPlan: (name: string) => `Entrar na lista ${name}`,
+    enterpriseTitle: 'Enterprise a partir de US$ 199/mês',
+    enterpriseBody: 'Escala ilimitada, onboarding dedicado, SLA e arquitetura operacional personalizada.',
+    enterpriseCta: 'Falar com a Sunbeat',
+    clientArea: 'Área do cliente',
+    footer: 'Infraestrutura inteligente para mercados criativos',
+    academyKicker: 'Sunbeat Academy',
+    academyTitle: 'Aprenda os sistemas por trás de um trabalho criativo confiável.',
+    academyBody: 'Guias práticos sobre dados musicais, operações de lançamento, direitos, arquivos e intake inteligente — a partir de problemas reais.',
+    academyCta: 'Conhecer a Academy',
+    dialog: {
+      close: 'Fechar formulário', early: 'Acesso antecipado', enterprise: 'Enterprise',
+      waitlistTitle: (plan: string) => `Entrar na lista do plano ${plan}`, enterpriseTitle: 'Fale com a Sunbeat Enterprise',
+      waitlistBody: 'Deixe seus dados e entraremos em contato quando o onboarding estiver disponível.', enterpriseBody: 'Conte sobre sua operação, escala e necessidades de integração.',
+      name: 'Nome', email: 'E-mail', company: 'Empresa ou operação', optional: '(opcional)', message: 'Mensagem',
+      enterprisePlaceholder: 'Tamanho da equipe, volume mensal, integrações…', waitlistPlaceholder: 'Algo que você gostaria que soubéssemos?',
+      sendEnterprise: 'Enviar solicitação Enterprise', join: 'Entrar na lista', sending: 'Enviando…',
+      privacy: 'Seus dados são enviados diretamente à Sunbeat e utilizados apenas para responder a esta solicitação.',
+      error: 'Não foi possível enviar sua mensagem. Tente novamente.', success: 'Mensagem recebida.',
+      successBody: 'Obrigado. Felipe receberá seus dados e entrará em contato.', done: 'Concluir',
+    },
+    plans: [
+      { name: 'Free', price: 'US$ 0', description: 'Um fluxo real para experimentar a Sunbeat, sem prazo de teste.', features: ['50 submissões por mês', '1 formulário de intake ativo', 'Auditoria de áudio, capa e metadados', 'Assets armazenados por 60 dias', 'Base estruturada com limite de uso razoável no acesso antecipado', 'Rascunhos e resumos de submissão'], note: 'A auditoria de arquivos permanece gratuita — ela faz parte do núcleo da Sunbeat.', featured: true },
+      { name: 'Starter', price: 'US$ 19/mês', description: 'Para equipes com uma operação contínua de intake e dados conectados.', features: ['500 submissões por mês', '2 formulários de intake ativos', 'Tudo do Free, incluindo auditoria', 'Retenção estendida de assets', 'Sincronização Airtable em duas vias e mapeamento visual', 'Uploads maiores e suporte prioritário por e-mail'], note: 'Ideal para pequenas labels, managers e equipes criativas.', featured: false },
+      { name: 'Pro', price: 'US$ 49/mês', description: 'Para operações completas que precisam de automação, IA e marca própria.', features: ['2.000 submissões por mês', '5 formulários de intake ativos', 'Tudo do Starter, incluindo auditoria', 'Integrações com Google Drive e Google Sheets', 'Configuração assistida por IA e orientação operacional', 'Marca personalizada, white-label e uploads maiores'], note: 'Ideal para operações em crescimento com múltiplos fluxos.', featured: false },
+    ],
+  },
+} as const
+
+type LeadForm = { type: 'waitlist'; plan: string } | { type: 'enterprise' }
+
+function LeadDialog({ lead, locale, onClose }: { lead: LeadForm; locale: ConceptLocale; onClose: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const copy = LANDING_COPY[locale].dialog
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('sending')
+    const form = new FormData(event.currentTarget)
+    try {
+      const response = await fetch('/public/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_type: lead.type,
+          plan: lead.type === 'waitlist' ? lead.plan : undefined,
+          name: form.get('name'),
+          email: form.get('email'),
+          company: form.get('company'),
+          message: form.get('message'),
+          website: form.get('website'),
+        }),
+      })
+      if (!response.ok) throw new Error('Request failed')
+      setStatus('sent')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  const title = lead.type === 'enterprise' ? copy.enterpriseTitle : copy.waitlistTitle(lead.plan)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#000e14]/85 p-4 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lead-form-title"
+        className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-[#061a24] p-6 shadow-2xl md:p-8"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button type="button" onClick={onClose} aria-label={copy.close} className="absolute right-5 top-5 text-white/45 transition hover:text-white">
+          <X className="h-5 w-5" />
+        </button>
+
+        {status === 'sent' ? (
+          <div className="py-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-400"><Check /></div>
+            <h3 id="lead-form-title" className="mt-5 font-display text-2xl text-white">{copy.success}</h3>
+            <p className="mt-2 text-sm text-white/60">{copy.successBody}</p>
+            <button type="button" onClick={onClose} className="mt-6 rounded-xl bg-[#fbbb1e] px-6 py-3 text-sm font-bold text-[#000e14]">{copy.done}</button>
+          </div>
+        ) : (
+          <>
+            <p className="story-kicker">{lead.type === 'enterprise' ? copy.enterprise : copy.early}</p>
+            <h3 id="lead-form-title" className="mt-3 pr-8 font-display text-2xl text-white md:text-3xl">{title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-white/55">
+              {lead.type === 'enterprise' ? copy.enterpriseBody : copy.waitlistBody}
+            </p>
+
+            <form onSubmit={submit} className="mt-6 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-xs font-semibold text-white/70">{copy.name}
+                  <input name="name" required minLength={2} autoComplete="name" className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#000e14]/60 px-4 py-3 text-sm text-white outline-none transition focus:border-[#fbbb1e]/70" />
+                </label>
+                <label className="text-xs font-semibold text-white/70">{copy.email}
+                  <input name="email" type="email" required autoComplete="email" className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#000e14]/60 px-4 py-3 text-sm text-white outline-none transition focus:border-[#fbbb1e]/70" />
+                </label>
+              </div>
+              <label className="block text-xs font-semibold text-white/70">{copy.company} <span className="font-normal text-white/35">{copy.optional}</span>
+                <input name="company" autoComplete="organization" className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#000e14]/60 px-4 py-3 text-sm text-white outline-none transition focus:border-[#fbbb1e]/70" />
+              </label>
+              <label className="block text-xs font-semibold text-white/70">{copy.message} <span className="font-normal text-white/35">{copy.optional}</span>
+                <textarea name="message" rows={3} placeholder={lead.type === 'enterprise' ? copy.enterprisePlaceholder : copy.waitlistPlaceholder} className="mt-1.5 w-full resize-none rounded-xl border border-white/15 bg-[#000e14]/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-[#fbbb1e]/70" />
+              </label>
+              <label className="hidden" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
+              {status === 'error' && <p role="alert" className="text-sm text-red-300">{copy.error}</p>}
+              <button type="submit" disabled={status === 'sending'} className="w-full rounded-xl bg-[#fbbb1e] px-5 py-3.5 text-sm font-bold text-[#000e14] transition hover:bg-[#fbbb1e]/90 disabled:cursor-wait disabled:opacity-60">
+                {status === 'sending' ? copy.sending : lead.type === 'enterprise' ? copy.sendEnterprise : copy.join}
+              </button>
+              <p className="text-center text-[11px] text-white/35">{copy.privacy}</p>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function Landing() {
   const navigate = useNavigate()
+  const [locale] = useState<ConceptLocale>(() => resolveConceptLocale())
+  const [leadForm, setLeadForm] = useState<LeadForm | null>(null)
+  const copy = LANDING_COPY[locale]
 
   useEffect(() => {
     const original = {
@@ -19,19 +184,19 @@ export default function Landing() {
       ogDescription: document.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? '',
     }
 
-    document.documentElement.lang = 'en'
-    document.title = 'Sunbeat — Intelligent infrastructure for creative operations'
+    document.documentElement.lang = locale
+    document.title = copy.metaTitle
     document.querySelector('meta[name="description"]')?.setAttribute(
       'content',
-      'Sunbeat connects intelligent intake forms, rights clearance, operational email and integrations for creative teams.',
+      copy.metaDescription,
     )
     document.querySelector('meta[property="og:title"]')?.setAttribute(
       'content',
-      'Sunbeat — Intelligent infrastructure for creative operations',
+      copy.metaTitle,
     )
     document.querySelector('meta[property="og:description"]')?.setAttribute(
       'content',
-      'Intelligent forms, operational email and integrations for creative teams — connected in one platform.',
+      copy.metaDescription,
     )
 
     return () => {
@@ -41,7 +206,7 @@ export default function Landing() {
       document.querySelector('meta[property="og:title"]')?.setAttribute('content', original.ogTitle)
       document.querySelector('meta[property="og:description"]')?.setAttribute('content', original.ogDescription)
     }
-  }, [])
+  }, [copy.metaDescription, copy.metaTitle, locale])
 
   // links antigos de edição apontavam para a raiz com ?edit_token=... — redireciona para o intake
   useEffect(() => {
@@ -53,87 +218,130 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-[#000e14] text-[#f5eeda]">
-      {/* ===== HERO — vinheta ===== */}
-      <section className="relative flex min-h-screen flex-col overflow-hidden">
-        <div className="absolute inset-0">
-          <BeachScene />
-          <img
-            src="/hero-beach.jpg"
-            alt="Golden sun setting over a calm tropical beach"
-            className="kenburns absolute inset-0 h-full w-full object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/10 to-[#000e14]" />
-        </div>
+      <Suspense fallback={<div className="relative min-h-screen overflow-hidden" aria-label={locale === 'pt-BR' ? 'Carregando experiência Sunbeat' : 'Loading Sunbeat experience'}><div className="concept-static-scene" /></div>}>
+        <CinematicJourney />
+      </Suspense>
 
-        <header className="relative z-10 flex items-center justify-between px-6 py-6 md:px-10">
-          <img
-            src="/brand/logo-horizontal.svg"
-            alt="Sunbeat"
-            className="h-10 w-auto drop-shadow-[0_2px_14px_rgba(0,0,0,0.6)]"
-          />
-          <div className="flex items-center gap-5">
-            <span className="hidden text-[10px] font-bold uppercase tracking-[0.35em] text-white/60 md:block">
-              Intelligent infrastructure for creative markets
-            </span>
-            <Link to="/portal" className="text-xs font-bold text-white/70 transition-colors hover:text-[#fbbb1e]">
-              Client area
-            </Link>
+      {/* ===== área informativa — leitura direta ===== */}
+      <div id="forms"><IntelligentForms locale={locale} /></div>
+
+      {/* ===== vitrine ===== */}
+      <Showcase locale={locale} />
+
+      {/* ===== Academy — conteúdo e inbound ===== */}
+      <section className="border-y border-white/10 bg-white/[0.025] px-6 py-20 md:py-28">
+        <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
+          <div className="flex h-56 items-center justify-center rounded-3xl border border-[#fbbb1e]/25 bg-[radial-gradient(circle_at_center,rgba(251,187,30,0.18),transparent_52%)] text-[#fbbb1e]">
+            <BookOpen className="h-16 w-16" />
           </div>
-        </header>
+          <div>
+            <p className="story-kicker">{copy.academyKicker}</p>
+            <h2 className="mt-4 font-display text-3xl leading-tight text-white md:text-5xl">{copy.academyTitle}</h2>
+            <p className="mt-5 max-w-2xl leading-relaxed text-white/55">{copy.academyBody}</p>
+            <Link to="/academy" className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#fbbb1e]/45 px-6 py-3 text-sm font-bold text-[#fbbb1e] transition hover:bg-[#fbbb1e]/10">{copy.academyCta}<ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        </div>
+      </section>
 
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <h1 className="dawn-in dawn-1 font-display text-5xl leading-[1.06] drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)] md:text-7xl">
-            Your creative operation,<br />in perfect sync.
-          </h1>
-          <p className="dawn-in dawn-3 mt-7 font-display text-2xl text-[#fbbb1e] drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)] md:text-3xl">
-            Sunbeat keeps it flowing.
+      {/* ===== planos — chat temporariamente oculto ===== */}
+      <section id="chat" className="mx-auto max-w-5xl px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="story-kicker">{copy.plansKicker}</p>
+          <h2 className="mt-4 font-display text-3xl leading-tight md:text-5xl">
+            {copy.plansTitle}
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl leading-relaxed text-white/60">
+            {copy.plansBody}
           </p>
         </div>
 
-        <a href="#forms" className="relative z-10 mx-auto mb-10 flex flex-col items-center gap-2 text-white/45 transition-colors hover:text-[#fbbb1e]">
-          <ArrowDown className="h-4 w-4 animate-bounce" />
-        </a>
-      </section>
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {copy.plans.map((plan) => (
+            <article
+              key={plan.name}
+              className={`flex h-full flex-col rounded-3xl border p-6 ${
+                plan.featured
+                  ? 'border-[#fbbb1e]/60 bg-[#fbbb1e]/10 shadow-[0_0_50px_rgba(251,187,30,0.08)]'
+                  : 'border-white/10 bg-[#061a24]/80'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-display text-2xl text-white">{plan.name}</h3>
+                  <p className="mt-1 text-2xl font-bold text-[#fbbb1e]">{plan.price}</p>
+                </div>
+                {plan.featured && (
+                  <span className="rounded-full border border-[#fbbb1e]/40 bg-[#fbbb1e]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#fbbb1e]">
+                    {copy.coreIncluded}
+                  </span>
+                )}
+              </div>
 
-      {/* ===== área informativa — leitura direta ===== */}
-      <div id="forms"><IntelligentForms /></div>
+              <p className="mt-5 min-h-16 text-sm leading-relaxed text-white/60">
+                {plan.description}
+              </p>
 
-      {/* ===== vitrine ===== */}
-      <Showcase />
+              <ul className="mt-5 space-y-3">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex gap-2.5 text-sm leading-relaxed text-white/75">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#fbbb1e]" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-      {/* ===== chat incorporado ===== */}
-      <section id="chat" className="mx-auto max-w-5xl px-6 py-24 md:py-32">
-        <div className="grid items-center gap-12 md:grid-cols-[1fr_1.15fr]">
+              <div className="mt-auto pt-6">
+                <p className="flex min-h-12 items-start gap-2 text-xs leading-relaxed text-white/45">
+                  <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                  <span>{plan.note}</span>
+                </p>
+                {plan.name === 'Free' ? (
+                  <a
+                    href={locale === 'pt-BR' ? 'https://app.sunbeat.com.br/signup' : 'https://app.sunbeat.pro/signup'}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#fbbb1e] px-4 py-3 text-sm font-bold text-[#000e14] transition hover:bg-[#fbbb1e]/90"
+                  >
+                    {copy.startFree}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setLeadForm({ type: 'waitlist', plan: plan.name })}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#fbbb1e] px-4 py-3 text-sm font-bold text-[#000e14] transition hover:bg-[#fbbb1e]/90"
+                  >
+                    {copy.joinPlan(plan.name)}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-5 sm:flex-row sm:items-center">
           <div>
-            <p className="story-kicker">The door in</p>
-            <h2 className="mt-4 font-display text-3xl leading-tight md:text-4xl">
-              Start with a conversation.
-            </h2>
-            <p className="mt-5 leading-relaxed text-white/60">
-              Ask anything. Subscribe to a plan. Configure your operation.
-              The same conversation generates your intake, your stage emails
-              and your integrations — right here, inside the page.
-            </p>
-            <p className="mt-8 text-sm text-white/45">
-              <span className="font-bold text-white/80">Free</span> to start ·
-              <span className="font-bold text-white/80"> $19</span> Starter ·
-              <span className="font-bold text-white/80"> $49</span> Pro ·
-              <span className="text-white/35"> Enterprise from $199</span>
-            </p>
-            <div className="mt-8 flex flex-wrap gap-x-5 gap-y-1.5 text-xs font-semibold text-white/35">
-              {INTEGRATIONS.map((i) => <span key={i}>{i}</span>)}
-            </div>
+            <p className="font-display text-lg text-white">{copy.enterpriseTitle}</p>
+            <p className="mt-1 text-sm text-white/50">{copy.enterpriseBody}</p>
           </div>
-          <ChatDemo />
+          <button
+            type="button"
+            onClick={() => setLeadForm({ type: 'enterprise' })}
+            className="shrink-0 rounded-xl border border-[#fbbb1e]/50 px-5 py-2.5 text-sm font-bold text-[#fbbb1e] transition hover:bg-[#fbbb1e]/10"
+          >
+            {copy.enterpriseCta}
+          </button>
         </div>
       </section>
+
+      {leadForm && <LeadDialog lead={leadForm} locale={locale} onClose={() => setLeadForm(null)} />}
 
       {/* ===== footer ===== */}
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 px-6 py-16 text-center">
           <img src="/brand/logo-stacked.svg" alt="Sunbeat" className="h-28 w-auto" />
-          <p className="text-[11px] text-white/25">© 2026 Sunbeat · Intelligent infrastructure for creative markets</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link to="/academy" className="rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold text-white/60 transition hover:border-[#fbbb1e]/50 hover:text-[#fbbb1e]">Sunbeat Academy</Link>
+            <a href="/portal" className="rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold text-white/60 transition hover:border-[#fbbb1e]/50 hover:text-[#fbbb1e]">{copy.clientArea}</a>
+          </div>
+          <p className="text-[11px] text-white/25">© 2026 Sunbeat · {copy.footer}</p>
         </div>
       </footer>
     </div>
