@@ -1,5 +1,5 @@
--- Sunbeat self-service billing foundation.
--- Review in a non-production Supabase project before applying anywhere.
+-- Durable Stripe webhook processing and subscription reconciliation.
+-- The application only grants plan access from verified Stripe state.
 
 begin;
 

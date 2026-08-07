@@ -16,6 +16,14 @@ Recommended production variables:
 - `RESEND_API_KEY` plus `RESEND_AUTH_FROM_EMAIL` (preferred) or `RESEND_FROM_EMAIL`
 - `CRON_SECRET` (random secret used by Vercel to authenticate billing reconciliation)
 
+Paid self-service variables:
+
+- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_ID_STARTER` and `STRIPE_PRICE_ID_PRO` for USD
+- `STRIPE_PRICE_ID_STARTER_BRL` and `STRIPE_PRICE_ID_PRO_BRL` for BRL
+- `PAID_SELF_SERVICE_ENABLED=false` as the emergency billing kill switch (when unset,
+  billing is allowed only if every required check passes)
+
 `SELF_SERVICE_SIGNUP_ENABLED=false` is the emergency kill switch. When it is unset or
 enabled, signup uses a honeypot, a minimum form-completion time and mandatory email
 confirmation. Turnstile is enforced when both keys are configured. Resend provides the
@@ -57,6 +65,10 @@ The daily `/api/cron/billing-reconcile` job is configured for 04:17 UTC. It chec
 least recently reconciled Stripe customers first, in batches of 100. Override the batch
 with `BILLING_RECONCILE_BATCH_SIZE` (maximum 500) only after measuring function duration.
 
+`GET /api/billing/health` reports only aggregate readiness booleans; it never returns
+keys or price IDs. Checkout fails closed with `billing_not_ready` unless the Stripe
+configuration and the idempotent event store are both available.
+
 Subscription policy:
 
 - `active` and `trialing`: apply the purchased plan.
@@ -69,6 +81,12 @@ Confirm Stripe sends these events to `/api/billing/webhook` in sandbox:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+
+On `checkout.session.completed`, the webhook immediately retrieves the authoritative
+subscription snapshot and applies the plan. The Stripe return page also performs an
+authenticated, idempotent confirmation through `/api/billing/checkout/confirm`, so a
+customer sees a clear activated, pending-sync or cancelled state instead of a silent
+redirect.
 
 ## Controlled acceptance test
 

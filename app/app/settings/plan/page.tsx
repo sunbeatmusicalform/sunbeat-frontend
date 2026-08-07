@@ -10,6 +10,7 @@ import type { BillingAndEntitlementsReadModel } from "@/lib/workspace-config/typ
 import { billingCatalog, resolveMarket, formatPrice, isSelfServePlan, planDefinitions, shouldUseBillingPortal, type Market, type BillingTier } from "@/lib/billing/catalog";
 import WorkspaceBillingEntitlementsPanel from "@/components/admin/WorkspaceBillingEntitlementsPanel";
 import { UpgradeButton, ManageSubscriptionButton } from "./BillingButtons";
+import CheckoutStatusNotice from "./CheckoutStatusNotice";
 
 type PlanRow = {
   id: string;
@@ -33,10 +34,18 @@ export const metadata = { title: "Plano — Sunbeat" };
 export default async function PlanPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan_intent?: string }>;
+  searchParams: Promise<{
+    plan_intent?: string;
+    checkout?: string;
+    session_id?: string;
+  }>;
 }) {
   const host = (await headers()).get("host") ?? "";
-  const { plan_intent: rawPlanIntent } = await searchParams;
+  const {
+    plan_intent: rawPlanIntent,
+    checkout: rawCheckoutStatus,
+    session_id: rawSessionId,
+  } = await searchParams;
 
   // Resolve workspace slug from subdomain
   const tenant = getTenantFromHost(host);
@@ -62,6 +71,14 @@ export default async function PlanPage({
   const planIntent =
     rawPlanIntent && isSelfServePlan(rawPlanIntent as BillingTier)
       ? (rawPlanIntent as BillingTier)
+      : null;
+  const checkoutStatus =
+    rawCheckoutStatus === "success" || rawCheckoutStatus === "cancelled"
+      ? rawCheckoutStatus
+      : null;
+  const checkoutSessionId =
+    typeof rawSessionId === "string" && rawSessionId.startsWith("cs_")
+      ? rawSessionId
       : null;
 
   let currentPlanId: BillingTier | string = "free";
@@ -215,6 +232,15 @@ export default async function PlanPage({
             {labels.subtitle}
           </p>
         </div>
+
+        {checkoutStatus && (
+          <CheckoutStatusNotice
+            checkoutStatus={checkoutStatus}
+            sessionId={checkoutSessionId}
+            workspaceSlug={workspaceSlug}
+            isBrazil={isBrazil}
+          />
+        )}
 
         {/* Plan intent banner — shown when arriving from pricing → signup funnel */}
         {planIntent && (
