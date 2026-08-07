@@ -331,6 +331,7 @@ export async function POST(req: Request) {
     name: name.trim(),
     workspaceName: workspace_name.trim(),
     confirmationUrl,
+    locale: workspaceDomain === "sunbeat.com.br" ? "pt-BR" : "en",
   });
 
   if (!confirmationEmail.ok) {
