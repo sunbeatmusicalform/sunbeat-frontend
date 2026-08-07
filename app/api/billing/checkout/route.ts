@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeBillingWorkspaceAccess } from "@/lib/billing/auth";
+import { getBillingConfigurationStatus, hasBillingEventStore } from "@/lib/billing/readiness";
+import { getStripe } from "@/lib/billing/stripe";
 import {
   billingCatalog,
   isSelfServePlan,
@@ -13,12 +14,6 @@ import {
 } from "@/lib/billing/catalog";
 
 export const dynamic = "force-dynamic";
-
-function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("STRIPE_SECRET_KEY não configurada.");
-  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
-}
 
 export async function POST(req: Request) {
   try {
@@ -84,6 +79,22 @@ export async function POST(req: Request) {
 
     const market = requestedMarket ?? hostMarket;
     const marketConfig = billingCatalog[market];
+    const configuration = getBillingConfigurationStatus(market);
+
+    if (!configuration.ready || !(await hasBillingEventStore())) {
+      console.error("[billing/checkout] Billing indisponível:", {
+        market,
+        configuration,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "A contratação online está temporariamente indisponível. Tente novamente em instantes.",
+          code: "billing_not_ready",
+        },
+        { status: 503 }
+      );
+    }
 
     const priceIds = marketConfig.priceIds();
     const priceId = priceIds[planId as BillingTier];

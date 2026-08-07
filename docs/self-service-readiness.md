@@ -1,15 +1,17 @@
 # Sunbeat self-service readiness
 
-Status of this branch: the Free self-service foundation is implemented. Paid billing
-remains gated on the Stripe migration and end-to-end sandbox acceptance below.
+Status of this branch: the Free self-service foundation is implemented and the Stripe
+idempotency migration is live. Paid billing remains gated on environment readiness and
+the end-to-end sandbox acceptance below.
 
 ## Gate 1 — sandbox infrastructure
 
 - [ ] Create or select a non-production Supabase project.
-- [ ] Review and apply `docs/supabase/stripe_billing_event_idempotency.sql`.
+- [x] Apply the versioned `supabase/migrations/20260807180000_stripe_billing_event_idempotency.sql`.
 - [ ] Configure the Supabase Auth redirect allow list for both Sunbeat domains and preview.
 - [ ] Configure Stripe test products/prices for Starter and Pro in USD and BRL.
 - [ ] Configure a Stripe sandbox webhook at `/api/billing/webhook`.
+- [ ] Confirm `/api/billing/health` returns HTTP 200 in preview and production.
 - [ ] Configure Turnstile for both canonical domains and preview (recommended before a
       broader launch; the honeypot, minimum form time and email confirmation remain active).
 - [ ] Configure a verified Resend sender for branded account confirmation (recommended;

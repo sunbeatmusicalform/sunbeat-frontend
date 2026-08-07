@@ -109,11 +109,27 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         workspaceSlug = session.metadata?.workspace_slug ?? null;
+        const subscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id ?? null;
+
+        if (!workspaceSlug || !subscriptionId) {
+          throw new Error("Checkout concluído sem workspace ou assinatura Stripe.");
+        }
+
+        const currentSubscription = await getStripe().subscriptions.retrieve(
+          subscriptionId
+        );
+        const result = await applyStripeSubscriptionSnapshot(
+          currentSubscription,
+          event.created,
+          workspaceSlug
+        );
         console.log(
-          "[webhook] Checkout concluído:",
+          "[webhook] Checkout concluído e assinatura aplicada:",
           session.id,
-          "workspace:", session.metadata?.workspace_slug,
-          "market:", session.metadata?.market ?? "global"
+          result
         );
         break;
       }
