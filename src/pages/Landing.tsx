@@ -15,7 +15,7 @@ const LANDING_COPY = {
     plansBody: "Every plan includes Sunbeat's file audit for audio, artwork and metadata. Paid plans expand volume, retention, integrations and operational control.",
     coreIncluded: 'Core included',
     startFree: 'Start Free',
-    joinPlan: (name: string) => `Join ${name} waitlist`,
+    choosePlan: (name: string) => `Choose ${name}`,
     enterpriseTitle: 'Enterprise from $199/mo',
     enterpriseBody: 'Unlimited scale, dedicated onboarding, SLA and custom operational architecture.',
     enterpriseCta: 'Talk to Sunbeat',
@@ -50,8 +50,8 @@ const LANDING_COPY = {
     plansBody: 'Todos os planos incluem a auditoria Sunbeat para áudio, capas e metadados. Os planos pagos ampliam volume, retenção, integrações e controle operacional.',
     coreIncluded: 'Essencial incluído',
     startFree: 'Começar grátis',
-    joinPlan: (name: string) => `Entrar na lista ${name}`,
-    enterpriseTitle: 'Enterprise a partir de US$ 199/mês',
+    choosePlan: (name: string) => `Escolher ${name}`,
+    enterpriseTitle: 'Enterprise a partir de R$ 990/mês',
     enterpriseBody: 'Escala ilimitada, onboarding dedicado, SLA e arquitetura operacional personalizada.',
     enterpriseCta: 'Falar com a Sunbeat',
     clientArea: 'Área do cliente',
@@ -72,9 +72,9 @@ const LANDING_COPY = {
       successBody: 'Obrigado. Felipe receberá seus dados e entrará em contato.', done: 'Concluir',
     },
     plans: [
-      { name: 'Free', price: 'US$ 0', description: 'Um fluxo real para experimentar a Sunbeat, sem prazo de teste.', features: ['50 submissões por mês', '1 formulário de intake ativo', 'Auditoria de áudio, capa e metadados', 'Assets armazenados por 60 dias', 'Base estruturada com limite de uso razoável no acesso antecipado', 'Rascunhos e resumos de submissão'], note: 'A auditoria de arquivos permanece gratuita — ela faz parte do núcleo da Sunbeat.', featured: true },
-      { name: 'Starter', price: 'US$ 19/mês', description: 'Para equipes com uma operação contínua de intake e dados conectados.', features: ['500 submissões por mês', '2 formulários de intake ativos', 'Tudo do Free, incluindo auditoria', 'Retenção estendida de assets', 'Sincronização Airtable em duas vias e mapeamento visual', 'Uploads maiores e suporte prioritário por e-mail'], note: 'Ideal para pequenas labels, managers e equipes criativas.', featured: false },
-      { name: 'Pro', price: 'US$ 49/mês', description: 'Para operações completas que precisam de automação, IA e marca própria.', features: ['2.000 submissões por mês', '5 formulários de intake ativos', 'Tudo do Starter, incluindo auditoria', 'Integrações com Google Drive e Google Sheets', 'Configuração assistida por IA e orientação operacional', 'Marca personalizada, white-label e uploads maiores'], note: 'Ideal para operações em crescimento com múltiplos fluxos.', featured: false },
+      { name: 'Free', price: 'R$ 0', description: 'Um fluxo real para experimentar a Sunbeat, sem prazo de teste.', features: ['50 submissões por mês', '1 formulário de intake ativo', 'Auditoria de áudio, capa e metadados', 'Assets armazenados por 60 dias', 'Base estruturada com limite de uso razoável no acesso antecipado', 'Rascunhos e resumos de submissão'], note: 'A auditoria de arquivos permanece gratuita — ela faz parte do núcleo da Sunbeat.', featured: true },
+      { name: 'Starter', price: 'R$ 97/mês', description: 'Para equipes com uma operação contínua de intake e dados conectados.', features: ['500 submissões por mês', '2 formulários de intake ativos', 'Tudo do Free, incluindo auditoria', 'Retenção estendida de assets', 'Sincronização Airtable em duas vias e mapeamento visual', 'Uploads maiores e suporte prioritário por e-mail'], note: 'Ideal para pequenas labels, managers e equipes criativas.', featured: false },
+      { name: 'Pro', price: 'R$ 247/mês', description: 'Para operações completas que precisam de automação, IA e marca própria.', features: ['2.000 submissões por mês', '5 formulários de intake ativos', 'Tudo do Starter, incluindo auditoria', 'Integrações com Google Drive e Google Sheets', 'Configuração assistida por IA e orientação operacional', 'Marca personalizada, white-label e uploads maiores'], note: 'Ideal para operações em crescimento com múltiplos fluxos.', featured: false },
     ],
   },
 } as const
@@ -303,13 +303,12 @@ export default function Landing() {
                     {copy.startFree}
                   </a>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setLeadForm({ type: 'waitlist', plan: plan.name })}
+                  <a
+                    href={`${locale === 'pt-BR' ? 'https://app.sunbeat.com.br' : 'https://app.sunbeat.pro'}/signup?plan=${plan.name.toLowerCase()}`}
                     className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#fbbb1e] px-4 py-3 text-sm font-bold text-[#000e14] transition hover:bg-[#fbbb1e]/90"
                   >
-                    {copy.joinPlan(plan.name)}
-                  </button>
+                    {copy.choosePlan(plan.name)}
+                  </a>
                 )}
               </div>
             </article>
