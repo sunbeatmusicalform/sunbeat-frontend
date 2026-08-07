@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { WorkflowRegistryEntry } from "@/lib/form-engine/types";
 
 type Props = {
@@ -24,15 +25,18 @@ export function WorkflowTogglesClient({ workflows, initialEnabled }: Props) {
             Workflows ativos neste workspace
           </h2>
           <p className="mt-1 text-sm text-[#6B655C]">
-            A persistencia de visibilidade por workflow nao esta incluida nesta
-            PR. Esta lista mostra o estado atual em modo somente leitura.
+            O acesso é aplicado pelo onboarding do MotoSchema, que valida o
+            plano e exige uma prévia antes de alterar o workspace.
           </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-3 pt-1">
-          <span className="inline-flex h-10 items-center justify-center rounded-2xl border border-black/10 bg-[#F8F5EF] px-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#8D867B]">
-            Somente leitura
-          </span>
+          <Link
+            href="/app/onboarding"
+            className="inline-flex h-10 items-center justify-center rounded-2xl border border-black/10 bg-[#111111] px-4 text-xs font-semibold text-white"
+          >
+            Gerenciar acesso
+          </Link>
         </div>
       </div>
 
@@ -87,8 +91,8 @@ export function WorkflowTogglesClient({ workflows, initialEnabled }: Props) {
 
       {hasDisabledWorkflows ? (
         <p className="mt-3 text-[11px] text-[#8D867B]">
-          Workflows fora da lista aparecem como desabilitados apenas no estado
-          lido do workspace.
+          Workflows fora da lista permanecem bloqueados nas rotas públicas e no
+          painel até uma nova confirmação no onboarding.
         </p>
       ) : null}
     </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { listRegisteredWorkflows, resolveWorkflowIdentity } from "@/lib/form-engine/workflow-registry";
+import { authorizeWorkspaceConfigurator } from "@/lib/server/workspace-config-access";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -291,6 +292,8 @@ export async function PUT(
   context: { params: Promise<{ workspaceSlug: string }> }
 ) {
   const { workspaceSlug } = await context.params;
+  const access = await authorizeWorkspaceConfigurator(workspaceSlug);
+  if ("response" in access) return access.response;
 
   try {
     const body = await req.json() as {

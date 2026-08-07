@@ -6,6 +6,7 @@ import {
   canAccessWorkspace,
   listAccessibleWorkspacesForUser,
 } from "@/lib/workspace-access";
+import { authorizeWorkspaceConfigurator } from "@/lib/server/workspace-config-access";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -438,6 +439,10 @@ export async function GET(
   if ("response" in access) {
     return access.response;
   }
+  const configuratorAccess = await authorizeWorkspaceConfigurator(workspaceSlug);
+  if ("response" in configuratorAccess) {
+    return configuratorAccess.response;
+  }
 
   const supabase = createSupabaseAdmin();
 
@@ -576,6 +581,10 @@ export async function PUT(
   const access = await authorizeWorkspaceEditorAccess(workspaceSlug);
   if ("response" in access) {
     return access.response;
+  }
+  const configuratorAccess = await authorizeWorkspaceConfigurator(workspaceSlug);
+  if ("response" in configuratorAccess) {
+    return configuratorAccess.response;
   }
 
   const body = (await request.json()) as {

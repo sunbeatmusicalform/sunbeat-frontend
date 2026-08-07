@@ -111,6 +111,16 @@ const navSections = [
     section: "Configurações",
     items: [
       {
+        label: "Onboarding",
+        href: "/app/onboarding",
+        icon: (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12l4 4L19 6M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        ),
+        description: "Configuração guiada do workspace",
+      },
+      {
         label: "Workflows",
         href: "/app/settings/workflows",
         icon: (
@@ -144,7 +154,7 @@ const navSections = [
         description: "Identidade e personalização",
       },
       {
-        label: "AI Copilot",
+        label: "MotoSchema",
         href: "/app/settings/ai-guide",
         icon: (
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +162,7 @@ const navSections = [
               d="M12 3v3m0 12v3m9-9h-3M6 12H3m14.121-5.121-2.121 2.121M9 15l-2.121 2.121m0-10.242L9 9m6 6 2.121 2.121M12 8a4 4 0 100 8 4 4 0 000-8z" />
           </svg>
         ),
-        description: "Setup e governança IA",
+        description: "Copilot de setup e governança",
       },
       {
         label: "Plano",

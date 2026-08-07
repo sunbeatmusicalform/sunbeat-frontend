@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from "react";
 import type {
   SetupCopilotProposalAction,
@@ -552,7 +553,47 @@ function ActionControls({
   ) => void;
 }) {
   if (action.type !== "configure_airtable") {
-    return null;
+    const destinations: Partial<Record<SetupCopilotActionType, { href: string; label: string; detail: string }>> = {
+      create_workflow: {
+        href: "/app/onboarding",
+        label: "Abrir onboarding",
+        detail: "Ative workflows pelo MotoSchema guiado, com validação do plano e prévia assinada.",
+      },
+      draft_form_schema: {
+        href: "/app/settings/fields",
+        label: "Abrir editor de campos",
+        detail: "Use a proposta como referência e revise o schema no editor autenticado.",
+      },
+      adjust_field: {
+        href: "/app/settings/fields",
+        label: "Revisar campos",
+        detail: "Labels, helpers, obrigatoriedade e visibilidade são confirmados no editor.",
+      },
+      draft_table_schema: {
+        href: "/app/tables",
+        label: "Abrir Sunbeat Tables",
+        detail: "Confira o read model operacional antes de estruturar novas views.",
+      },
+      review_sync: {
+        href: "/app/settings/workflows",
+        label: "Revisar integrações",
+        detail: "Veja o estado efetivo de cada workflow e seus destinos operacionais.",
+      },
+    };
+    const destination = destinations[action.type];
+    if (!destination) return null;
+
+    return (
+      <div className="mt-3 rounded-[14px] border border-[#E2D8C8] bg-[#FBF7EF] p-3">
+        <p className="text-[11px] leading-5 text-[#81776B]">{destination.detail}</p>
+        <Link
+          href={destination.href}
+          className="mt-2 inline-flex rounded-xl border border-[#D9CDBD] bg-white px-3 py-2 text-xs font-semibold text-[#2B241D] transition hover:bg-[#F8F3EA]"
+        >
+          {destination.label}
+        </Link>
+      </div>
+    );
   }
 
   const canRun = Boolean(buildAirtableActionPayload(action));

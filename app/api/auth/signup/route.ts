@@ -233,8 +233,8 @@ export async function POST(req: Request) {
   callbackUrl.searchParams.set(
     "next",
     normalizedPlanIntent
-      ? `/app/settings/plan?plan_intent=${normalizedPlanIntent}`
-      : "/app"
+      ? `/app/onboarding?plan_intent=${normalizedPlanIntent}`
+      : "/app/onboarding"
   );
   const acceptedAt = new Date().toISOString();
   const generatedPassword = `${crypto.randomUUID()}-${crypto.randomUUID()}`;

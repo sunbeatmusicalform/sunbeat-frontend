@@ -5,6 +5,9 @@ import {
   canAccessWorkspace,
   listAccessibleWorkspacesForUser,
 } from "@/lib/workspace-access";
+import { authorizeWorkspaceConfigurator } from "@/lib/server/workspace-config-access";
+import { getPlanProductCapabilities } from "@/lib/billing/plan-capabilities";
+import { listRegisteredWorkflows } from "@/lib/form-engine/workflow-registry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -57,7 +60,7 @@ export async function GET(
   context: { params: Promise<{ workspaceSlug: string }> }
 ) {
   const { workspaceSlug } = await context.params;
-  const access = await authorizeWorkspaceEditorAccess(workspaceSlug);
+  const access = await authorizeWorkspaceConfigurator(workspaceSlug);
   if ("response" in access) return access.response;
 
   const supabase = createSupabaseAdmin();
@@ -133,11 +136,42 @@ export async function PATCH(
   if ("badge_url" in body) patch.badge_url = normalizeText(body.badge_url);
   if ("enabled_workflows" in body) {
     const val = body.enabled_workflows;
-    if (val === null) {
-      patch.enabled_workflows = null;
-    } else if (Array.isArray(val) && val.every((v) => typeof v === "string")) {
-      patch.enabled_workflows = val.length > 0 ? val : null;
+    if (!Array.isArray(val) || !val.every((v) => typeof v === "string")) {
+      return NextResponse.json(
+        { ok: false, error: "enabled_workflows deve ser uma lista explícita." },
+        { status: 400 }
+      );
     }
+
+    const activeTypes = new Set(
+      listRegisteredWorkflows()
+        .filter((workflow) => workflow.status === "active")
+        .map((workflow) => workflow.workflowType)
+    );
+    const { data: workspace, error: workspaceError } = await supabase
+      .from("workspaces")
+      .select("plan_id")
+      .eq("slug", workspaceSlug)
+      .maybeSingle();
+    if (workspaceError || !workspace) {
+      return NextResponse.json(
+        { ok: false, error: "Plano do workspace indisponível." },
+        { status: 503 }
+      );
+    }
+    const planAllowed = getPlanProductCapabilities(String(workspace.plan_id || "free"))
+      .enabledWorkflowTypes;
+    const normalized = Array.from(new Set(val)).filter(
+      (workflowType) => activeTypes.has(workflowType) &&
+        (planAllowed === null || planAllowed.includes(workflowType))
+    );
+    if (normalized.length === 0 || normalized.length !== new Set(val).size) {
+      return NextResponse.json(
+        { ok: false, error: "Um ou mais workflows não estão disponíveis neste plano." },
+        { status: 422 }
+      );
+    }
+    patch.enabled_workflows = normalized;
   }
 
   if (Object.keys(patch).length === 0) {
