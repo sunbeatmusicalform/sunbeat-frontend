@@ -9,10 +9,12 @@ import { VERDICT_STYLE, type LookupResult, type PersonBaseHit } from '../forms/i
 import { api, apiEnabled, type PortalDataRemote } from '../lib/api'
 import { useBranding, patchBranding, createPortalSession, portalToken, BrandLogo, type WorkspaceBranding } from '../lib/brand'
 import { LiveAirtable, LiveDriveFolders, LiveIntegrations, LiveInvites, LiveOverview, LiveTables } from './LivePortalData'
+import { OnboardingPanel } from './OnboardingPanel'
 
 /* ---------- Abas ---------- */
-type Tab = 'geral' | 'tables' | 'convites' | 'integracoes' | 'formulario' | 'emails' | 'drive' | 'airtable' | 'marca'
+type Tab = 'onboarding' | 'geral' | 'tables' | 'convites' | 'integracoes' | 'formulario' | 'emails' | 'drive' | 'airtable' | 'marca'
 const TABS: { key: Tab; label: string }[] = [
+  { key: 'onboarding', label: 'MotoSchema' },
   { key: 'geral', label: 'Visão geral' },
   { key: 'tables', label: 'Demandas operacionais' },
   { key: 'convites', label: 'Convites' },
@@ -121,13 +123,14 @@ type DrivePanelItem = {
   warnings: string[]
 }
 
+const DRIVE_WORKFLOWS = [
+  ['release_intake', 'Lançamentos (intake)'],
+  ['rights_clearance', 'Clearance'],
+  ['people_registry', 'Pessoas'],
+  ['company_registry', 'Empresas'],
+] as const
+
 function DriveConfigPanel({ workspace, driveConfigured }: { workspace: string; driveConfigured: boolean }) {
-  const workflows = [
-    ['release_intake', 'Lançamentos (intake)'],
-    ['rights_clearance', 'Clearance'],
-    ['people_registry', 'Pessoas'],
-    ['company_registry', 'Empresas'],
-  ] as const
   const [cfg, setCfg] = useState<Record<string, DrivePanelItem>>({})
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -135,12 +138,12 @@ function DriveConfigPanel({ workspace, driveConfigured }: { workspace: string; d
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const results = await Promise.all(workflows.map(([workflow]) => api.getDriveConfig(workflow, workspace)))
+      const results = await Promise.all(DRIVE_WORKFLOWS.map(([workflow]) => api.getDriveConfig(workflow, workspace)))
       if (cancelled) return
       const next: Record<string, DrivePanelItem> = {}
       results.forEach((remote, idx) => {
         if (!remote) return
-        next[workflows[idx][0]] = {
+        next[DRIVE_WORKFLOWS[idx][0]] = {
           root: String(remote.overrides?.root_folder_id ?? ''),
           subfolders: remote.subfolders ?? [],
           rootMode: remote.root_mode ?? 'unmapped',
@@ -167,7 +170,7 @@ function DriveConfigPanel({ workspace, driveConfigured }: { workspace: string; d
 
   async function save() {
     const results = await Promise.all(
-      workflows.map(([workflow]) => {
+      DRIVE_WORKFLOWS.map(([workflow]) => {
         const item = cfg[workflow]
         if (!item) return Promise.resolve(null)
         return api.patchDriveConfig(workflow, {
@@ -222,7 +225,7 @@ function DriveConfigPanel({ workspace, driveConfigured }: { workspace: string; d
       </div>
 
       <div className="mt-4 space-y-4">
-        {workflows.map(([workflow, label]) => {
+        {DRIVE_WORKFLOWS.map(([workflow, label]) => {
           const item = cfg[workflow] ?? { root: '', subfolders: [], rootMode: 'unmapped', artistPattern: '', warnings: [] }
           const dynamicIntake = workflow === 'release_intake' && item.rootMode === 'mirror_v2_clientes' && driveConfigured
           const fixedDestination = Boolean(item.root)
@@ -452,7 +455,7 @@ function BrandingTab({ workspace }: { workspace: string }) {
 export default function Portal() {
   const { workspace = 'atabaque' } = useParams()
   const displayName = workspace.charAt(0).toUpperCase() + workspace.slice(1)
-  const [tab, setTab] = useState<Tab>('geral')
+  const [tab, setTab] = useState<Tab>('onboarding')
   const [unlocked, setUnlocked] = useState(
     () => sessionStorage.getItem(portalAuthKey(workspace)) === '1' && Boolean(portalToken()),
   )
@@ -468,7 +471,16 @@ export default function Portal() {
 
   useEffect(() => {
     if (!unlocked) return
-    void loadPortalData()
+    let cancelled = false
+    Promise.resolve().then(async () => {
+      if (cancelled) return
+      setPortalLoading(true)
+      const data = await api.getPortalData(workspace)
+      if (cancelled) return
+      setPortalData(data)
+      setPortalLoading(false)
+    })
+    return () => { cancelled = true }
   }, [unlocked, workspace])
 
   const liveProps = { data: portalData, loading: portalLoading, reload: () => { void loadPortalData() } }
@@ -507,6 +519,8 @@ export default function Portal() {
 
       {tab === 'geral' && <LiveOverview {...liveProps} />}
 
+      {tab === 'onboarding' && <OnboardingPanel workspace={workspace} />}
+
       {tab === 'tables' && <LiveTables {...liveProps} />}
 
       {tab === 'marca' && <BrandingTab workspace={workspace} />}
@@ -543,7 +557,7 @@ export default function Portal() {
       )}
 
       {tab === 'airtable' && <LiveAirtable {...liveProps} />}
-      <HelpChat clientName={branding?.workspace_name ?? displayName} workspaceSlug={workspace} />
+      {tab !== 'onboarding' ? <HelpChat clientName={branding?.workspace_name ?? displayName} workspaceSlug={workspace} /> : null}
     </div>
   )
 }

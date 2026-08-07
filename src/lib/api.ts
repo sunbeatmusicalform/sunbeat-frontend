@@ -89,6 +89,43 @@ async function send<T>(method: 'POST' | 'PATCH', path: string, body: unknown): P
   }
 }
 
+export interface ApiActionResult<T> {
+  ok: boolean
+  data?: T
+  error?: string
+  status: number
+}
+
+async function sendAction<T>(path: string, body: unknown): Promise<ApiActionResult<T>> {
+  if (!apiEnabled()) return { ok: false, error: 'API desativada.', status: 0 }
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' }
+    const pt = portalToken()
+    if (pt) headers['X-Portal-Token'] = pt
+    const res = await fetch(`${apiBase()}${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+    const payload = await res.json().catch(() => ({})) as {
+      ok?: boolean
+      data?: T
+      error?: string
+      detail?: string | { message?: string }
+    }
+    const detail = typeof payload.detail === 'string' ? payload.detail : payload.detail?.message
+    return {
+      ok: res.ok && payload.ok !== false,
+      data: payload.data,
+      error: payload.error ?? detail ?? (res.ok ? undefined : `Erro ${res.status}`),
+      status: res.status,
+    }
+  } catch (err) {
+    console.warn(`[api] POST ${path} falhou:`, err)
+    return { ok: false, error: 'Falha de rede. Tente novamente.', status: 0 }
+  }
+}
+
 /* ---------- Contratos (espelham os pacotes de trabalho do backend) ---------- */
 
 /* Contrato real do verify (PR #37, app/schemas/people_registry.py).
@@ -287,6 +324,42 @@ export interface EditAccessIssueRemote {
   edit_url: string; email_status?: string | null
 }
 
+export type OnboardingOperationType = 'label' | 'artist_management' | 'publisher' | 'agency' | 'distributor' | 'independent_artist' | 'other'
+export type OnboardingTeamSize = '1' | '2-5' | '6-15' | '16+'
+export type OnboardingMonthlyVolume = '1-10' | '11-50' | '51-200' | '200+'
+export type OnboardingIntegration = 'airtable' | 'google_drive' | 'email' | 'slack' | 'webhooks'
+
+export interface OnboardingProfileRemote {
+  operationType: OnboardingOperationType
+  teamSize: OnboardingTeamSize
+  monthlyVolume: OnboardingMonthlyVolume
+  workflowTypes: string[]
+  integrations: OnboardingIntegration[]
+  primaryGoal: string
+}
+
+export interface OnboardingInitialRemote {
+  workspaceSlug: string
+  workspaceName: string
+  planId: string
+  allowedWorkflowTypes: string[]
+  enabledWorkflowTypes: string[]
+  profile: OnboardingProfileRemote
+  completedAt: string | null
+}
+
+export interface OnboardingPreviewRemote {
+  workspaceSlug: string
+  planId: string
+  profile: OnboardingProfileRemote
+  enabledWorkflows: string[]
+  changes: { key: string; title: string; detail: string }[]
+  warnings: string[]
+  previewToken: string
+  expiresAt: string
+  completedAt?: string
+}
+
 export const api = {
   lookupArtists: (query: string, workspace = WORKSPACE) =>
     get<PeopleLookupResponse>(`/people-registry/lookup?workspace_slug=${encodeURIComponent(workspace)}&roles=artista&limit=8&query=${encodeURIComponent(query)}`),
@@ -343,4 +416,18 @@ export const api = {
 
   issueEditAccess: (workspace: string, workflowType: string, recordId: string) =>
     send<EditAccessIssueRemote>('POST', `/workspaces/${encodeURIComponent(workspace)}/edit-access/${encodeURIComponent(workflowType)}/${encodeURIComponent(recordId)}`, {}),
+
+  getOnboarding: (workspace: string) =>
+    get<{ ok: boolean; data: OnboardingInitialRemote }>(`/workspaces/${encodeURIComponent(workspace)}/onboarding`),
+
+  configureOnboarding: (
+    workspace: string,
+    operation: 'preview_patch' | 'apply_patch',
+    profile: OnboardingProfileRemote,
+    previewToken?: string,
+  ) => sendAction<OnboardingPreviewRemote>(`/workspaces/${encodeURIComponent(workspace)}/onboarding`, {
+    operation,
+    profile,
+    preview_token: previewToken,
+  }),
 }
