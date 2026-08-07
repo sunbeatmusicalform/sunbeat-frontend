@@ -9,6 +9,7 @@ import {
   getTenantFromHost,
   isSunbeatRootHost,
   sanitizeWorkspaceSlug,
+  type WorkspaceBaseDomain,
 } from "@/lib/tenant";
 
 const OTP_LENGTH = 8;
@@ -21,12 +22,17 @@ function safeNextPath(next: string | null) {
   return next;
 }
 
-export default function LoginPageClient() {
+export default function LoginPageClient({
+  workspaceDomain,
+}: {
+  workspaceDomain: WorkspaceBaseDomain;
+}) {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const redirectTo = safeNextPath(searchParams.get("next"));
+  const emailVerified = searchParams.get("verified") === "1";
   const workspaceHint = useMemo(
     () =>
       sanitizeWorkspaceSlug(
@@ -150,7 +156,9 @@ export default function LoginPageClient() {
     }
 
     const restoreUrl = new URL(
-      buildWorkspaceUrl(workspaceSlug, "/auth/session-restore")
+      buildWorkspaceUrl(workspaceSlug, "/auth/session-restore", {
+        domain: workspaceDomain,
+      })
     );
     restoreUrl.hash = [
       `at=${encodeURIComponent(session.access_token)}`,
@@ -163,7 +171,9 @@ export default function LoginPageClient() {
   }
 
   // Login mode: "otp" (default, used by existing clients) or "password" (self-serve)
-  const [loginMode, setLoginMode] = useState<"otp" | "password">("otp");
+  const [loginMode, setLoginMode] = useState<"otp" | "password">(
+    emailVerified ? "password" : "otp"
+  );
 
   // Password login state
   const [pwEmail, setPwEmail] = useState("");
@@ -439,6 +449,12 @@ export default function LoginPageClient() {
           {authErrorMessage && (
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {authErrorMessage}
+            </div>
+          )}
+
+          {emailVerified && (
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              E-mail confirmado. Entre com sua senha para continuar a configuração do workspace.
             </div>
           )}
 

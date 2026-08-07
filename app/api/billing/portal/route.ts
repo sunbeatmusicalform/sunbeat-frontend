@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { billingCatalog, resolveMarket } from "@/lib/billing/catalog";
+import { authorizeBillingWorkspaceAccess } from "@/lib/billing/auth";
+import {
+  resolveBillingSettingsUrl,
+  resolveMarket,
+} from "@/lib/billing/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -13,25 +17,31 @@ function getStripe() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { workspace_slug, return_url } = body as {
-      workspace_slug: string;
-      return_url?: string;
+    let body: {
+      workspace_slug?: unknown;
+      return_url?: unknown;
     };
 
-    if (!workspace_slug) {
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { ok: false, error: "workspace_slug é obrigatório." },
+        { ok: false, error: "Payload inválido." },
         { status: 400 }
       );
     }
+
+    const access = await authorizeBillingWorkspaceAccess(body.workspace_slug);
+    if ("response" in access) return access.response;
+
+    const workspaceSlug = access.workspaceSlug;
 
     const supabase = createSupabaseAdmin();
 
     const { data: ws, error: wsError } = await supabase
       .from("workspaces")
       .select("slug, stripe_customer_id")
-      .eq("slug", workspace_slug)
+      .eq("slug", workspaceSlug)
       .maybeSingle();
 
     if (wsError || !ws) {
@@ -49,16 +59,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Resolve market from the Host header so the return URL uses the correct domain
     const host = req.headers.get("host") ?? "";
     const market = resolveMarket(host);
-    const { domain } = billingCatalog[market];
-    const defaultReturnUrl = `https://${workspace_slug}.${domain}/app/settings/plan`;
+    const returnUrl = resolveBillingSettingsUrl({
+      workspaceSlug,
+      market,
+      requestedUrl:
+        typeof body.return_url === "string" ? body.return_url : null,
+    });
 
     const stripe = getStripe();
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: return_url ?? defaultReturnUrl,
+      return_url: returnUrl,
     });
 
     return NextResponse.json({ ok: true, url: portalSession.url });
@@ -67,7 +80,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: err instanceof Error ? err.message : "Erro interno ao criar sessão do portal.",
+        error: "Não foi possível abrir o portal de assinatura. Tente novamente.",
       },
       { status: 500 }
     );

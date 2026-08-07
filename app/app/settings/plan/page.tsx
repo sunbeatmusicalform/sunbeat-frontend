@@ -7,7 +7,7 @@ import { getTenantFromHost } from "@/lib/tenant";
 import { isInternalAdminUser } from "@/lib/internal-admin";
 import { loadWorkspaceConfigReadModel } from "@/lib/workspace-config/read-model";
 import type { BillingAndEntitlementsReadModel } from "@/lib/workspace-config/types";
-import { billingCatalog, resolveMarket, formatPrice, isSelfServePlan, planDefinitions, type Market, type BillingTier } from "@/lib/billing/catalog";
+import { billingCatalog, resolveMarket, formatPrice, isSelfServePlan, planDefinitions, shouldUseBillingPortal, type Market, type BillingTier } from "@/lib/billing/catalog";
 import WorkspaceBillingEntitlementsPanel from "@/components/admin/WorkspaceBillingEntitlementsPanel";
 import { UpgradeButton, ManageSubscriptionButton } from "./BillingButtons";
 
@@ -76,7 +76,7 @@ export default async function PlanPage({
     const [{ data: ws }, { data: planRows }, workspaceConfig] = await Promise.all([
       admin
         .from("workspaces")
-        .select("plan_id, stripe_customer_id, plans(name)")
+        .select("plan_id, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, plans(name)")
         .eq("slug", workspaceSlug)
         .maybeSingle(),
       admin
@@ -93,7 +93,12 @@ export default async function PlanPage({
 
     if (ws) {
       currentPlanId = ws.plan_id as BillingTier | string;
-      hasSubscription = !!ws.stripe_customer_id;
+      hasSubscription =
+        Boolean(ws.stripe_customer_id) &&
+        shouldUseBillingPortal({
+          subscriptionId: ws.stripe_subscription_id,
+          status: ws.stripe_subscription_status,
+        });
       const plansData = ws.plans as { name: string }[] | { name: string } | null;
       const planEntry = Array.isArray(plansData) ? plansData[0] : plansData;
       currentPlanName = planEntry?.name ?? currentPlanName;
@@ -246,7 +251,10 @@ export default async function PlanPage({
             const isCurrent = plan.id === currentPlanId;
             const isIntent = planIntent === plan.id;
             const pc = planColors[plan.id] ?? planColors.pro;
-            const canUpgrade = isSelfServePlan(plan.id as BillingTier) && !isCurrent;
+            const canUpgrade =
+              isSelfServePlan(plan.id as BillingTier) &&
+              !isCurrent &&
+              !hasSubscription;
             const priceLabel = formatPrice(market, plan.id as BillingTier);
 
             return (

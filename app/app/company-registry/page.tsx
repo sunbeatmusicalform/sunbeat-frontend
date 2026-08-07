@@ -1,6 +1,8 @@
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 import CompanyRegistryPage from "@/components/company-registry/CompanyRegistryPage";
 import { companyRegistryTemplate } from "@/lib/form-engine/company-registry-template";
+import { redirect } from "next/navigation";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
 /**
  * Internal preview of the Company Registry form.
@@ -11,6 +13,9 @@ import { companyRegistryTemplate } from "@/lib/form-engine/company-registry-temp
  */
 export default async function InternalCompanyRegistryPage() {
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "company_registry"))) {
+    redirect("/app/settings/plan?blocked_workflow=company_registry");
+  }
 
   return (
     <div>

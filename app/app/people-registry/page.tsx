@@ -4,6 +4,8 @@ import {
   getPeopleRegistryProfile,
   getDefaultPeopleRegistryProfile,
 } from "@/lib/people-registry/profile-registry";
+import { redirect } from "next/navigation";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
 /**
  * Internal preview of the People Registry form.
@@ -15,6 +17,9 @@ import {
  */
 export default async function InternalPeopleRegistryPage() {
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "people_registry"))) {
+    redirect("/app/settings/plan?blocked_workflow=people_registry");
+  }
   const profile =
     getPeopleRegistryProfile(workspaceSlug) ?? getDefaultPeopleRegistryProfile();
 

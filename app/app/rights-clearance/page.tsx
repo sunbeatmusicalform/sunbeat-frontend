@@ -1,5 +1,7 @@
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 import RightsClearancePage from "@/components/rights-clearance/RightsClearancePage";
+import { redirect } from "next/navigation";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
 /**
  * Internal preview of the Rights Clearance form.
@@ -10,6 +12,9 @@ import RightsClearancePage from "@/components/rights-clearance/RightsClearancePa
  */
 export default async function InternalRightsClearancePage() {
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "rights_clearance"))) {
+    redirect("/app/settings/plan?blocked_workflow=rights_clearance");
+  }
 
   return (
     <div>

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createSupabaseBrowser } from "@/lib/supabase/browser";
+import Image from "next/image";
+import type { WorkspaceBaseDomain } from "@/lib/tenant";
+import TurnstileWidget from "@/components/auth/TurnstileWidget";
 
 type Step = "form" | "success";
 
@@ -29,8 +31,15 @@ function isSelfServePlan(val: string | null): val is SelfServePlan {
   return SELF_SERVE_PLANS.includes(val as SelfServePlan);
 }
 
-export default function SignupPageClient() {
-  const supabase = useMemo(() => createSupabaseBrowser(), []);
+export default function SignupPageClient({
+  workspaceDomain,
+  signupEnabled,
+  turnstileSiteKey,
+}: {
+  workspaceDomain: WorkspaceBaseDomain;
+  signupEnabled: boolean;
+  turnstileSiteKey: string | null;
+}) {
   const searchParams = useSearchParams();
   const rawPlan = searchParams.get("plan");
   const planIntent: SelfServePlan | null = isSelfServePlan(rawPlan) ? rawPlan : null;
@@ -40,15 +49,27 @@ export default function SignupPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [workspaceSlug, setWorkspaceSlug] = useState<string>("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [captchaVersion, setCaptchaVersion] = useState(0);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [formStartedAt] = useState(() => Date.now());
 
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
     workspace_name: "",
+    company_website: "",
   });
 
   const preview = slugPreview(form.workspace_name);
+  const handleTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
+
+  function resetCaptcha() {
+    setTurnstileToken(null);
+    setCaptchaVersion((version) => version + 1);
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
@@ -62,12 +83,34 @@ export default function SignupPageClient() {
     setError(null);
     setFieldError(null);
 
+    if (!signupEnabled || (turnstileSiteKey && !turnstileToken)) {
+      setError(
+        signupEnabled
+          ? "Conclua a verificação de segurança antes de continuar."
+          : "Novos cadastros estão temporariamente fechados."
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (!termsAccepted) {
+      setError("Confirme os Termos de Uso e a Política de Privacidade.");
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Create user + workspace via API
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          plan_intent: planIntent,
+          turnstile_token: turnstileToken,
+          terms_accepted: termsAccepted,
+          form_started_at: formStartedAt,
+        }),
       });
 
       const data = await res.json();
@@ -78,49 +121,16 @@ export default function SignupPageClient() {
         } else {
           setError(data.error || "Erro ao criar conta. Tente novamente.");
         }
+        resetCaptcha();
         setLoading(false);
         return;
       }
 
-      // 2. Auto-login with email+password
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-      });
-
-      if (loginError) {
-        // Signup succeeded but auto-login failed — show success with manual link
-        setWorkspaceSlug(data.workspace_slug);
-        setStep("success");
-        setLoading(false);
-        return;
-      }
-
-      // 3. Get session tokens and redirect to subdomain via session-restore
-      //    Tokens go in the URL hash (not query params) to keep them off server logs.
-      const { data: sessionData } = await supabase.auth.getSession();
-      const slug = data.workspace_slug;
-
-      if (sessionData?.session) {
-        const { access_token, refresh_token } = sessionData.session;
-        const nextPath = planIntent
-          ? `/app/settings/plan?plan_intent=${planIntent}`
-          : "/app/settings/plan";
-        const hash = [
-          `at=${encodeURIComponent(access_token)}`,
-          `rt=${encodeURIComponent(refresh_token)}`,
-          `next=${encodeURIComponent(nextPath)}`,
-        ].join("&");
-        window.location.href = `https://${slug}.sunbeat.pro/auth/session-restore#${hash}`;
-        // setLoading stays true intentionally — page will navigate away
-        return;
-      }
-
-      // Fallback: show success with manual link
-      setWorkspaceSlug(slug);
+      setWorkspaceSlug(data.workspace_slug);
       setStep("success");
     } catch {
       setError("Erro de conexão. Tente novamente.");
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -136,26 +146,27 @@ export default function SignupPageClient() {
             </svg>
           </div>
           <h2 className="mt-6 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
-            Workspace criado!
+            Verifique seu e-mail
           </h2>
           <p className="mt-3 text-sm leading-7 text-[#5E5A54]">
-            Seu workspace <strong>{workspaceSlug}.sunbeat.pro</strong> está pronto.
-            Acesse o dashboard para configurar seus formulários.
+            Enviamos um magic link para <strong>{form.email}</strong>.
+            Depois de confirmar, você poderá acessar o workspace{" "}
+            <strong>{workspaceSlug}.{workspaceDomain}</strong>.
           </p>
-          <a
-            href={`https://${workspaceSlug}.sunbeat.pro/login?next=/app/settings/plan${planIntent ? `?plan_intent=${planIntent}` : ""}`}
+          <Link
+            href="/login"
             className="mt-8 inline-flex w-full items-center justify-center rounded-full py-3.5 text-sm font-semibold"
             style={{ backgroundColor: '#111111', color: '#ffffff' }}
           >
-            Acessar workspace →
-          </a>
+            Ir para o login
+          </Link>
           <p className="mt-3 text-xs text-[#9A9590]">
-            Você será redirecionado para a página de planos após o login.
+            O workspace só será acessível depois da confirmação do e-mail.
           </p>
           <p className="mt-2 text-xs text-[#9A9590]">
             URL:{" "}
             <code className="rounded bg-[#F4F1EA] px-1.5 py-0.5 text-[#393733]">
-              {workspaceSlug}.sunbeat.pro
+              {workspaceSlug}.{workspaceDomain}
             </code>
           </p>
         </div>
@@ -169,7 +180,13 @@ export default function SignupPageClient() {
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-white shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-            <img src="/sunbeat-logan-transparent-black.ico" alt="Sunbeat" className="h-7 w-7 object-contain" />
+            <Image
+              src="/sunbeat-logan-transparent-black.ico"
+              alt="Sunbeat"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+            />
           </div>
           <div className="text-center">
             <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#111111]">Sunbeat</div>
@@ -184,6 +201,12 @@ export default function SignupPageClient() {
           <p className="mt-2 text-sm leading-7 text-[#5E5A54]">
             Crie seu workspace e comece a receber lançamentos de forma organizada.
           </p>
+
+          {!signupEnabled && (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              Novos cadastros estão fechados enquanto concluímos a configuração de segurança do self-service.
+            </div>
+          )}
 
           {planIntent && (
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-black/8 bg-[#F9F7F2] px-4 py-3">
@@ -238,23 +261,6 @@ export default function SignupPageClient() {
               />
             </div>
 
-            {/* Senha */}
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
-                Senha
-              </label>
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete="new-password"
-                placeholder="Mínimo 8 caracteres"
-                value={form.password}
-                onChange={handleChange}
-                className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
-              />
-            </div>
-
             {/* Nome do workspace */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
@@ -272,12 +278,51 @@ export default function SignupPageClient() {
               {preview && (
                 <p className="mt-1.5 text-xs text-[#9A9590]">
                   Seu endereço:{" "}
-                  <span className="font-medium text-[#5E5A54]">{preview}.sunbeat.pro</span>
+                  <span className="font-medium text-[#5E5A54]">{preview}.{workspaceDomain}</span>
                 </p>
               )}
               {fieldError && (
                 <p className="mt-1.5 text-xs text-red-500">{fieldError}</p>
               )}
+            </div>
+
+            <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+              <label htmlFor="company_website">Website</label>
+              <input
+                id="company_website"
+                name="company_website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={form.company_website}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="flex items-start gap-3 rounded-2xl border border-black/8 bg-[#F9F7F2] px-4 py-3">
+              <input
+                id="signup-legal-acceptance"
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(event) => {
+                  setTermsAccepted(event.target.checked);
+                  setError(null);
+                }}
+                className="mt-1 h-4 w-4 accent-[#111111]"
+                required
+              />
+              <span className="text-xs leading-5 text-[#6A6660]">
+                <label htmlFor="signup-legal-acceptance" className="cursor-pointer">
+                  Li e aceito os{" "}
+                </label>
+                <Link href="/legal/terms" target="_blank" className="font-semibold text-[#111111] underline">
+                  Termos de Uso
+                </Link>{" "}
+                e a{" "}
+                <Link href="/legal/privacy" target="_blank" className="font-semibold text-[#111111] underline">
+                  Política de Privacidade
+                </Link>.
+              </span>
             </div>
 
             {error && (
@@ -286,9 +331,22 @@ export default function SignupPageClient() {
               </div>
             )}
 
+            {signupEnabled && turnstileSiteKey && (
+              <TurnstileWidget
+                key={captchaVersion}
+                siteKey={turnstileSiteKey}
+                onTokenChange={handleTurnstileToken}
+              />
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                !signupEnabled ||
+                !termsAccepted ||
+                Boolean(turnstileSiteKey && !turnstileToken)
+              }
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold transition disabled:opacity-60"
               style={{ backgroundColor: '#111111', color: '#ffffff' }}
             >
@@ -301,7 +359,7 @@ export default function SignupPageClient() {
                   Criando workspace...
                 </>
               ) : (
-                "Criar minha conta"
+                signupEnabled ? "Criar minha conta" : "Cadastros fechados"
               )}
             </button>
           </form>

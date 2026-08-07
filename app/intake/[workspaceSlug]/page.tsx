@@ -1,18 +1,17 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import ReleaseIntakePage from "@/components/release-intake/ReleaseIntakePage";
 import { atabaqueTemplate } from "@/lib/form-engine/atabaque-template";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
-export default function PublicReleaseIntakePage() {
-  const params = useParams();
-
-  const workspaceSlug =
-    typeof params.workspaceSlug === "string"
-      ? params.workspaceSlug
-      : Array.isArray(params.workspaceSlug)
-      ? params.workspaceSlug[0]
-      : atabaqueTemplate.workspaceSlug;
+export default async function PublicReleaseIntakePage({
+  params,
+}: {
+  params: Promise<{ workspaceSlug: string }>;
+}) {
+  const { workspaceSlug } = await params;
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "release_intake"))) {
+    notFound();
+  }
 
   return (
     <ReleaseIntakePage

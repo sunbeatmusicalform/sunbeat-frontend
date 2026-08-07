@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 
 import SelectWorkspacePageClient from "./page-client";
+import { resolveWorkspaceBaseDomain } from "@/lib/tenant";
 
 function SelectWorkspacePageFallback() {
   return (
@@ -27,10 +29,14 @@ function SelectWorkspacePageFallback() {
   );
 }
 
-export default function SelectWorkspacePage() {
+export default async function SelectWorkspacePage() {
+  const workspaceDomain = resolveWorkspaceBaseDomain(
+    (await headers()).get("host")
+  );
+
   return (
     <Suspense fallback={<SelectWorkspacePageFallback />}>
-      <SelectWorkspacePageClient />
+      <SelectWorkspacePageClient workspaceDomain={workspaceDomain} />
     </Suspense>
   );
 }

@@ -46,6 +46,20 @@ export function isSunbeatRootHost(hostHeader: string | null | undefined) {
   return ROOT_HOSTS.has(host);
 }
 
+export function resolveWorkspaceBaseDomain(
+  hostHeader: string | null | undefined
+): WorkspaceBaseDomain {
+  const host = normalizeHostHeader(hostHeader).replace(/^www\./, "");
+
+  for (const baseDomain of WORKSPACE_BASE_DOMAINS) {
+    if (host === baseDomain || host.endsWith(`.${baseDomain}`)) {
+      return baseDomain;
+    }
+  }
+
+  return "sunbeat.pro";
+}
+
 export function sanitizeWorkspaceSlug(value: unknown) {
   const normalized = String(value || "")
     .trim()

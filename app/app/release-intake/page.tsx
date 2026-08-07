@@ -1,5 +1,7 @@
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
 import ReleaseIntakePage from "@/components/release-intake/ReleaseIntakePage";
+import { redirect } from "next/navigation";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
 /**
  * Internal preview of the Release Intake form.
@@ -12,6 +14,9 @@ import ReleaseIntakePage from "@/components/release-intake/ReleaseIntakePage";
  */
 export default async function InternalReleasePreviewPage() {
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "release_intake"))) {
+    redirect("/app/settings/plan?blocked_workflow=release_intake");
+  }
 
   return (
     <div>

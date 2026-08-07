@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
-import { buildWorkspaceUrl } from "@/lib/tenant";
+import {
+  buildWorkspaceUrl,
+  type WorkspaceBaseDomain,
+} from "@/lib/tenant";
 
 type WorkspaceOption = {
   slug: string;
@@ -19,7 +22,11 @@ function safeNextPath(next: string | null) {
   return next;
 }
 
-export default function SelectWorkspacePageClient() {
+export default function SelectWorkspacePageClient({
+  workspaceDomain,
+}: {
+  workspaceDomain: WorkspaceBaseDomain;
+}) {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,7 +56,9 @@ export default function SelectWorkspacePageClient() {
         }
 
         const redirect = new URL(
-          buildWorkspaceUrl(workspaceSlug, "/auth/session-restore")
+          buildWorkspaceUrl(workspaceSlug, "/auth/session-restore", {
+            domain: workspaceDomain,
+          })
         );
         redirect.hash = [
           `at=${encodeURIComponent(session.access_token)}`,
@@ -129,7 +138,7 @@ export default function SelectWorkspacePageClient() {
     return () => {
       mounted = false;
     };
-  }, [nextPath, supabase]);
+  }, [nextPath, supabase, workspaceDomain]);
 
   async function handleSelectWorkspace(workspaceSlug: string) {
     try {
@@ -144,7 +153,9 @@ export default function SelectWorkspacePageClient() {
       }
 
       const redirect = new URL(
-        buildWorkspaceUrl(workspaceSlug, "/auth/session-restore")
+        buildWorkspaceUrl(workspaceSlug, "/auth/session-restore", {
+          domain: workspaceDomain,
+        })
       );
       redirect.hash = [
         `at=${encodeURIComponent(session.access_token)}`,
@@ -209,7 +220,7 @@ export default function SelectWorkspacePageClient() {
                     {workspace.name}
                   </div>
                   <div className="mt-1 text-xs uppercase tracking-[0.16em] text-[#7A746A]">
-                    {workspace.slug}.sunbeat.pro
+                    {workspace.slug}.{workspaceDomain}
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-[#111111]">

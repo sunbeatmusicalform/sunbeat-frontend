@@ -1,18 +1,17 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import RightsClearancePage from "@/components/rights-clearance/RightsClearancePage";
 import { rightsClearanceTemplate } from "@/lib/form-engine/rights-clearance-template";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
-export default function PublicRightsClearancePage() {
-  const params = useParams();
-
-  const workspaceSlug =
-    typeof params.workspaceSlug === "string"
-      ? params.workspaceSlug
-      : Array.isArray(params.workspaceSlug)
-      ? params.workspaceSlug[0]
-      : rightsClearanceTemplate.workspaceSlug;
+export default async function PublicRightsClearancePage({
+  params,
+}: {
+  params: Promise<{ workspaceSlug: string }>;
+}) {
+  const { workspaceSlug } = await params;
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "rights_clearance"))) {
+    notFound();
+  }
 
   return (
     <RightsClearancePage
