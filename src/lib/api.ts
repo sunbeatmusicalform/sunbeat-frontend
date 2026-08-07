@@ -342,8 +342,12 @@ export interface OnboardingInitialRemote {
   workspaceSlug: string
   workspaceName: string
   planId: string
+  accessMode: 'plan' | 'custom'
+  selfService: boolean
+  provisioningMode: 'self_service' | 'profile_only'
   allowedWorkflowTypes: string[]
   enabledWorkflowTypes: string[]
+  provisionedWorkflowTypes: string[]
   profile: OnboardingProfileRemote
   completedAt: string | null
 }
@@ -351,10 +355,14 @@ export interface OnboardingInitialRemote {
 export interface OnboardingPreviewRemote {
   workspaceSlug: string
   planId: string
+  accessMode: 'plan' | 'custom'
+  selfService: boolean
+  provisioningMode: 'self_service' | 'profile_only'
   profile: OnboardingProfileRemote
   enabledWorkflows: string[]
   changes: { key: string; title: string; detail: string }[]
   warnings: string[]
+  warningCodes?: ('free_asset_retention_60_days' | 'managed_profile_only')[]
   previewToken: string
   expiresAt: string
   completedAt?: string

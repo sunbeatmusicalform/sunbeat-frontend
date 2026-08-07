@@ -46,8 +46,17 @@ const COPY = {
     review: 'Review the secure MotoSchema preview', generate: 'Generate secure preview', generating: 'Generating…',
     apply: 'Confirm and finish onboarding', applying: 'Applying…', back: 'Back', next: 'Continue',
     done: 'Workspace ready', doneBody: 'The operational profile was saved with a complete audit trail.',
+    doneProvisioned: 'Your selected workflows are active. External integrations remain pending until you authorize them.',
+    doneManaged: 'The profile was saved. Existing workflows and integrations were left unchanged.',
     update: 'This workspace is already configured. You can safely review and update it.',
     loadError: 'We could not load onboarding. Your session may have expired.', retry: 'Try again',
+    guidedMode: 'guided mode', customAccess: 'Custom access', workflowAvailable: 'workflow available', workflowsAvailable: 'workflows available', signedChanges: 'Every change requires a signed preview.',
+    freeRetention: 'On Free, uploaded assets remain available for 60 days. Metadata and audit history are preserved.',
+    managedWarning: 'This is a managed workspace. MotoSchema will save the profile without changing active forms, integrations or workflows.',
+    changeTitles: { operation: 'Operational profile', workflows: 'Workflow access', integrations: 'Integration priorities', governance: 'MotoSchema governance', provisioning: 'Safe application' },
+    governanceDetail: 'Signed preview, human confirmation and audit record before application.',
+    provisioningSelfService: 'Selected workflows will be activated; external integrations wait for authorization.',
+    provisioningManaged: 'Only the profile will be updated; the existing operation remains unchanged.',
     assistant: ['First I need to understand your operation.', 'I will only show workflows included in your current plan.', 'Choose integration priorities; they can be connected later.', 'I will generate a signed preview. Nothing changes until you confirm.'],
   },
   pt: {
@@ -61,8 +70,17 @@ const COPY = {
     review: 'Revise a prévia segura do MotoSchema', generate: 'Gerar prévia segura', generating: 'Gerando…',
     apply: 'Confirmar e concluir onboarding', applying: 'Aplicando…', back: 'Voltar', next: 'Continuar',
     done: 'Workspace pronto', doneBody: 'O perfil operacional foi salvo com uma trilha completa de auditoria.',
+    doneProvisioned: 'Os workflows selecionados estão ativos. As integrações externas aguardam sua autorização.',
+    doneManaged: 'O perfil foi salvo. Os workflows e integrações existentes permaneceram inalterados.',
     update: 'Este workspace já foi configurado. Você pode revisar e atualizar com segurança.',
     loadError: 'Não foi possível carregar o onboarding. Sua sessão pode ter expirado.', retry: 'Tentar novamente',
+    guidedMode: 'modo guiado', customAccess: 'Acesso personalizado', workflowAvailable: 'workflow disponível', workflowsAvailable: 'workflows disponíveis', signedChanges: 'Toda alteração exige uma prévia assinada.',
+    freeRetention: 'No Free, os assets enviados ficam disponíveis por 60 dias. Os metadados e a auditoria são preservados.',
+    managedWarning: 'Este é um workspace gerenciado. O MotoSchema salvará o perfil sem alterar formulários, integrações ou workflows ativos.',
+    changeTitles: { operation: 'Perfil operacional', workflows: 'Acesso aos workflows', integrations: 'Prioridades de integração', governance: 'Governança do MotoSchema', provisioning: 'Aplicação segura' },
+    governanceDetail: 'Prévia assinada, confirmação humana e registro de auditoria antes da aplicação.',
+    provisioningSelfService: 'Os workflows selecionados serão ativados; integrações externas aguardam autorização.',
+    provisioningManaged: 'Somente o perfil será atualizado; a operação existente permanecerá intacta.',
     assistant: ['Primeiro preciso entender sua operação.', 'Vou mostrar apenas os workflows incluídos no seu plano atual.', 'Escolha prioridades de integração; a conexão pode ser feita depois.', 'Vou gerar uma prévia assinada. Nada muda até você confirmar.'],
   },
 } as const
@@ -82,6 +100,35 @@ export function OnboardingPanel({ workspace }: { workspace: string }) {
   const [error, setError] = useState<string | null>(null)
   const [completed, setCompleted] = useState(false)
   const selectedWorkflows = useMemo(() => new Set(profile?.workflowTypes ?? []), [profile?.workflowTypes])
+  const accessLabel = initial?.accessMode === 'custom' ? copy.customAccess : initial?.planId.toUpperCase()
+
+  function previewDetail(key: string) {
+    if (!profile) return ''
+    if (key === 'operation') {
+      const operation = OPERATIONS.find((item) => item.value === profile.operationType)
+      const label = locale === 'pt' ? operation?.pt : operation?.en
+      return locale === 'pt'
+        ? `${label} · equipe ${profile.teamSize} · ${profile.monthlyVolume} operações/mês`
+        : `${label} · team ${profile.teamSize} · ${profile.monthlyVolume} operations/month`
+    }
+    if (key === 'workflows') {
+      return profile.workflowTypes.map((value) => {
+        const workflow = WORKFLOWS.find((item) => item.value === value)
+        return locale === 'pt' ? workflow?.pt : workflow?.en
+      }).filter(Boolean).join(', ')
+    }
+    if (key === 'integrations') {
+      return profile.integrations.map((value) => INTEGRATIONS.find((item) => item.value === value)?.label).filter(Boolean).join(', ') || (locale === 'pt' ? 'Configurar depois' : 'Configure later')
+    }
+    if (key === 'governance') return copy.governanceDetail
+    if (key === 'provisioning') return initial?.provisioningMode === 'self_service' ? copy.provisioningSelfService : copy.provisioningManaged
+    return ''
+  }
+
+  function localizedWarnings(remote: OnboardingPreviewRemote) {
+    if (!remote.warningCodes?.length) return remote.warnings
+    return remote.warningCodes.map((code) => code === 'free_asset_retention_60_days' ? copy.freeRetention : copy.managedWarning)
+  }
 
   async function load() {
     setLoading('initial')
@@ -176,7 +223,7 @@ export function OnboardingPanel({ workspace }: { workspace: string }) {
       <section className="mt-6 sun-card border border-emerald-700/20 p-8">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-700 text-white"><Check size={24} /></div>
         <h2 className="mt-5 text-3xl font-bold text-[#512314]">{copy.done}</h2>
-        <p className="mt-2 max-w-xl text-sm text-[#512314]/65">{copy.doneBody}</p>
+        <p className="mt-2 max-w-xl text-sm text-[#512314]/65">{copy.doneBody} {initial.provisioningMode === 'self_service' ? copy.doneProvisioned : copy.doneManaged}</p>
         <button type="button" onClick={() => { setCompleted(false); void load() }} className="mt-6 rounded-full bg-[#512314] px-5 py-2.5 text-sm font-bold text-[#ebdbba]">{copy.review}</button>
       </section>
     )
@@ -264,11 +311,11 @@ export function OnboardingPanel({ workspace }: { workspace: string }) {
                 <div className="mt-5 space-y-3">
                   {preview.changes.map((change) => (
                     <div key={change.key} className="rounded-2xl border border-[#512314]/10 bg-white/40 p-4">
-                      <p className="text-sm font-bold text-[#512314]">{change.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-[#512314]/60">{change.detail}</p>
+                      <p className="text-sm font-bold text-[#512314]">{copy.changeTitles[change.key as keyof typeof copy.changeTitles] ?? change.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#512314]/60">{previewDetail(change.key) || change.detail}</p>
                     </div>
                   ))}
-                  {preview.warnings.map((warning) => <p key={warning} className="rounded-2xl border border-[#ffb53e]/40 bg-[#ffb53e]/12 p-4 text-xs font-semibold leading-5 text-[#6f4900]">{warning}</p>)}
+                  {localizedWarnings(preview).map((warning) => <p key={warning} className="rounded-2xl border border-[#ffb53e]/40 bg-[#ffb53e]/12 p-4 text-xs font-semibold leading-5 text-[#6f4900]">{warning}</p>)}
                   <button type="button" disabled={Boolean(loading)} onClick={() => void run('apply_patch')} className="mt-2 flex items-center gap-2 rounded-full bg-[#512314] px-5 py-3 text-sm font-bold text-[#ebdbba] disabled:opacity-50"><LockKeyhole size={15} /> {loading === 'apply' ? copy.applying : copy.apply}</button>
                 </div>
               ) : null}
@@ -284,11 +331,11 @@ export function OnboardingPanel({ workspace }: { workspace: string }) {
       </div>
 
       <aside className="h-fit rounded-3xl border border-[#512314]/12 bg-[#512314] p-5 text-[#ebdbba] lg:sticky lg:top-5">
-        <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ffb53e] text-[#512314]"><Bot size={18} /></span><div><p className="text-sm font-bold">MotoSchema</p><p className="text-[10px] text-white/45">online · consultive mode</p></div></div>
+        <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ffb53e] text-[#512314]"><Bot size={18} /></span><div><p className="text-sm font-bold">MotoSchema</p><p className="text-[10px] text-white/45">{copy.guidedMode}</p></div></div>
         <div className="mt-5 rounded-2xl bg-white/8 p-4 text-xs leading-6 text-white/70">{copy.assistant[step]}</div>
         <div className="mt-3 rounded-2xl border border-[#ffb53e]/25 p-4">
-          <p className="flex items-center gap-2 text-xs font-bold text-[#ffbe45]"><Sparkles size={14} /> {initial.planId.toUpperCase()}</p>
-          <p className="mt-2 text-[11px] leading-5 text-white/55">{initial.allowedWorkflowTypes.length} workflow{initial.allowedWorkflowTypes.length === 1 ? '' : 's'} available. Every change requires a signed preview.</p>
+          <p className="flex items-center gap-2 text-xs font-bold text-[#ffbe45]"><Sparkles size={14} /> {accessLabel}</p>
+          <p className="mt-2 text-[11px] leading-5 text-white/55">{initial.allowedWorkflowTypes.length} {initial.allowedWorkflowTypes.length === 1 ? copy.workflowAvailable : copy.workflowsAvailable}. {copy.signedChanges}</p>
         </div>
       </aside>
     </div>
