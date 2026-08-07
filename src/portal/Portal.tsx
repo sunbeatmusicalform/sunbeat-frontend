@@ -7,7 +7,7 @@ import { EmailConfig } from './EmailConfig'
 import { FormConfig } from './FormConfig'
 import { VERDICT_STYLE, type LookupResult, type PersonBaseHit } from '../forms/invites'
 import { api, apiEnabled, type PortalDataRemote } from '../lib/api'
-import { useBranding, patchBranding, createPortalSession, portalToken, BrandLogo, type WorkspaceBranding } from '../lib/brand'
+import { useBranding, patchBranding, createPortalSession, portalToken, setPortalToken, BrandLogo, type WorkspaceBranding } from '../lib/brand'
 import { LiveAirtable, LiveDriveFolders, LiveIntegrations, LiveInvites, LiveOverview, LiveTables } from './LivePortalData'
 import { OnboardingPanel } from './OnboardingPanel'
 
@@ -270,6 +270,16 @@ function DriveConfigPanel({ workspace, driveConfigured }: { workspace: string; d
 /* ---------- Cadeado de acesso (por tenant) ---------- */
 const portalAuthKey = (ws: string) => `sunbeat-portal-${ws}-auth`
 
+function restoreMagicLinkSession(workspace: string) {
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const token = fragment.get('portal_token')
+  if (!token) return false
+  setPortalToken(token)
+  sessionStorage.setItem(portalAuthKey(workspace), '1')
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+  return true
+}
+
 function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; displayName: string; onUnlock: () => void }) {
   const [pass, setPass] = useState('')
   const [error, setError] = useState(false)
@@ -457,7 +467,7 @@ export default function Portal() {
   const displayName = workspace.charAt(0).toUpperCase() + workspace.slice(1)
   const [tab, setTab] = useState<Tab>('onboarding')
   const [unlocked, setUnlocked] = useState(
-    () => sessionStorage.getItem(portalAuthKey(workspace)) === '1' && Boolean(portalToken()),
+    () => restoreMagicLinkSession(workspace) || (sessionStorage.getItem(portalAuthKey(workspace)) === '1' && Boolean(portalToken())),
   )
   const { branding } = useBranding(workspace)
   const [portalData, setPortalData] = useState<PortalDataRemote | null>(null)

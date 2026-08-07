@@ -360,6 +360,12 @@ export interface OnboardingPreviewRemote {
   completedAt?: string
 }
 
+export interface SignupRemote {
+  workspace_slug?: string
+  plan_intent?: 'starter' | 'pro' | null
+  requires_email_confirmation?: boolean
+}
+
 export const api = {
   lookupArtists: (query: string, workspace = WORKSPACE) =>
     get<PeopleLookupResponse>(`/people-registry/lookup?workspace_slug=${encodeURIComponent(workspace)}&roles=artista&limit=8&query=${encodeURIComponent(query)}`),
@@ -430,4 +436,17 @@ export const api = {
     profile,
     preview_token: previewToken,
   }),
+
+  signup: (payload: {
+    name: string
+    email: string
+    workspace_name: string
+    plan_intent?: string | null
+    terms_accepted: boolean
+    company_website: string
+    form_started_at: number
+  }) => sendAction<SignupRemote>('/auth/signup', payload),
+
+  requestMagicLink: (email: string, companyWebsite = '') =>
+    sendAction<Record<string, never>>('/auth/magic-link', { email, company_website: companyWebsite }),
 }

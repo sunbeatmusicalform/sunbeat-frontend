@@ -297,14 +297,14 @@ export default function Landing() {
                 </p>
                 {plan.name === 'Free' ? (
                   <a
-                    href={locale === 'pt-BR' ? 'https://app.sunbeat.com.br/signup' : 'https://app.sunbeat.pro/signup'}
+                    href="/signup"
                     className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#fbbb1e] px-4 py-3 text-sm font-bold text-[#000e14] transition hover:bg-[#fbbb1e]/90"
                   >
                     {copy.startFree}
                   </a>
                 ) : (
                   <a
-                    href={`${locale === 'pt-BR' ? 'https://app.sunbeat.com.br' : 'https://app.sunbeat.pro'}/signup?plan=${plan.name.toLowerCase()}`}
+                    href={`/signup?plan=${plan.name.toLowerCase()}`}
                     className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#fbbb1e] px-4 py-3 text-sm font-bold text-[#000e14] transition hover:bg-[#fbbb1e]/90"
                   >
                     {copy.choosePlan(plan.name)}

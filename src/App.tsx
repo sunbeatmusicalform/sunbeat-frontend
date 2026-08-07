@@ -9,6 +9,8 @@ import { clearanceConfig } from './forms/clearance'
 import { companyConfig } from './forms/company'
 import Portal from './portal/Portal'
 import PortalIndex from './portal/PortalIndex'
+import SignupPage from './pages/SignupPage'
+import LoginPage from './pages/LoginPage'
 
 const ConceptPage = lazy(() => import('./pages/ConceptPage'))
 const AcademyPage = lazy(() => import('./pages/AcademyPage'))
@@ -29,6 +31,8 @@ export default function App() {
       <Route path="/company/:workspace" element={<EngineFormPage config={companyConfig} workflowType="company_registry" />} />
       <Route path="/portal" element={<PortalIndex />} />
       <Route path="/portal/:workspace" element={<Portal />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/concept" element={<Suspense fallback={<div className="min-h-screen bg-[#00070c]" />}><ConceptPage /></Suspense>} />
       <Route path="/academy" element={<Suspense fallback={<div className="min-h-screen bg-[#000e14]" />}><AcademyPage /></Suspense>} />
       <Route path="/academy/:slug" element={<Suspense fallback={<div className="min-h-screen bg-[#000e14]" />}><AcademyArticlePage /></Suspense>} />
