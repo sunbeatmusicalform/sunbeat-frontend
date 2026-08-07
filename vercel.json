@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/billing-reconcile",
+      "schedule": "17 4 * * *"
+    },
+    {
+      "path": "/api/cron/storage-retention",
+      "schedule": "17 5 * * *"
+    }
+  ]
+}

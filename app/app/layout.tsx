@@ -1,10 +1,17 @@
 import Link from "next/link";
+import Image from "next/image";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/app/app/logout-button";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isSunbeatTablesEnabled } from "@/lib/features/sunbeat-tables";
-import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
+import { getTenantFromHost, resolveWorkspaceBaseDomain } from "@/lib/tenant";
+import {
+  canAccessWorkspace,
+  listAccessibleWorkspacesForUser,
+} from "@/lib/workspace-access";
+import { isWorkflowAllowedForPlan } from "@/lib/billing/plan-capabilities";
 
 // ─── Nav structure ───────────────────────────────────────────────────────────
 
@@ -60,6 +67,7 @@ const navSections = [
           </svg>
         ),
         description: "Preview interno do formulário",
+        workflowType: "release_intake",
       },
       {
         label: "Rights clearance",
@@ -71,6 +79,7 @@ const navSections = [
           </svg>
         ),
         description: "Preview interno — clearance",
+        workflowType: "rights_clearance",
       },
       {
         label: "Cadastro de empresa",
@@ -82,6 +91,7 @@ const navSections = [
           </svg>
         ),
         description: "Preview interno — company registry",
+        workflowType: "company_registry",
       },
       {
         label: "Cadastro de pessoas",
@@ -93,6 +103,7 @@ const navSections = [
           </svg>
         ),
         description: "Preview interno — people registry",
+        workflowType: "people_registry",
       },
     ],
   },
@@ -173,8 +184,24 @@ export default async function AppLayout({
   }
 
   const userEmail = user.email ?? "workspace@sunbeat.pro";
+  const host = (await headers()).get("host");
+  const tenant = getTenantFromHost(host);
+  const workspaceDomain = resolveWorkspaceBaseDomain(host);
 
-  const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+  if (tenant?.type !== "subdomain") {
+    redirect("/auth/select-workspace?next=/app");
+  }
+
+  const workspaceSlug = tenant.value;
+  const accessibleWorkspaces = await listAccessibleWorkspacesForUser({
+    userId: user.id,
+    email: user.email ?? null,
+    metadataWorkspaceSlug: user.user_metadata?.workspace_slug,
+  });
+
+  if (!canAccessWorkspace({ workspaceSlug, workspaces: accessibleWorkspaces })) {
+    redirect("/auth/select-workspace?next=/app");
+  }
 
   // Fetch workspace + plan info
   let workspaceName = workspaceSlug;
@@ -209,10 +236,17 @@ export default async function AppLayout({
   const planColor = planColors[planId] ?? "#111111";
   const enabledNavSections = navSections.map((section) => ({
     ...section,
-    items: section.items.filter(
-      (item) =>
-        item.href !== "/app/tables" || isSunbeatTablesEnabled(workspaceSlug)
-    ),
+    items: section.items.filter((item) => {
+      const workflowType =
+        "workflowType" in item && typeof item.workflowType === "string"
+          ? item.workflowType
+          : null;
+
+      return (
+        (item.href !== "/app/tables" || isSunbeatTablesEnabled(workspaceSlug)) &&
+        (!workflowType || isWorkflowAllowedForPlan(planId, workflowType))
+      );
+    }),
   }));
 
   return (
@@ -230,9 +264,11 @@ export default async function AppLayout({
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-[#F6F2EA]">
-                  <img
+                  <Image
                     src="/sunbeat-logan-transparent-black.ico"
                     alt="Sunbeat"
+                    width={32}
+                    height={32}
                     className="h-8 w-8 object-contain"
                   />
                 </div>
@@ -241,7 +277,7 @@ export default async function AppLayout({
                     {workspaceName}
                   </div>
                   <div className="text-[11px] uppercase tracking-[0.2em] text-[#7A746A]">
-                    {workspaceSlug}.sunbeat.pro
+                    {workspaceSlug}.{workspaceDomain}
                   </div>
                 </div>
               </div>

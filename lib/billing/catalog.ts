@@ -45,6 +45,11 @@
 
 // ─── Core types ──────────────────────────────────────────────────────────────
 
+import {
+  buildWorkspaceUrl,
+  type WorkspaceBaseDomain,
+} from "@/lib/tenant";
+
 export type Market = "global" | "brazil";
 
 /**
@@ -199,7 +204,7 @@ export const enterpriseTiers: EnterpriseTierDef[] = [
 
 export interface MarketConfig {
   currency: "USD" | "BRL";
-  domain: string;
+  domain: WorkspaceBaseDomain;
   locale: string;
   symbol: string;
   /**
@@ -304,6 +309,56 @@ export function resolvePlanFromPriceId(
   return null;
 }
 
+type BillingSettingsUrlArgs = {
+  workspaceSlug: string;
+  market: Market;
+  checkoutStatus?: "success" | "cancelled";
+  includeSessionId?: boolean;
+};
+
+export function buildBillingSettingsUrl(args: BillingSettingsUrlArgs): string {
+  const url = new URL(
+    buildWorkspaceUrl(args.workspaceSlug, "/app/settings/plan", {
+      domain: billingCatalog[args.market].domain,
+    })
+  );
+
+  if (args.checkoutStatus) {
+    url.searchParams.set("checkout", args.checkoutStatus);
+  }
+
+  if (args.includeSessionId) {
+    url.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
+  }
+
+  return url.toString();
+}
+
+export function resolveBillingSettingsUrl(
+  args: BillingSettingsUrlArgs & { requestedUrl?: string | null }
+): string {
+  const fallbackUrl = buildBillingSettingsUrl(args);
+  const requestedUrl = String(args.requestedUrl || "").trim();
+
+  if (!requestedUrl) return fallbackUrl;
+
+  try {
+    const fallback = new URL(fallbackUrl);
+    const requested = new URL(requestedUrl, fallback);
+
+    if (
+      requested.origin !== fallback.origin ||
+      requested.pathname !== fallback.pathname
+    ) {
+      return fallbackUrl;
+    }
+
+    return requested.toString();
+  } catch {
+    return fallbackUrl;
+  }
+}
+
 /**
  * Format a display price string for the given market + plan.
  *
@@ -333,4 +388,15 @@ export function formatPrice(market: Market, planId: BillingTier): string {
  */
 export function isSelfServePlan(planId: BillingTier): boolean {
   return planDefinitions[planId]?.tierType === "self_serve" && planId !== "free";
+}
+
+export function shouldUseBillingPortal(args: {
+  subscriptionId?: string | null;
+  status?: string | null;
+}) {
+  if (!args.subscriptionId) return false;
+
+  return !["canceled", "incomplete_expired"].includes(
+    String(args.status || "").toLowerCase()
+  );
 }

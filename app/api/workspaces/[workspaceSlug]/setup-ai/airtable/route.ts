@@ -11,6 +11,7 @@ import {
   canAccessWorkspace,
   listAccessibleWorkspacesForUser,
 } from "@/lib/workspace-access";
+import { getWorkspaceEntitlements } from "@/lib/billing/entitlements";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -101,6 +102,22 @@ export async function POST(
   const access = await authorizeWorkspaceConfigAccess(workspaceSlug);
   if ("response" in access) {
     return access.response;
+  }
+
+  try {
+    const entitlements = await getWorkspaceEntitlements(workspaceSlug);
+    if (!entitlements.airtableEnabled) {
+      return NextResponse.json(
+        { ok: false, error: "Airtable nao esta incluido neste plano." },
+        { status: 403 }
+      );
+    }
+  } catch (error) {
+    console.error("[setup-ai/airtable] Falha ao validar entitlements:", error);
+    return NextResponse.json(
+      { ok: false, error: "Entitlements do workspace indisponiveis." },
+      { status: 503 }
+    );
   }
 
   let body: SetupAIAirtableRequestBody;

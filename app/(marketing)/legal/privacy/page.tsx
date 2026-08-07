@@ -73,7 +73,7 @@ const COPY = {
       {
         id: "retention",
         title: "8. Retention and deletion",
-        body: "Information may be retained as needed to provide the service, maintain records, resolve issues and comply with applicable obligations. Users may contact Sunbeat through the contact page to request support with deletion or access requests.",
+        body: "On the Free plan, uploaded assets remain available for 60 days. Removing an expired asset does not remove its audit trail, submission metadata or operational record. Paid-plan retention follows the active plan and contract. Users may contact Sunbeat through the contact page to request deletion or access support.",
         bullets: [],
       },
       {
@@ -164,7 +164,7 @@ const COPY = {
       {
         id: "retention",
         title: "8. Retenção e exclusão",
-        body: "As informações podem ser retidas conforme necessário para fornecer o serviço, manter registros, resolver problemas e cumprir obrigações aplicáveis. Os usuários podem entrar em contato com a Sunbeat pela página de contato para solicitar suporte em pedidos de exclusão ou acesso.",
+        body: "No plano Free, os assets enviados permanecem disponíveis por 60 dias. A remoção de um asset expirado não elimina sua trilha de auditoria, os metadados da submissão nem o registro operacional. A retenção dos planos pagos segue o plano e o contrato ativos. Os usuários podem entrar em contato com a Sunbeat para solicitar suporte em pedidos de exclusão ou acesso.",
         bullets: [],
       },
       {

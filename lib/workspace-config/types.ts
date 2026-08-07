@@ -133,6 +133,8 @@ export type BillingEntitlements = {
   maxSubmissionsMonth: number | null;
   audioUploadMb: number;
   coverUploadMb: number;
+  maxActiveWorkflows: number | null;
+  assetRetentionDays: number | null;
   airtableEnabled: boolean;
   gdriveEnabled: boolean;
   supportTier: "community" | "email" | "priority" | "dedicated";
@@ -150,6 +152,8 @@ export type BillingEntitlementSources = {
   maxSubmissionsMonth: BillingEntitlementSource;
   audioUploadMb: BillingEntitlementSource;
   coverUploadMb: BillingEntitlementSource;
+  maxActiveWorkflows: BillingEntitlementSource;
+  assetRetentionDays: BillingEntitlementSource;
   airtableEnabled: BillingEntitlementSource;
   gdriveEnabled: BillingEntitlementSource;
   supportTier: BillingEntitlementSource;

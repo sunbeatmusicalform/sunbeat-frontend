@@ -3,6 +3,10 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { getBackendApiBaseUrl } from "@/lib/server/backend-api";
 import { loadWorkspaceConfigReadModel } from "@/lib/workspace-config/read-model";
 import {
+  canAccessWorkspace,
+  listAccessibleWorkspacesForUser,
+} from "@/lib/workspace-access";
+import {
   buildSetupCopilotStructuredMessage,
   inferSetupCopilotProposal,
   parseSetupCopilotProposal,
@@ -83,15 +87,46 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Load workspace context (fail-open: copilot still works without it)
-  let workspaceContextString: string | undefined;
-  if (workspaceSlug) {
-    try {
-      const config = await loadWorkspaceConfigReadModel({ workspaceSlug });
-      workspaceContextString = buildWorkspaceContextString(config);
-    } catch {
-      // Non-fatal: copilot works without workspace context
+  if (!workspaceSlug) {
+    return NextResponse.json(
+      { ok: false, error: "workspaceSlug is required" },
+      { status: 400 }
+    );
+  }
+
+  const accessibleWorkspaces = await listAccessibleWorkspacesForUser({
+    userId: user.id,
+    email: user.email ?? null,
+    metadataWorkspaceSlug: user.user_metadata?.workspace_slug,
+  });
+
+  if (!canAccessWorkspace({ workspaceSlug, workspaces: accessibleWorkspaces })) {
+    return NextResponse.json(
+      { ok: false, error: "Workspace not available for this user" },
+      { status: 403 }
+    );
+  }
+
+  // 3. Load workspace context and fail closed when billing state is unavailable.
+  let workspaceContextString: string;
+  try {
+    const config = await loadWorkspaceConfigReadModel({ workspaceSlug });
+    if (
+      config.billingAndEntitlements.state !== "loaded" ||
+      !config.billingAndEntitlements.entitlements.aiEnabled
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "AI is not included in this workspace plan" },
+        { status: 403 }
+      );
     }
+    workspaceContextString = buildWorkspaceContextString(config);
+  } catch (error) {
+    console.error("[ai/copilot] Failed to load workspace entitlements:", error);
+    return NextResponse.json(
+      { ok: false, error: "Workspace entitlements are unavailable" },
+      { status: 503 }
+    );
   }
 
   const structuredMessage = buildSetupCopilotStructuredMessage(message);
@@ -120,8 +155,8 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: structuredMessage,
-        workspace_context: workspaceContextString ?? null,
-        workspace_slug: workspaceSlug || null,   // V2: usage log + budget_alert
+        workspace_context: workspaceContextString,
+        workspace_slug: workspaceSlug,
         secret: copilotSecret || null,
       }),
     });

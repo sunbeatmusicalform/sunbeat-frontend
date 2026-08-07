@@ -16,6 +16,7 @@ import type {
   WorkspaceSettingsReadModel,
   WorkflowSettingsReadModel,
 } from "./types";
+import { getPlanProductCapabilities } from "@/lib/billing/plan-capabilities";
 
 export const WORKSPACE_EMAIL_SETTINGS_STEP_KEY = "__workspace_settings__";
 export const WORKSPACE_EMAIL_SETTINGS_FIELD_KEY =
@@ -421,6 +422,8 @@ function buildAccessAndGovernance(args: {
 }
 
 function buildBasePlanEntitlements(plan: WorkspacePlanRow): BillingEntitlements {
+  const productCapabilities = getPlanProductCapabilities(plan.plan_id);
+
   return {
     aiEnabled: plan.plan_ai_enabled,
     aiMonthlyBudgetBrl:
@@ -430,6 +433,8 @@ function buildBasePlanEntitlements(plan: WorkspacePlanRow): BillingEntitlements 
     maxSubmissionsMonth: plan.plan_submissions_month,
     audioUploadMb: plan.plan_audio_upload_mb ?? 10,
     coverUploadMb: plan.plan_cover_upload_mb ?? 5,
+    maxActiveWorkflows: productCapabilities.maxActiveWorkflows,
+    assetRetentionDays: productCapabilities.assetRetentionDays,
     airtableEnabled: plan.plan_airtable_enabled,
     gdriveEnabled: plan.plan_gdrive_enabled,
     supportTier: (plan.plan_support_level ?? "community") as
@@ -438,7 +443,7 @@ function buildBasePlanEntitlements(plan: WorkspacePlanRow): BillingEntitlements 
       | "priority"
       | "dedicated",
     slaResponseHours: null,
-    enabledWorkflowTypes: null,
+    enabledWorkflowTypes: productCapabilities.enabledWorkflowTypes,
   };
 }
 
@@ -457,6 +462,8 @@ function buildEntitlementSources(
       override?.max_submissions_month !== undefined ? "override" : "plan",
     audioUploadMb: override?.audio_upload_mb != null ? "override" : "plan",
     coverUploadMb: override?.cover_upload_mb != null ? "override" : "plan",
+    maxActiveWorkflows: "plan",
+    assetRetentionDays: "plan",
     airtableEnabled:
       override?.airtable_enabled != null ? "override" : "plan",
     gdriveEnabled: override?.gdrive_enabled != null ? "override" : "plan",
@@ -519,6 +526,8 @@ function buildBillingAndEntitlements(args: {
         entitlementSources.coverUploadMb === "override"
           ? Number(o?.cover_upload_mb)
           : basePlanEntitlements.coverUploadMb,
+      maxActiveWorkflows: basePlanEntitlements.maxActiveWorkflows,
+      assetRetentionDays: basePlanEntitlements.assetRetentionDays,
       airtableEnabled:
         entitlementSources.airtableEnabled === "override"
           ? Boolean(o?.airtable_enabled)

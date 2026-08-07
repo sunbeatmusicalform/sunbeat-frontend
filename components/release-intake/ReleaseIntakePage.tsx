@@ -1351,8 +1351,12 @@ export default function ReleaseIntakePage({
         typeof data?.signed_upload_token === "string"
           ? data.signed_upload_token
           : "";
+      const verificationToken =
+        typeof data?.verification_token === "string"
+          ? data.verification_token
+          : "";
 
-      if (!storageBucket || !storagePath || !signedUploadToken) {
+      if (!storageBucket || !storagePath || !signedUploadToken || !verificationToken) {
         throw new Error("Upload assinado indisponível para este arquivo.");
       }
 
@@ -1367,6 +1371,23 @@ export default function ReleaseIntakePage({
         throw new Error(uploadError.message || "Falha ao enviar arquivo.");
       }
 
+      const verificationResponse = await fetch("/api/uploads/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verification_token: verificationToken }),
+      });
+      const verificationRaw = await verificationResponse.text();
+      const verificationData = parseJsonResponseText(verificationRaw);
+      if (!verificationResponse.ok) {
+        throw new Error(
+          getApiMessage(
+            verificationData,
+            verificationRaw,
+            "O arquivo enviado não passou pela verificação de segurança."
+          )
+        );
+      }
+
       const fileId = typeof data?.file_id === "string" ? data.file_id : generateUuid();
       const fileName =
         typeof data?.file_name === "string" ? data.file_name : args.file.name;
@@ -1375,9 +1396,17 @@ export default function ReleaseIntakePage({
       const downloadUrl =
         typeof data?.download_url === "string" ? data.download_url : "";
       const mimeType =
-        typeof data?.mime_type === "string" ? data.mime_type : args.file.type;
+        typeof verificationData?.mime_type === "string"
+          ? verificationData.mime_type
+          : typeof data?.mime_type === "string"
+            ? data.mime_type
+            : args.file.type;
       const sizeBytes =
-        typeof data?.size_bytes === "number" ? data.size_bytes : args.file.size;
+        typeof verificationData?.size_bytes === "number"
+          ? verificationData.size_bytes
+          : typeof data?.size_bytes === "number"
+            ? data.size_bytes
+            : args.file.size;
 
       return {
         file_id: fileId,
@@ -4467,5 +4496,4 @@ function ReviewItem({ label, value }: { label: string; value?: string }) {
     </div>
   );
 }
-
 

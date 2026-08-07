@@ -1,86 +1,58 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { resolvePlanFromPriceId } from "@/lib/billing/catalog";
+import { getStripe } from "@/lib/billing/stripe";
+import { applyStripeSubscriptionSnapshot } from "@/lib/billing/subscription-sync";
 
 export const dynamic = "force-dynamic";
 
-function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("STRIPE_SECRET_KEY não configurada.");
-  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
+function getStripeObjectId(event: Stripe.Event) {
+  const object = event.data.object as { id?: string };
+  return typeof object.id === "string" ? object.id : null;
 }
 
-async function handleSubscriptionChange(
-  subscription: Stripe.Subscription
-) {
+async function claimWebhookEvent(event: Stripe.Event) {
   const supabase = createSupabaseAdmin();
-  const customerId = subscription.customer as string;
-  const status = subscription.status;
-
-  // Resolve plan from Stripe price ID — works for both USD and BRL price IDs
-  const priceId = subscription.items.data[0]?.price?.id ?? null;
-  const resolved = priceId ? resolvePlanFromPriceId(priceId) : null;
-  const planId = resolved?.planId ?? null;
-
-  // Workspace slug: prefer subscription metadata, fallback to customer lookup
-  const workspaceSlug =
-    subscription.metadata?.workspace_slug ?? null;
-
-  if (!workspaceSlug) {
-    console.warn("[webhook] Assinatura sem workspace_slug no metadata:", subscription.id);
-    const { data: ws } = await supabase
-      .from("workspaces")
-      .select("slug")
-      .eq("stripe_customer_id", customerId)
-      .maybeSingle();
-
-    if (!ws) {
-      console.error("[webhook] Workspace não encontrado para customer:", customerId);
-      return;
-    }
-
-    await updateWorkspace(supabase, ws.slug, subscription.id, status, planId);
-    return;
-  }
-
-  await updateWorkspace(supabase, workspaceSlug, subscription.id, status, planId);
-}
-
-async function updateWorkspace(
-  supabase: ReturnType<typeof import("@/lib/supabase/admin").createSupabaseAdmin>,
-  workspaceSlug: string,
-  subscriptionId: string,
-  status: string,
-  planId: string | null
-) {
-  const patch: Record<string, string | null> = {
-    stripe_subscription_id: subscriptionId,
-    stripe_subscription_status: status,
-  };
-
-  // Only update plan when subscription is active/trialing
-  if (planId && (status === "active" || status === "trialing")) {
-    patch.plan_id = planId;
-  }
-
-  // Revert to free on cancellation/non-payment
-  if (status === "canceled" || status === "unpaid" || status === "past_due") {
-    patch.plan_id = "free";
-  }
-
-  const { error } = await supabase
-    .from("workspaces")
-    .update(patch)
-    .eq("slug", workspaceSlug);
+  const { data, error } = await supabase.rpc("claim_stripe_webhook_event", {
+    p_event_id: event.id,
+    p_event_type: event.type,
+    p_object_id: getStripeObjectId(event),
+    p_stripe_created_at: event.created,
+  });
 
   if (error) {
-    console.error("[webhook] Erro ao atualizar workspace:", workspaceSlug, error);
-  } else {
-    console.log(
-      `[webhook] Workspace ${workspaceSlug} atualizado: plan=${patch.plan_id ?? "sem alteração"} status=${status}`
-    );
+    throw new Error(`Falha ao registrar evento Stripe: ${error.message}`);
   }
+
+  return Boolean(data);
+}
+
+async function completeWebhookEvent(eventId: string, workspaceSlug?: string | null) {
+  const supabase = createSupabaseAdmin();
+  const { error } = await supabase
+    .from("stripe_webhook_events")
+    .update({
+      status: "processed",
+      workspace_slug: workspaceSlug ?? null,
+      processed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("event_id", eventId);
+
+  if (error) throw new Error(`Falha ao concluir evento Stripe: ${error.message}`);
+}
+
+async function failWebhookEvent(eventId: string, error: unknown) {
+  const supabase = createSupabaseAdmin();
+  const message = error instanceof Error ? error.message.slice(0, 500) : "Erro desconhecido";
+  await supabase
+    .from("stripe_webhook_events")
+    .update({
+      status: "failed",
+      last_error: message,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("event_id", eventId);
 }
 
 export async function POST(req: Request) {
@@ -110,15 +82,33 @@ export async function POST(req: Request) {
   }
 
   try {
+    const claimed = await claimWebhookEvent(event);
+    if (!claimed) {
+      return NextResponse.json({ ok: true, received: true, duplicate: true });
+    }
+
+    let workspaceSlug: string | null = null;
+
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
-      case "customer.subscription.deleted":
-        await handleSubscriptionChange(event.data.object as Stripe.Subscription);
+      case "customer.subscription.deleted": {
+        const eventSubscription = event.data.object as Stripe.Subscription;
+        const currentSubscription = await getStripe().subscriptions.retrieve(
+          eventSubscription.id
+        );
+        const result = await applyStripeSubscriptionSnapshot(
+          currentSubscription,
+          event.created
+        );
+        workspaceSlug = result.workspaceSlug;
+        console.log("[webhook] Estado de assinatura processado:", result);
         break;
+      }
 
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        workspaceSlug = session.metadata?.workspace_slug ?? null;
         console.log(
           "[webhook] Checkout concluído:",
           session.id,
@@ -132,8 +122,10 @@ export async function POST(req: Request) {
         break;
     }
 
+    await completeWebhookEvent(event.id, workspaceSlug);
     return NextResponse.json({ ok: true, received: true });
   } catch (err) {
+    await failWebhookEvent(event.id, err);
     console.error("[webhook] Erro ao processar evento:", event.type, err);
     return NextResponse.json(
       { ok: false, error: "Erro interno ao processar evento." },

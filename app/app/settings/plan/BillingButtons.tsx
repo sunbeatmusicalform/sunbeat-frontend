@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Market } from "@/lib/billing/catalog";
 
 export function UpgradeButton({
@@ -22,19 +22,27 @@ export function UpgradeButton({
   children?: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(autoCheckout); // start in loading if auto-triggering
+  const checkoutRequestId = useRef<string | null>(null);
 
   async function handleUpgrade() {
     setLoading(true);
+    checkoutRequestId.current ??= crypto.randomUUID();
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, workspace_slug: workspaceSlug, market }),
+        body: JSON.stringify({
+          plan_id: planId,
+          workspace_slug: workspaceSlug,
+          market,
+          request_id: checkoutRequestId.current,
+        }),
       });
       const data = await res.json();
       if (data.ok && data.url) {
         window.location.href = data.url;
       } else {
+        checkoutRequestId.current = null;
         alert(data.error ?? "Erro ao iniciar checkout. Tente novamente.");
         setLoading(false);
       }

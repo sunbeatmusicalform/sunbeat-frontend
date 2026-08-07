@@ -1,18 +1,17 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import CompanyRegistryPage from "@/components/company-registry/CompanyRegistryPage";
 import { companyRegistryTemplate } from "@/lib/form-engine/company-registry-template";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
-export default function PublicCompanyRegistryPage() {
-  const params = useParams();
-
-  const workspaceSlug =
-    typeof params.workspaceSlug === "string"
-      ? params.workspaceSlug
-      : Array.isArray(params.workspaceSlug)
-      ? params.workspaceSlug[0]
-      : companyRegistryTemplate.workspaceSlug;
+export default async function PublicCompanyRegistryPage({
+  params,
+}: {
+  params: Promise<{ workspaceSlug: string }>;
+}) {
+  const { workspaceSlug } = await params;
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "company_registry"))) {
+    notFound();
+  }
 
   return (
     <CompanyRegistryPage

@@ -3,7 +3,9 @@ import { createServerClient } from "@supabase/ssr";
 import {
   buildWorkspaceUrl,
   isSunbeatRootHost,
+  resolveWorkspaceBaseDomain,
   sanitizeWorkspaceSlug,
+  type WorkspaceBaseDomain,
 } from "@/lib/tenant";
 import {
   choosePreferredWorkspace,
@@ -42,9 +44,12 @@ function buildSessionRestoreRedirect(args: {
   next: string;
   accessToken: string;
   refreshToken: string;
+  workspaceDomain: WorkspaceBaseDomain;
 }) {
   const redirect = new URL(
-    buildWorkspaceUrl(args.workspaceSlug, "/auth/session-restore")
+    buildWorkspaceUrl(args.workspaceSlug, "/auth/session-restore", {
+      domain: args.workspaceDomain,
+    })
   );
 
   redirect.hash = [
@@ -157,6 +162,7 @@ export async function GET(req: NextRequest) {
         next,
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
+        workspaceDomain: resolveWorkspaceBaseDomain(url.hostname),
       });
     } else if (workspaceChoice.workspaces.length > 1) {
       redirect = buildWorkspaceSelectorRedirect({

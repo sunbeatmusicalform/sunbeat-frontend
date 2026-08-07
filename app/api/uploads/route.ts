@@ -5,45 +5,17 @@ import {
   createSignedStorageUrl,
 } from "@/lib/server/storage-files";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { getWorkspaceEntitlements } from "@/lib/billing/entitlements";
+import { sanitizeWorkspaceSlug } from "@/lib/tenant";
+import {
+  getFileExtension,
+  isUploadKind,
+  resolveUploadBucket,
+  UPLOAD_RULES,
+} from "@/lib/storage/upload-policy";
+import { createUploadVerificationGrant } from "@/lib/security/upload-verification";
 
 export const runtime = "nodejs";
-
-type UploadKind = "cover" | "audio" | "asset";
-
-const UPLOAD_RULES: Record<
-  UploadKind,
-  {
-    folder: string;
-    maxSizeBytes: number;
-    allowedExtensions: string[];
-    allowedMimeTypes: string[];
-  }
-> = {
-  cover: {
-    folder: "cover",
-    maxSizeBytes: 50 * 1024 * 1024,
-    allowedExtensions: [".jpg", ".jpeg", ".png"],
-    allowedMimeTypes: ["image/jpeg", "image/png"],
-  },
-  audio: {
-    folder: "audio",
-    maxSizeBytes: 100 * 1024 * 1024,
-    allowedExtensions: [".wav", ".mp3"],
-    allowedMimeTypes: ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3"],
-  },
-  asset: {
-    folder: "assets",
-    maxSizeBytes: 50 * 1024 * 1024,
-    allowedExtensions: [".jpg", ".jpeg", ".png", ".pdf", ".zip"],
-    allowedMimeTypes: [
-      "image/jpeg",
-      "image/png",
-      "application/pdf",
-      "application/zip",
-      "application/x-zip-compressed",
-    ],
-  },
-};
 
 function sanitizeSegment(value: string) {
   return value.trim().replace(/[^a-zA-Z0-9_-]+/g, "-");
@@ -51,28 +23,6 @@ function sanitizeSegment(value: string) {
 
 function sanitizeFileName(value: string) {
   return value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-");
-}
-
-function getFileExtension(fileName: string) {
-  const index = fileName.lastIndexOf(".");
-  if (index < 0) return "";
-  return fileName.slice(index).toLowerCase();
-}
-
-function resolveUploadBucket(kind: UploadKind) {
-  if (kind === "cover") {
-    return process.env.SUPABASE_COVERS_BUCKET?.trim() || "sunbeat-covers";
-  }
-
-  if (kind === "audio") {
-    return process.env.SUPABASE_AUDIO_BUCKET?.trim() || "sunbeat-audio";
-  }
-
-  return (
-    process.env.SUPABASE_ASSETS_BUCKET?.trim() ||
-    process.env.SUPABASE_COVERS_BUCKET?.trim() ||
-    "sunbeat-covers"
-  );
 }
 
 function getRequestOrigin(req: Request) {
@@ -119,14 +69,22 @@ export async function POST(req: Request) {
       );
     }
 
-    if (rawKind !== "cover" && rawKind !== "audio" && rawKind !== "asset") {
+    const normalizedWorkspaceSlug = sanitizeWorkspaceSlug(workspaceSlug);
+    if (!normalizedWorkspaceSlug || normalizedWorkspaceSlug !== workspaceSlug.trim().toLowerCase()) {
+      return NextResponse.json(
+        { ok: false, message: "Workspace inválido." },
+        { status: 400 }
+      );
+    }
+
+    if (!isUploadKind(rawKind)) {
       return NextResponse.json(
         { ok: false, message: "Tipo de upload inválido." },
         { status: 400 }
       );
     }
 
-    const kind: UploadKind = rawKind;
+    const kind = rawKind;
     const rules = UPLOAD_RULES[kind];
     const extension = getFileExtension(fileName);
 
@@ -147,12 +105,35 @@ export async function POST(req: Request) {
       );
     }
 
-    if (fileSize > rules.maxSizeBytes) {
+    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+      return NextResponse.json(
+        { ok: false, message: "Tamanho do arquivo inválido." },
+        { status: 400 }
+      );
+    }
+
+    let planLimitBytes = rules.maxSizeBytes;
+    try {
+      const entitlements = await getWorkspaceEntitlements(normalizedWorkspaceSlug);
+      if (kind === "audio") {
+        planLimitBytes = Math.min(planLimitBytes, entitlements.audioUploadMb * 1024 * 1024);
+      } else if (kind === "cover") {
+        planLimitBytes = Math.min(planLimitBytes, entitlements.coverUploadMb * 1024 * 1024);
+      }
+    } catch (error) {
+      console.error("[uploads] Falha ao carregar entitlements:", error);
+      return NextResponse.json(
+        { ok: false, message: "Não foi possível validar o limite do plano." },
+        { status: 503 }
+      );
+    }
+
+    if (fileSize > planLimitBytes) {
       return NextResponse.json(
         {
           ok: false,
           message: `Arquivo excede o limite de ${Math.round(
-            rules.maxSizeBytes / (1024 * 1024)
+            planLimitBytes / (1024 * 1024)
           )} MB.`,
         },
         { status: 400 }
@@ -161,7 +142,7 @@ export async function POST(req: Request) {
 
     const supabase = createSupabaseAdmin();
     const bucket = resolveUploadBucket(kind);
-    const safeWorkspaceSlug = sanitizeSegment(workspaceSlug) || "unknown";
+    const safeWorkspaceSlug = sanitizeSegment(normalizedWorkspaceSlug);
     const safeDraftToken = sanitizeSegment(draftToken);
     const safeTrackLocalId = sanitizeSegment(trackLocalId);
     const safeFileName = sanitizeFileName(fileName);
@@ -202,6 +183,12 @@ export async function POST(req: Request) {
       bucket,
       storagePath,
     }).catch(() => null);
+    const verificationToken = createUploadVerificationGrant({
+      bucket,
+      storagePath,
+      workspaceSlug: normalizedWorkspaceSlug,
+      kind,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -215,6 +202,7 @@ export async function POST(req: Request) {
       mime_type: mimeType || null,
       size_bytes: fileSize || null,
       signed_upload_token: signedUploadToken,
+      verification_token: verificationToken,
     });
   } catch (error: unknown) {
     return NextResponse.json(

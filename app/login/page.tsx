@@ -1,7 +1,13 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import LoginPageClient from "./page-client";
+import { resolveWorkspaceBaseDomain } from "@/lib/tenant";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const workspaceDomain = resolveWorkspaceBaseDomain(
+    (await headers()).get("host")
+  );
+
   return (
     <Suspense
       fallback={
@@ -12,7 +18,7 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginPageClient />
+      <LoginPageClient workspaceDomain={workspaceDomain} />
     </Suspense>
   );
 }

@@ -22,34 +22,42 @@ export default function SessionRestorePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1); // strip leading '#'
-    const params = new URLSearchParams(hash);
+    async function restoreSession() {
+      const hash = window.location.hash.slice(1); // strip leading '#'
+      const params = new URLSearchParams(hash);
+      const at = params.get("at");
+      const rt = params.get("rt");
+      const requestedNext = params.get("next") ?? "/app";
+      const next =
+        requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+          ? requestedNext
+          : "/app";
 
-    const at = params.get("at");
-    const rt = params.get("rt");
-    const next = params.get("next") ?? "/app";
+      await Promise.resolve();
+      if (!at || !rt) {
+        setErrorMsg("Token de sessão ausente. Por favor, faça login novamente.");
+        setStatus("error");
+        return;
+      }
 
-    if (!at || !rt) {
-      setErrorMsg("Token de sessão ausente. Por favor, faça login novamente.");
-      setStatus("error");
-      return;
+      const supabase = createSupabaseBrowser();
+      const result = await supabase.auth.setSession({
+        access_token: at,
+        refresh_token: rt,
+      });
+
+      if (result.error) {
+        setErrorMsg("Não foi possível restaurar a sessão. Por favor, faça login.");
+        setStatus("error");
+        return;
+      }
+      // Small delay so cookies are committed before navigation
+      setTimeout(() => {
+        window.location.replace(next);
+      }, 150);
     }
 
-    const supabase = createSupabaseBrowser();
-
-    supabase.auth
-      .setSession({ access_token: at, refresh_token: rt })
-      .then((result: { data: unknown; error: { message: string } | null }) => {
-        if (result.error) {
-          setErrorMsg("Não foi possível restaurar a sessão. Por favor, faça login.");
-          setStatus("error");
-          return;
-        }
-        // Small delay so cookies are committed before navigation
-        setTimeout(() => {
-          window.location.replace(next);
-        }, 150);
-      });
+    void restoreSession();
   }, []);
 
   if (status === "error") {

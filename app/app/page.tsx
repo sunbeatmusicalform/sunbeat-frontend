@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { resolveWorkspaceSlugFromHeaders } from "@/lib/tenant-resolver";
+import { buildWorkspaceUrl, resolveWorkspaceBaseDomain } from "@/lib/tenant";
 
 export default async function AppHome() {
   const supabase = await createSupabaseServer();
@@ -9,6 +11,13 @@ export default async function AppHome() {
   const userEmail = user?.email ?? "workspace@sunbeat.pro";
 
   const workspaceSlug = await resolveWorkspaceSlugFromHeaders();
+  const host = (await headers()).get("host");
+  const workspaceDomain = resolveWorkspaceBaseDomain(host);
+  const publicIntakeUrl = buildWorkspaceUrl(
+    workspaceSlug,
+    `/intake/${workspaceSlug}`,
+    { domain: workspaceDomain }
+  );
 
   // Branding status
   let hasBranding = false;
@@ -18,11 +27,13 @@ export default async function AppHome() {
   let submissionCount: number | null = null;
   let hasAirtable = false;
   let emailEnabled: boolean | null = null;
+  let brandingCustomized = false;
+  let fieldsReviewed = false;
 
   try {
     const admin = createSupabaseAdmin();
 
-    const [wsResult, brandingResult, submissionsResult, airtableResult] = await Promise.all([
+    const [wsResult, brandingResult, submissionsResult, airtableResult, fieldsResult] = await Promise.all([
       admin
         .from("workspaces")
         .select("name, plan_id, plans(name)")
@@ -30,7 +41,7 @@ export default async function AppHome() {
         .maybeSingle(),
       admin
         .from("workspace_branding")
-        .select("workspace_name, submission_email_enabled")
+        .select("workspace_name, submission_email_enabled, logo_url, primary_color, form_title, intro_text")
         .eq("workspace_slug", workspaceSlug)
         .maybeSingle(),
       admin
@@ -42,6 +53,10 @@ export default async function AppHome() {
         .select("id", { count: "exact", head: true })
         .eq("workspace_slug", workspaceSlug)
         .eq("is_enabled", true),
+      admin
+        .from("workspace_field_overrides")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_slug", workspaceSlug),
     ]);
 
     if (wsResult.data) {
@@ -53,10 +68,24 @@ export default async function AppHome() {
     }
 
     hasBranding = brandingResult.data !== null;
-    const brandingData = brandingResult.data as { workspace_name?: string | null; submission_email_enabled?: boolean | null } | null;
+    const brandingData = brandingResult.data as {
+      workspace_name?: string | null;
+      submission_email_enabled?: boolean | null;
+      logo_url?: string | null;
+      primary_color?: string | null;
+      form_title?: string | null;
+      intro_text?: string | null;
+    } | null;
     emailEnabled = brandingData?.submission_email_enabled ?? null;
+    brandingCustomized = Boolean(
+      brandingData?.logo_url ||
+      brandingData?.primary_color ||
+      brandingData?.form_title ||
+      brandingData?.intro_text
+    );
     submissionCount = submissionsResult.count ?? null;
     hasAirtable = (airtableResult.count ?? 0) > 0;
+    fieldsReviewed = (fieldsResult.count ?? 0) > 0;
   } catch {
     // graceful fallback — workspace is live, just can't enrich the dashboard
   }
@@ -71,6 +100,38 @@ export default async function AppHome() {
     enterprise_distribution: "#0A0A0A",
   };
   const planColor = planColors[planId] ?? "#111111";
+  const onboardingSteps = [
+    {
+      title: "Workspace criado",
+      description: "Sua conta, acesso de proprietário e ambiente estão prontos.",
+      complete: true,
+      href: "/app",
+      cta: "Pronto",
+    },
+    {
+      title: "Personalize a experiência",
+      description: "Revise textos, cores e identidade do formulário público.",
+      complete: brandingCustomized,
+      href: "/app/settings/branding",
+      cta: "Configurar branding",
+    },
+    {
+      title: "Revise os campos",
+      description: "Ajuste pelo menos um campo para validar seu fluxo de coleta.",
+      complete: fieldsReviewed,
+      href: "/app/settings/fields",
+      cta: "Revisar formulário",
+    },
+    {
+      title: "Envie uma submissão de teste",
+      description: "Percorra o formulário como um cliente e confira o resultado.",
+      complete: (submissionCount ?? 0) > 0,
+      href: publicIntakeUrl,
+      cta: "Fazer teste",
+      external: true,
+    },
+  ];
+  const completedOnboardingSteps = onboardingSteps.filter((step) => step.complete).length;
 
   return (
     <div className="grid gap-6">
@@ -84,7 +145,7 @@ export default async function AppHome() {
           {workspaceName}
         </h2>
         <p className="mt-1 text-sm text-[#5F5A53]">
-          {userEmail} · {workspaceSlug}.sunbeat.pro
+          {userEmail} · {workspaceSlug}.{workspaceDomain}
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -122,6 +183,60 @@ export default async function AppHome() {
         </div>
       </section>
 
+      {planId === "free" && (
+        <section className="flex flex-col gap-4 rounded-[24px] border border-amber-200 bg-amber-50 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+              Política do plano Free
+            </div>
+            <p className="mt-1 text-sm leading-6 text-amber-950/75">
+              Os assets enviados ficam disponíveis por 60 dias. A trilha de auditoria,
+              os metadados e o histórico da submissão permanecem registrados.
+            </p>
+          </div>
+          <Link
+            href="/app/settings/plan"
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl border border-amber-300 bg-white px-4 text-xs font-semibold text-amber-900"
+          >
+            Ver limites do plano
+          </Link>
+        </section>
+      )}
+
+      {completedOnboardingSteps < onboardingSteps.length && (
+        <section className="rounded-[28px] border border-black/8 bg-[#111111] px-7 py-7 text-white shadow-[0_20px_54px_rgba(0,0,0,0.12)]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                Primeiros passos
+              </div>
+              <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+                Prepare seu workspace para operar
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+                Complete o fluxo abaixo antes de convidar clientes reais para preencher seus formulários.
+              </p>
+            </div>
+            <div className="shrink-0 text-sm font-semibold text-white/75">
+              {completedOnboardingSteps} de {onboardingSteps.length} concluídos
+            </div>
+          </div>
+
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/12">
+            <div
+              className="h-full rounded-full bg-white transition-all"
+              style={{ width: `${(completedOnboardingSteps / onboardingSteps.length) * 100}%` }}
+            />
+          </div>
+
+          <div className="mt-6 grid gap-3 lg:grid-cols-2">
+            {onboardingSteps.map((step, index) => (
+              <OnboardingStep key={step.title} index={index + 1} {...step} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Quick actions */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 
@@ -139,8 +254,8 @@ export default async function AppHome() {
         <QuickCard
           tag="Formulário público"
           title="Abrir intake público"
-          description={`Link público do formulário: ${workspaceSlug}.sunbeat.pro/intake/${workspaceSlug}`}
-          href={`/intake/${workspaceSlug}`}
+          description={`Link público do formulário: ${workspaceSlug}.${workspaceDomain}/intake/${workspaceSlug}`}
+          href={publicIntakeUrl}
           external
           cta="Abrir formulário →"
           ctaStyle="primary"
@@ -213,6 +328,46 @@ export default async function AppHome() {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+function OnboardingStep({
+  index,
+  title,
+  description,
+  complete,
+  href,
+  cta,
+  external = false,
+}: {
+  index: number;
+  title: string;
+  description: string;
+  complete: boolean;
+  href: string;
+  cta: string;
+  external?: boolean;
+}) {
+  return (
+    <div className="flex gap-4 rounded-[20px] border border-white/10 bg-white/[0.06] p-4">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xs font-semibold">
+        {complete ? "✓" : index}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold">{title}</div>
+        <p className="mt-1 text-xs leading-5 text-white/60">{description}</p>
+        {!complete && (
+          <Link
+            href={href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noopener noreferrer" : undefined}
+            className="mt-3 inline-flex text-xs font-semibold text-white underline decoration-white/30 underline-offset-4"
+          >
+            {cta} →
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function StatusCard({
   label,

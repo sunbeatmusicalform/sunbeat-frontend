@@ -1,24 +1,23 @@
-"use client";
-
 // app/people/[workspaceSlug]/page.tsx
 // Rota pública do formulário de cadastro de pessoas
 // Ex: /people/atabaque → formulário Atabaque People Registry
 //
 // GUARDRAIL: não altera /intake/[workspaceSlug] nem release_intake
 
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import PeopleRegistryForm from "@/components/people-registry/PeopleRegistryForm";
 import { getPeopleRegistryProfile } from "@/lib/people-registry/profile-registry";
+import { isWorkspaceWorkflowEnabled } from "@/lib/billing/entitlements";
 
-export default function PeopleRegistryPage() {
-  const params = useParams();
-
-  const workspaceSlug =
-    typeof params.workspaceSlug === "string"
-      ? params.workspaceSlug
-      : Array.isArray(params.workspaceSlug)
-      ? params.workspaceSlug[0]
-      : "";
+export default async function PeopleRegistryPage({
+  params,
+}: {
+  params: Promise<{ workspaceSlug: string }>;
+}) {
+  const { workspaceSlug } = await params;
+  if (!(await isWorkspaceWorkflowEnabled(workspaceSlug, "people_registry"))) {
+    notFound();
+  }
 
   const profile = getPeopleRegistryProfile(workspaceSlug);
 
