@@ -27,6 +27,75 @@ const PLAN_LABELS: Record<SelfServePlan, string> = {
   pro: "Pro",
 };
 
+const SIGNUP_COPY = {
+  en: {
+    accountLabel: "Create your account",
+    title: "Start now",
+    intro: "Create your workspace and start receiving releases in one organized flow.",
+    closed: "New signups are temporarily closed while we complete self-service security configuration.",
+    securityRequired: "Complete the security verification before continuing.",
+    termsRequired: "Confirm the Terms of Use and Privacy Policy.",
+    connectionError: "Connection error. Please try again.",
+    genericError: "We could not create your account. Please try again.",
+    selectedPlan: (plan: string) => `${plan} plan selected`,
+    selectedPlanBody: "After creating your workspace, you will be directed to activate it.",
+    name: "Your name",
+    email: "Email",
+    emailPlaceholder: "you@example.com",
+    workspaceName: "Company / label name",
+    workspacePlaceholder: "Example: Sun7 Records",
+    address: "Your address:",
+    legalPrefix: "I have read and accept the",
+    terms: "Terms of Use",
+    and: "and",
+    privacy: "Privacy Policy",
+    creating: "Creating workspace...",
+    create: "Create my account",
+    signupsClosed: "Signups closed",
+    existing: "Already have an account?",
+    login: "Sign in",
+    legalFooter: "By creating your account, you agree to the",
+    verifyTitle: "Check your email",
+    magicLinkPrefix: "We sent a magic link to",
+    magicLinkSuffix: "After confirming, you can access the workspace",
+    goToLogin: "Go to sign in",
+    confirmationNote: "The workspace will only be available after email confirmation.",
+  },
+  "pt-BR": {
+    accountLabel: "Criar sua conta",
+    title: "Comece agora",
+    intro: "Crie seu workspace e comece a receber lançamentos de forma organizada.",
+    closed: "Novos cadastros estão fechados enquanto concluímos a configuração de segurança do self-service.",
+    securityRequired: "Conclua a verificação de segurança antes de continuar.",
+    termsRequired: "Confirme os Termos de Uso e a Política de Privacidade.",
+    connectionError: "Erro de conexão. Tente novamente.",
+    genericError: "Erro ao criar conta. Tente novamente.",
+    selectedPlan: (plan: string) => `Plano ${plan} selecionado`,
+    selectedPlanBody: "Após criar seu workspace você será direcionado para ativá-lo.",
+    name: "Seu nome",
+    email: "E-mail",
+    emailPlaceholder: "seu@email.com",
+    workspaceName: "Nome da empresa / label",
+    workspacePlaceholder: "Ex: Sun7 Records",
+    address: "Seu endereço:",
+    legalPrefix: "Li e aceito os",
+    terms: "Termos de Uso",
+    and: "e a",
+    privacy: "Política de Privacidade",
+    creating: "Criando workspace...",
+    create: "Criar minha conta",
+    signupsClosed: "Cadastros fechados",
+    existing: "Já tem conta?",
+    login: "Entrar",
+    legalFooter: "Ao criar sua conta você concorda com os",
+    verifyTitle: "Verifique seu e-mail",
+    magicLinkPrefix: "Enviamos um magic link para",
+    magicLinkSuffix: "Depois de confirmar, você poderá acessar o workspace",
+    goToLogin: "Ir para o login",
+    confirmationNote: "O workspace só será acessível depois da confirmação do e-mail.",
+  },
+} as const;
+
 function isSelfServePlan(val: string | null): val is SelfServePlan {
   return SELF_SERVE_PLANS.includes(val as SelfServePlan);
 }
@@ -41,6 +110,8 @@ export default function SignupPageClient({
   turnstileSiteKey: string | null;
 }) {
   const searchParams = useSearchParams();
+  const locale = workspaceDomain === "sunbeat.com.br" ? "pt-BR" : "en";
+  const copy = SIGNUP_COPY[locale];
   const rawPlan = searchParams.get("plan");
   const planIntent: SelfServePlan | null = isSelfServePlan(rawPlan) ? rawPlan : null;
 
@@ -86,15 +157,15 @@ export default function SignupPageClient({
     if (!signupEnabled || (turnstileSiteKey && !turnstileToken)) {
       setError(
         signupEnabled
-          ? "Conclua a verificação de segurança antes de continuar."
-          : "Novos cadastros estão temporariamente fechados."
+          ? copy.securityRequired
+          : copy.closed
       );
       setLoading(false);
       return;
     }
 
     if (!termsAccepted) {
-      setError("Confirme os Termos de Uso e a Política de Privacidade.");
+      setError(copy.termsRequired);
       setLoading(false);
       return;
     }
@@ -119,7 +190,7 @@ export default function SignupPageClient({
         if (data.field === "workspace_name" || data.field === "email") {
           setFieldError(data.error);
         } else {
-          setError(data.error || "Erro ao criar conta. Tente novamente.");
+          setError(data.error || copy.genericError);
         }
         resetCaptcha();
         setLoading(false);
@@ -129,7 +200,7 @@ export default function SignupPageClient({
       setWorkspaceSlug(data.workspace_slug);
       setStep("success");
     } catch {
-      setError("Erro de conexão. Tente novamente.");
+      setError(copy.connectionError);
       resetCaptcha();
     } finally {
       setLoading(false);
@@ -146,11 +217,11 @@ export default function SignupPageClient({
             </svg>
           </div>
           <h2 className="mt-6 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
-            Verifique seu e-mail
+            {copy.verifyTitle}
           </h2>
           <p className="mt-3 text-sm leading-7 text-[#5E5A54]">
-            Enviamos um magic link para <strong>{form.email}</strong>.
-            Depois de confirmar, você poderá acessar o workspace{" "}
+            {copy.magicLinkPrefix} <strong>{form.email}</strong>.{" "}
+            {copy.magicLinkSuffix}{" "}
             <strong>{workspaceSlug}.{workspaceDomain}</strong>.
           </p>
           <Link
@@ -158,10 +229,10 @@ export default function SignupPageClient({
             className="mt-8 inline-flex w-full items-center justify-center rounded-full py-3.5 text-sm font-semibold"
             style={{ backgroundColor: '#111111', color: '#ffffff' }}
           >
-            Ir para o login
+            {copy.goToLogin}
           </Link>
           <p className="mt-3 text-xs text-[#9A9590]">
-            O workspace só será acessível depois da confirmação do e-mail.
+            {copy.confirmationNote}
           </p>
           <p className="mt-2 text-xs text-[#9A9590]">
             URL:{" "}
@@ -190,21 +261,21 @@ export default function SignupPageClient({
           </div>
           <div className="text-center">
             <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#111111]">Sunbeat</div>
-            <div className="text-[11px] uppercase tracking-[0.24em] text-[#6A6660]">Criar sua conta</div>
+            <div className="text-[11px] uppercase tracking-[0.24em] text-[#6A6660]">{copy.accountLabel}</div>
           </div>
         </div>
 
         <div className="rounded-[32px] border border-black/8 bg-white p-8 shadow-[0_22px_60px_rgba(0,0,0,0.05)] sm:p-10">
           <h1 className="text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
-            Comece agora
+            {copy.title}
           </h1>
           <p className="mt-2 text-sm leading-7 text-[#5E5A54]">
-            Crie seu workspace e comece a receber lançamentos de forma organizada.
+            {copy.intro}
           </p>
 
           {!signupEnabled && (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-              Novos cadastros estão fechados enquanto concluímos a configuração de segurança do self-service.
+              {copy.closed}
             </div>
           )}
 
@@ -217,10 +288,10 @@ export default function SignupPageClient({
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#111111]">
-                  Plano {PLAN_LABELS[planIntent]} selecionado
+                  {copy.selectedPlan(PLAN_LABELS[planIntent])}
                 </p>
                 <p className="text-[11px] leading-5 text-[#6A6660]">
-                  Após criar seu workspace você será direcionado para ativá-lo.
+                  {copy.selectedPlanBody}
                 </p>
               </div>
             </div>
@@ -230,7 +301,7 @@ export default function SignupPageClient({
             {/* Nome */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
-                Seu nome
+                {copy.name}
               </label>
               <input
                 name="name"
@@ -247,14 +318,14 @@ export default function SignupPageClient({
             {/* E-mail */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
-                E-mail
+                {copy.email}
               </label>
               <input
                 name="email"
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="seu@email.com"
+                placeholder={copy.emailPlaceholder}
                 value={form.email}
                 onChange={handleChange}
                 className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
@@ -264,20 +335,20 @@ export default function SignupPageClient({
             {/* Nome do workspace */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[#4A4744]">
-                Nome da empresa / label
+                {copy.workspaceName}
               </label>
               <input
                 name="workspace_name"
                 type="text"
                 required
-                placeholder="Ex: Sun7 Records"
+                placeholder={copy.workspacePlaceholder}
                 value={form.workspace_name}
                 onChange={handleChange}
                 className="w-full rounded-2xl border border-black/10 bg-[#F9F7F2] px-4 py-3 text-sm text-[#111111] outline-none placeholder:text-[#9A9590] focus:border-black/30 focus:ring-2 focus:ring-black/5 transition"
               />
               {preview && (
                 <p className="mt-1.5 text-xs text-[#9A9590]">
-                  Seu endereço:{" "}
+                  {copy.address}{" "}
                   <span className="font-medium text-[#5E5A54]">{preview}.{workspaceDomain}</span>
                 </p>
               )}
@@ -313,14 +384,14 @@ export default function SignupPageClient({
               />
               <span className="text-xs leading-5 text-[#6A6660]">
                 <label htmlFor="signup-legal-acceptance" className="cursor-pointer">
-                  Li e aceito os{" "}
+                  {copy.legalPrefix}{" "}
                 </label>
                 <Link href="/legal/terms" target="_blank" className="font-semibold text-[#111111] underline">
-                  Termos de Uso
+                  {copy.terms}
                 </Link>{" "}
-                e a{" "}
+                {copy.and}{" "}
                 <Link href="/legal/privacy" target="_blank" className="font-semibold text-[#111111] underline">
-                  Política de Privacidade
+                  {copy.privacy}
                 </Link>.
               </span>
             </div>
@@ -356,27 +427,27 @@ export default function SignupPageClient({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Criando workspace...
+                  {copy.creating}
                 </>
               ) : (
-                signupEnabled ? "Criar minha conta" : "Cadastros fechados"
+                signupEnabled ? copy.create : copy.signupsClosed
               )}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-[#6A6660]">
-            Já tem conta?{" "}
+            {copy.existing}{" "}
             <Link href="/login" className="font-semibold text-[#111111] underline underline-offset-2">
-              Entrar
+              {copy.login}
             </Link>
           </p>
         </div>
 
         <p className="mt-6 text-center text-xs text-[#9A9590]">
-          Ao criar sua conta você concorda com os{" "}
-          <Link href="/legal/terms" className="underline">Termos de Uso</Link>
-          {" "}e a{" "}
-          <Link href="/legal/privacy" className="underline">Política de Privacidade</Link>.
+          {copy.legalFooter}{" "}
+          <Link href="/legal/terms" className="underline">{copy.terms}</Link>
+          {" "}{copy.and}{" "}
+          <Link href="/legal/privacy" className="underline">{copy.privacy}</Link>.
         </p>
       </div>
     </div>
