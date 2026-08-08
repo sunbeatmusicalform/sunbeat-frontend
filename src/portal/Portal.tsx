@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
-import { Lock } from 'lucide-react'
+import { Lock, LogOut } from 'lucide-react'
 import { AtabaqueMark } from '../components/AtabaqueMark'
 import { HelpChat } from '../components/HelpChat'
 import { EmailConfig } from './EmailConfig'
@@ -479,6 +479,14 @@ export default function Portal() {
     setPortalLoading(false)
   }
 
+  async function logout() {
+    await api.logout()
+    sessionStorage.removeItem(portalAuthKey(workspace))
+    setPortalToken(null)
+    setPortalData(null)
+    setUnlocked(false)
+  }
+
   useEffect(() => {
     if (!unlocked) return
     let cancelled = false
@@ -505,7 +513,12 @@ export default function Portal() {
             <p className="text-[11px] text-[#512314]/60">Sunbeat · área do cliente</p>
           </div>
         </div>
-        <span className="sun-chip flex items-center gap-1.5"><Lock size={12} /> Restrito a parceiros</span>
+        <div className="flex items-center gap-2">
+          <span className="sun-chip hidden items-center gap-1.5 sm:flex"><Lock size={12} /> Restrito a parceiros</span>
+          <button type="button" onClick={() => void logout()} className="sun-chip flex items-center gap-1.5" aria-label="Encerrar sessão">
+            <LogOut size={12} /> Sair
+          </button>
+        </div>
       </header>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">

@@ -4,17 +4,22 @@ import { Mail } from 'lucide-react'
 import { api } from '../lib/api'
 
 const COPY = {
-  en: { eyebrow: 'Secure access', title: 'Sign in with a magic link.', intro: 'Enter the owner email. If it is registered, we will send a 30-minute access link.', email: 'Email', submit: 'Send magic link', sending: 'Sending…', sent: 'Check your email. If the address is registered, the access link is on its way.', signup: 'Create a new workspace', invalid: 'This link is invalid or has expired. Request a new one.', error: 'The email could not be sent. Try again.' },
-  pt: { eyebrow: 'Acesso seguro', title: 'Entre com um magic link.', intro: 'Informe o e-mail do proprietário. Se estiver cadastrado, enviaremos um link de acesso válido por 30 minutos.', email: 'E-mail', submit: 'Enviar magic link', sending: 'Enviando…', sent: 'Verifique seu e-mail. Se o endereço estiver cadastrado, o link já está a caminho.', signup: 'Criar um novo workspace', invalid: 'Este link é inválido ou expirou. Solicite um novo.', error: 'Não foi possível enviar o e-mail. Tente novamente.' },
+  en: { eyebrow: 'Secure access', title: 'Sign in with a magic link.', intro: 'Enter the owner email. If it is registered, we will send a 30-minute access link.', email: 'Email', submit: 'Send magic link', sending: 'Sending…', sent: 'Check your email. If the address is registered, the access link is on its way.', signup: 'Create a new workspace', invalid: 'This link is invalid or has expired. Request a new one.', used: 'This link has already been used. Request a new one.', access: 'This link does not grant access to that workspace.', error: 'The email could not be sent. Try again.' },
+  pt: { eyebrow: 'Acesso seguro', title: 'Entre com um magic link.', intro: 'Informe o e-mail do proprietário. Se estiver cadastrado, enviaremos um link de acesso válido por 30 minutos.', email: 'E-mail', submit: 'Enviar magic link', sending: 'Enviando…', sent: 'Verifique seu e-mail. Se o endereço estiver cadastrado, o link já está a caminho.', signup: 'Criar um novo workspace', invalid: 'Este link é inválido ou expirou. Solicite um novo.', used: 'Este link já foi utilizado. Solicite um novo.', access: 'Este link não concede acesso a esse workspace.', error: 'Não foi possível enviar o e-mail. Tente novamente.' },
 } as const
 
 export default function LoginPage() {
   const copy = window.location.hostname.endsWith('.com.br') ? COPY.pt : COPY.en
   const [params] = useSearchParams()
+  const linkError = params.get('error')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(params.get('error') ? copy.invalid : null)
+  const [error, setError] = useState<string | null>(
+    linkError === 'used_link' ? copy.used
+      : linkError === 'workspace_access' ? copy.access
+        : linkError ? copy.invalid : null,
+  )
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()

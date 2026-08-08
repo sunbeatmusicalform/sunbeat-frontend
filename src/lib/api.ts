@@ -457,4 +457,6 @@ export const api = {
 
   requestMagicLink: (email: string, companyWebsite = '') =>
     sendAction<Record<string, never>>('/auth/magic-link', { email, company_website: companyWebsite }),
+
+  logout: () => sendAction<Record<string, never>>('/auth/logout', {}),
 }

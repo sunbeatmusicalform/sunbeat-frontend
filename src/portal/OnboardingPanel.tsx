@@ -50,6 +50,7 @@ const COPY = {
     doneManaged: 'The profile was saved. Existing workflows and integrations were left unchanged.',
     update: 'This workspace is already configured. You can safely review and update it.',
     loadError: 'We could not load onboarding. Your session may have expired.', retry: 'Try again',
+    previewExpired: 'The secure preview expired or changed. Generate a new preview and confirm again.',
     guidedMode: 'guided mode', customAccess: 'Custom access', workflowAvailable: 'workflow available', workflowsAvailable: 'workflows available', signedChanges: 'Every change requires a signed preview.',
     freeRetention: 'On Free, uploaded assets remain available for 60 days. Metadata and audit history are preserved.',
     managedWarning: 'This is a managed workspace. MotoSchema will save the profile without changing active forms, integrations or workflows.',
@@ -74,6 +75,7 @@ const COPY = {
     doneManaged: 'O perfil foi salvo. Os workflows e integrações existentes permaneceram inalterados.',
     update: 'Este workspace já foi configurado. Você pode revisar e atualizar com segurança.',
     loadError: 'Não foi possível carregar o onboarding. Sua sessão pode ter expirado.', retry: 'Tentar novamente',
+    previewExpired: 'A prévia segura expirou ou mudou. Gere uma nova prévia e confirme novamente.',
     guidedMode: 'modo guiado', customAccess: 'Acesso personalizado', workflowAvailable: 'workflow disponível', workflowsAvailable: 'workflows disponíveis', signedChanges: 'Toda alteração exige uma prévia assinada.',
     freeRetention: 'No Free, os assets enviados ficam disponíveis por 60 dias. Os metadados e a auditoria são preservados.',
     managedWarning: 'Este é um workspace gerenciado. O MotoSchema salvará o perfil sem alterar formulários, integrações ou workflows ativos.',
@@ -192,7 +194,7 @@ export function OnboardingPanel({ workspace }: { workspace: string }) {
     setError(null)
     const response = await api.configureOnboarding(workspace, operation, profile, preview?.previewToken)
     if (!response.ok || !response.data) {
-      setError(response.error ?? copy.loadError)
+      setError(response.status === 409 ? copy.previewExpired : copy.loadError)
       setLoading(null)
       return
     }
@@ -206,7 +208,7 @@ export function OnboardingPanel({ workspace }: { workspace: string }) {
   }
 
   if (loading === 'initial') {
-    return <div className="mt-6 sun-card p-8 text-sm text-[#512314]/60">MotoSchema is preparing your workspace…</div>
+    return <div className="mt-6 sun-card p-8 text-sm text-[#512314]/60">{locale === 'pt' ? 'O MotoSchema está preparando seu workspace…' : 'MotoSchema is preparing your workspace…'}</div>
   }
 
   if (!initial || !profile) {
