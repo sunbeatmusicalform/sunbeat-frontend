@@ -14,7 +14,6 @@ import { Marketing } from '@/sections/Marketing'
 import { Revisao } from '@/sections/Revisao'
 import { Sucesso } from '@/sections/Sucesso'
 import { AutomationDialog } from '@/sections/AutomationDialog'
-import { HelpChat } from '@/components/HelpChat'
 import {
   buildIntakePayload,
   loadIntakeDraft,
@@ -31,6 +30,7 @@ type DraftNotice = { tone: 'success' | 'error'; message: string }
 export default function Home() {
   const { workspace } = useParams<{ workspace?: string }>()
   const workspaceSlug = workspace ?? 'atabaque'
+  const isAtabaque = workspaceSlug === 'atabaque'
   const { branding, loaded: brandingLoaded } = useBranding(workspaceSlug)
   const { config: formConfig, loaded: formConfigLoaded } = usePublicFormConfig(workspaceSlug)
   const form = useIntakeForm(formConfig)
@@ -218,11 +218,18 @@ export default function Home() {
             {!brandingLoaded ? (
               <div className="h-10 w-44" aria-label="Carregando identidade visual" />
             ) : branding?.logo_url ? (
-              <BrandLogo branding={branding} size={40} fallback={<AtabaqueMark size={40} />} />
-            ) : (
+              <BrandLogo branding={branding} size={40} fallback={isAtabaque
+                ? <AtabaqueMark size={40} />
+                : <span className="grid h-10 w-10 place-items-center rounded-full bg-foreground text-sm font-black text-background">S</span>} />
+            ) : isAtabaque ? (
               <>
                 <AtabaqueMark size={36} />
                 <div className="font-display font-black text-lg">{branding?.workspace_name ?? 'Atabaque'}</div>
+              </>
+            ) : (
+              <>
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-sm font-black text-background">S</span>
+                <div className="font-display font-black text-lg">{branding?.workspace_name ?? workspaceSlug}</div>
               </>
             )}
           </div>
@@ -373,7 +380,6 @@ export default function Home() {
 
       <AutomationDialog open={autoOpen} onOpenChange={setAutoOpen} whiteLabel={whiteLabel} onWhiteLabelChange={setWhiteLabel} />
 
-      <HelpChat clientName={branding?.workspace_name ?? 'Atabaque'} workspaceSlug={workspaceSlug} />
     </div>
   )
 }
