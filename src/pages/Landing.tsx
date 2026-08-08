@@ -20,6 +20,8 @@ const LANDING_COPY = {
     enterpriseBody: 'Unlimited scale, dedicated onboarding, SLA and custom operational architecture.',
     enterpriseCta: 'Talk to Sunbeat',
     clientArea: 'Client area',
+    terms: 'Terms of Use',
+    privacyPolicy: 'Privacy Policy',
     footer: 'Intelligent infrastructure for creative markets',
     academyKicker: 'Sunbeat Academy',
     academyTitle: 'Learn the systems behind reliable creative work.',
@@ -55,6 +57,8 @@ const LANDING_COPY = {
     enterpriseBody: 'Escala ilimitada, onboarding dedicado, SLA e arquitetura operacional personalizada.',
     enterpriseCta: 'Falar com a Sunbeat',
     clientArea: 'Área do cliente',
+    terms: 'Termos de Uso',
+    privacyPolicy: 'Política de Privacidade',
     footer: 'Infraestrutura inteligente para mercados criativos',
     academyKicker: 'Sunbeat Academy',
     academyTitle: 'Aprenda os sistemas por trás de um trabalho criativo confiável.',
@@ -339,6 +343,8 @@ export default function Landing() {
           <div className="flex flex-wrap justify-center gap-3">
             <Link to="/academy" className="rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold text-white/60 transition hover:border-[#fbbb1e]/50 hover:text-[#fbbb1e]">Sunbeat Academy</Link>
             <a href="/portal" className="rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold text-white/60 transition hover:border-[#fbbb1e]/50 hover:text-[#fbbb1e]">{copy.clientArea}</a>
+            <Link to="/terms" className="rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold text-white/60 transition hover:border-[#fbbb1e]/50 hover:text-[#fbbb1e]">{copy.terms}</Link>
+            <Link to="/privacy" className="rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold text-white/60 transition hover:border-[#fbbb1e]/50 hover:text-[#fbbb1e]">{copy.privacyPolicy}</Link>
           </div>
           <p className="text-[11px] text-white/25">© 2026 Sunbeat · {copy.footer}</p>
         </div>
