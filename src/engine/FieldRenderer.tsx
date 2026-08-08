@@ -15,6 +15,10 @@ function fileLabel(value: unknown): string | null {
   return typeof value === 'string' && value ? value : null
 }
 
+function fieldId(prefix: string, key: string) {
+  return `field-${prefix}${key}`.replace(/[^a-zA-Z0-9_-]/g, '-')
+}
+
 function ChoiceButtons({
   f, value, onChange, invalid, multi,
 }: {
@@ -26,13 +30,14 @@ function ChoiceButtons({
 }) {
   const arr = multi ? ((value as string[]) ?? []) : null
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2" role="group" aria-label={f.label}>
       {(f.options ?? []).map((o) => {
         const active = multi ? arr!.includes(o.value) : value === o.value
         return (
           <button
             key={o.value}
             type="button"
+            aria-pressed={active}
             onClick={() => {
               if (multi) {
                 onChange(active ? arr!.filter((v) => v !== o.value) : [...arr!, o.value])
@@ -40,10 +45,10 @@ function ChoiceButtons({
                 onChange(o.value)
               }
             }}
-            className={`rounded-full border-2 px-4 py-2 text-sm font-bold transition-all
+            className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-bold transition-[border-color,background-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30
               ${active
-                ? 'border-foreground bg-foreground text-background shadow-[2px_2px_0_0_rgba(81,35,20,0.25)]'
-                : `${invalid ? 'border-accent' : 'border-foreground/25'} bg-white/60 text-foreground/80 hover:border-foreground/50`}`}
+                ? 'border-foreground bg-foreground text-background shadow-sm'
+                : `${invalid ? 'border-accent' : 'border-foreground/15'} bg-white/65 text-foreground/80 hover:border-foreground/35 hover:bg-white/90`}`}
           >
             {o.label}
           </button>
@@ -65,6 +70,7 @@ export function FieldRenderer({
   const errKey = prefix + f.key
   const error = showErrors ? errors[errKey] : undefined
   const value = engine.values[f.key]
+  const id = fieldId(prefix, f.key)
 
   switch (f.type) {
     case 'text':
@@ -72,8 +78,10 @@ export function FieldRenderer({
     case 'tel':
     case 'date':
       return (
-        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className}>
+        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className} htmlFor={id}>
           <Input
+            id={id}
+            aria-invalid={Boolean(error)}
             type={f.type === 'text' ? 'text' : f.type}
             placeholder={f.placeholder}
             value={String(value ?? '')}
@@ -85,23 +93,27 @@ export function FieldRenderer({
 
     case 'textarea':
       return (
-        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className}>
+        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className} htmlFor={id}>
           <Textarea
+            id={id}
+            aria-invalid={Boolean(error)}
             placeholder={f.placeholder}
             value={String(value ?? '')}
             onChange={(e) => engine.setValue(f.key, e.target.value)}
-            className={inputCls(!!error) + ' min-h-[110px]'}
+            className={inputCls(!!error) + ' min-h-[120px] py-3'}
           />
         </Field>
       )
 
     case 'select':
       return (
-        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className}>
+        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className} htmlFor={id}>
           <select
+            id={id}
+            aria-invalid={Boolean(error)}
             value={String(value ?? '')}
             onChange={(e) => engine.setValue(f.key, e.target.value)}
-            className={inputCls(!!error) + ' flex h-9 w-full rounded-md px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1'}
+            className={inputCls(!!error) + ' flex w-full text-sm focus-visible:outline-none'}
           >
             <option value="">Selecione</option>
             {(f.options ?? []).filter((o) => o.value !== '').map((o) => (
@@ -132,12 +144,12 @@ export function FieldRenderer({
 
     case 'file':
       return (
-        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className}>
-          <label className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-5 text-sm font-semibold transition-colors
-            ${error ? 'border-accent bg-accent/5' : 'border-foreground/25 bg-white/50 hover:border-foreground/50'}`}>
+        <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className} htmlFor={id}>
+          <label htmlFor={id} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 py-5 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-accent/20
+            ${error ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-white/55 hover:border-foreground/40 hover:bg-white/80'}`}>
             <UploadCloud className="h-5 w-5 text-accent" />
             <span>{fileLabel(value) ?? (f.placeholder ?? 'Toque para anexar')}</span>
-            <input type="file" accept={f.accept} className="hidden"
+            <input id={id} type="file" accept={f.accept} className="sr-only" aria-invalid={Boolean(error)}
               onChange={(e) => engine.setValue(f.key, e.target.files?.[0] ?? null)} />
           </label>
         </Field>
@@ -197,6 +209,7 @@ function RepeaterField({
   const item = items[index] ?? {}
   const error = showErrors ? errors[`${parentKey}.${index}.${sub.key}`] : undefined
   const value = item[sub.key]
+  const id = fieldId(`${parentKey}-${index}-`, sub.key)
 
   function setSub(v: unknown) {
     const next = items.map((it, j) => (j === index ? { ...it, [sub.key]: v } : it))
@@ -209,23 +222,23 @@ function RepeaterField({
   switch (sub.type) {
     case 'text': case 'email': case 'tel': case 'date':
       return (
-        <Field {...common}>
-          <Input type={sub.type === 'text' ? 'text' : sub.type} placeholder={sub.placeholder}
+        <Field {...common} htmlFor={id}>
+          <Input id={id} aria-invalid={Boolean(error)} type={sub.type === 'text' ? 'text' : sub.type} placeholder={sub.placeholder}
             value={String(value ?? '')} onChange={(e) => setSub(e.target.value)} className={inputCls(!!error)} />
         </Field>
       )
     case 'textarea':
       return (
-        <Field {...common}>
-          <Textarea placeholder={sub.placeholder} value={String(value ?? '')}
-            onChange={(e) => setSub(e.target.value)} className={inputCls(!!error) + ' min-h-[90px]'} />
+        <Field {...common} htmlFor={id}>
+          <Textarea id={id} aria-invalid={Boolean(error)} placeholder={sub.placeholder} value={String(value ?? '')}
+            onChange={(e) => setSub(e.target.value)} className={inputCls(!!error) + ' min-h-[110px] py-3'} />
         </Field>
       )
     case 'select':
       return (
-        <Field {...common}>
-          <select value={String(value ?? '')} onChange={(e) => setSub(e.target.value)}
-            className={inputCls(!!error) + ' flex h-9 w-full rounded-md px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1'}>
+        <Field {...common} htmlFor={id}>
+          <select id={id} aria-invalid={Boolean(error)} value={String(value ?? '')} onChange={(e) => setSub(e.target.value)}
+            className={inputCls(!!error) + ' flex w-full text-sm focus-visible:outline-none'}>
             <option value="">Selecione</option>
             {(sub.options ?? []).filter((o) => o.value !== '').map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -248,12 +261,12 @@ function RepeaterField({
       )
     case 'file':
       return (
-        <Field {...common}>
-          <label className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-5 text-sm font-semibold transition-colors
-            ${error ? 'border-accent bg-accent/5' : 'border-foreground/25 bg-white/50 hover:border-foreground/50'}`}>
+        <Field {...common} htmlFor={id}>
+          <label htmlFor={id} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 py-5 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-accent/20
+            ${error ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-white/55 hover:border-foreground/40 hover:bg-white/80'}`}>
             <UploadCloud className="h-5 w-5 text-accent" />
             <span>{fileLabel(value) ?? (sub.placeholder ?? 'Toque para anexar')}</span>
-            <input type="file" accept={sub.accept} className="hidden"
+            <input id={id} type="file" accept={sub.accept} className="sr-only" aria-invalid={Boolean(error)}
               onChange={(e) => setSub(e.target.files?.[0] ?? null)} />
           </label>
         </Field>

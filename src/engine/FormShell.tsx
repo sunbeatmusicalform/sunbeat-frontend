@@ -1,9 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import {
   ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert,
   Clock3, CloudUpload, Loader2, Lock, Mail, PencilLine, Send, Sparkles, Workflow,
@@ -30,6 +33,7 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const { step, steps } = engine
+  const isAtabaque = workspaceSlug === 'atabaque'
 
   // painel de automações é restrito ao cliente-adm (?adm=1 na URL ou localStorage)
   const isClientAdm = useMemo(() => {
@@ -95,24 +99,31 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
   const activeStep = steps[stepIndex]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(255,181,62,0.14),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(255,86,57,0.10),transparent_40%)]">
       {/* top bar */}
-      <header className="sticky top-0 z-20 border-b-2 border-foreground/10 bg-background/85 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
+      <header className="sticky top-0 z-20 border-b border-foreground/10 bg-background/90 shadow-[0_1px_0_rgba(81,35,20,0.04)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5">
             {!brandingLoaded ? (
               <div className="h-9 w-44" aria-label="Carregando identidade visual" />
             ) : branding?.logo_url ? (
-              <BrandLogo branding={branding} size={36} fallback={<AtabaqueMark size={36} />} />
-            ) : (
+              <BrandLogo branding={branding} size={36} fallback={isAtabaque
+                ? <AtabaqueMark size={36} />
+                : <span className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-xs font-black text-background">S</span>} />
+            ) : isAtabaque ? (
               <>
                 <AtabaqueMark size={36} />
                 <div className="font-display font-black text-lg">{branding?.workspace_name ?? config.clientName}</div>
               </>
+            ) : (
+              <>
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-xs font-black text-background">S</span>
+                <div className="font-display font-black text-lg">{branding?.workspace_name ?? workspaceSlug}</div>
+              </>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="hidden sm:flex border-foreground/25 text-muted-foreground gap-1.5 font-semibold">
+            <Badge variant="outline" className="hidden gap-1.5 rounded-full border-foreground/15 bg-card/65 px-3 text-muted-foreground sm:flex">
               <Lock className="h-3 w-3" /> Restrito a parceiros
             </Badge>
             {engine.mode === 'edit' && (
@@ -133,70 +144,90 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
         </div>
 
         {isFormStep && (
-          <div className="mx-auto max-w-4xl px-4 pb-3">
-            <div className="flex items-center justify-between gap-1">
+          <div className="mx-auto max-w-5xl px-4 pb-3 sm:px-6">
+            <div className="mb-2 flex items-end justify-between gap-4 sm:hidden">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Etapa {activeProgressIndex + 1} de {progressItems.length}</p>
+                <p className="mt-0.5 text-sm font-bold text-foreground">{progressItems[activeProgressIndex]?.label}</p>
+              </div>
+              <span className="text-xs font-bold tabular-nums text-muted-foreground">{progress}%</span>
+            </div>
+            <nav aria-label="Progresso do formulário" className="hidden items-center justify-between gap-2 sm:flex">
               {progressItems.map((s, i) => {
                 const done = i < activeProgressIndex
                 const active = i === activeProgressIndex
                 const hasErr = showErrors && Object.keys(engine.errorsFor(s.id)).length > 0
                 return (
-                  <button key={s.id} onClick={() => (i < activeProgressIndex ? goTo(s.id) : undefined)}
-                    className={`group flex flex-1 flex-col items-center gap-1 ${i < activeProgressIndex ? 'cursor-pointer' : 'cursor-default'}`}>
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-all
+                  <button key={s.id} type="button" aria-current={active ? 'step' : undefined} disabled={i > activeProgressIndex}
+                    onClick={() => (i < activeProgressIndex ? goTo(s.id) : undefined)}
+                    className={`group flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-colors ${i < activeProgressIndex ? 'cursor-pointer hover:bg-foreground/[0.05]' : 'cursor-default disabled:opacity-100'}`}>
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all
                       ${done ? 'border-emerald-600 bg-emerald-600 text-white' : ''}
                       ${active ? (hasErr ? 'border-accent bg-accent text-accent-foreground' : 'border-foreground bg-foreground text-background') : ''}
-                      ${!done && !active ? 'border-foreground/25 text-muted-foreground' : ''}`}>
+                      ${!done && !active ? 'border-foreground/20 bg-card/45 text-muted-foreground' : ''}`}>
                       {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-wide ${active ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    <span className={`truncate text-xs font-bold ${active ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {s.label}
                     </span>
                   </button>
                 )
               })}
-            </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10">
-              <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${progress}%` }} />
-            </div>
+            </nav>
+            <Progress value={progress} aria-label={`${progress}% concluído`} className="h-1.5 bg-foreground/10 [&_[data-slot=progress-indicator]]:bg-accent" />
           </div>
         )}
       </header>
 
       {/* body */}
-      <main className="mx-auto max-w-4xl px-4 py-10 pb-40">
+      <main className="mx-auto max-w-5xl px-4 py-8 pb-32 sm:px-6 sm:py-12">
         {submitError && step !== 'sucesso' && (
-          <div className="mx-auto mb-6 max-w-2xl rounded-2xl border-2 border-accent/50 bg-accent/10 p-4 text-sm font-semibold text-accent">
-            {submitError}
-          </div>
+          <Alert variant="destructive" className="mx-auto mb-6 max-w-3xl rounded-2xl border-accent/40 bg-card/90 shadow-sm">
+            <CircleAlert />
+            <AlertTitle>Não foi possível concluir o envio</AlertTitle>
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
         )}
         {step === 'welcome' && (
           <EngineWelcome config={config} engine={engine} onStart={() => goTo(steps[0].id)} />
         )}
 
         {activeStep && (
-          <div className="mx-auto max-w-2xl">
+          <div className="mx-auto max-w-3xl">
             {banner}
-            <StepHeader title={activeStep.title} description={activeStep.description} />
-            <div className="grid gap-6">
-              {activeStep.fields.filter((f) => f.enabled !== false && isVisible(f.visibleWhen, engine.values)).map((f) => (
-                <FieldRenderer key={f.key} f={f} engine={engine}
-                  errors={engine.errorsFor(step)} showErrors={showErrors} />
-              ))}
-            </div>
-            {/* erros que cruzam campos (regras do passo) */}
-            {showErrors && (() => {
-              const errs = engine.errorsFor(step)
-              const fieldKeys = new Set(activeStep.fields.map((f) => f.key))
-              const orphans = Object.entries(errs).filter(([k]) => !fieldKeys.has(k) && !k.includes('.') && k !== 'consentTruth')
-              if (orphans.length === 0) return null
-              return (
-                <div className="mt-6 rounded-2xl border-2 border-accent/60 bg-accent/10 p-4">
-                  {orphans.map(([k, msg]) => (
-                    <p key={k} className="text-sm font-semibold text-accent">{msg}</p>
+            <Card className="gap-0 rounded-[1.75rem] border-foreground/10 bg-card/80 py-0 shadow-[0_24px_70px_rgba(81,35,20,0.10)] backdrop-blur-sm">
+              <CardHeader className="border-b border-foreground/10 px-5 py-6 sm:px-8 sm:py-8">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-accent">Etapa {activeProgressIndex + 1} · {activeStep.label}</p>
+                <CardTitle className="font-display text-2xl font-black leading-tight sm:text-3xl">
+                  <h2>{activeStep.title}</h2>
+                </CardTitle>
+                <CardDescription className="max-w-2xl text-sm leading-relaxed sm:text-base">{activeStep.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 py-6 sm:px-8 sm:py-8">
+                <div className="grid gap-7">
+                  {activeStep.fields.filter((f) => f.enabled !== false && isVisible(f.visibleWhen, engine.values)).map((f) => (
+                    <FieldRenderer key={f.key} f={f} engine={engine}
+                      errors={engine.errorsFor(step)} showErrors={showErrors} />
                   ))}
                 </div>
-              )
-            })()}
+                {/* erros que cruzam campos (regras do passo) */}
+                {showErrors && (() => {
+                  const errs = engine.errorsFor(step)
+                  const fieldKeys = new Set(activeStep.fields.map((f) => f.key))
+                  const orphans = Object.entries(errs).filter(([k]) => !fieldKeys.has(k) && !k.includes('.') && k !== 'consentTruth')
+                  if (orphans.length === 0) return null
+                  return (
+                    <Alert variant="destructive" className="mt-6 rounded-2xl border-accent/40 bg-accent/5">
+                      <CircleAlert />
+                      <AlertTitle>Revise esta etapa</AlertTitle>
+                      <AlertDescription>
+                        {orphans.map(([k, msg]) => <p key={k}>{msg}</p>)}
+                      </AlertDescription>
+                    </Alert>
+                  )
+                })()}
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -207,39 +238,38 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
         {step === 'sucesso' && <EngineSuccess config={config} engine={engine} />}
       </main>
 
-      {/* footer */}
-      <footer className="fixed bottom-0 left-0 right-0 z-20 border-t-2 border-foreground/10 bg-background/90 backdrop-blur">
+      {!whiteLabel && workspaceSlug !== 'atabaque' && publishedConfig?.fields['footer.poweredBy']?.visible !== false && (
+        <div className="mx-auto flex max-w-5xl items-center justify-center gap-1.5 px-4 pb-24 text-center text-[11px] font-semibold text-muted-foreground">
+          {(publishedConfig?.fields['footer.poweredBy']?.label || 'Este formulário roda na plataforma Sunbeat').replace(/\s*Sunbeat\s*$/i, '')}
+          <a href="https://sunbeat.pro" target="_blank" rel="noreferrer" className="font-black text-foreground/70 underline underline-offset-2 hover:text-foreground">
+            Sunbeat
+          </a>
+          <span className="hidden sm:inline">· {publishedConfig?.fields['footer.poweredBy']?.hint || 'formulários inteligentes para operações criativas'}</span>
+        </div>
+      )}
+
+      {/* action bar */}
+      <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-foreground/10 bg-background/92 shadow-[0_-12px_36px_rgba(81,35,20,0.08)] backdrop-blur-xl">
         {isFormStep && (
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-            <Button variant="ghost" className="font-bold" onClick={back}>
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <Button variant="ghost" className="rounded-full font-bold" onClick={back}>
               <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
             </Button>
-            <span className="text-xs font-semibold text-muted-foreground hidden sm:block">
+            <span className="hidden text-xs font-semibold text-muted-foreground sm:block">
               {step === 'revisao'
                 ? 'Etapa final — confira e envie'
                 : `Etapa ${activeProgressIndex + 1} de ${progressItems.length} — ${activeStep?.hint ?? ''}`}
             </span>
             {step !== 'revisao' ? (
-              <Button className="bg-foreground text-background hover:bg-foreground/90 font-bold rounded-full px-6" onClick={next}>
+              <Button className="h-11 rounded-full bg-foreground px-6 font-bold text-background shadow-sm hover:bg-foreground/90" onClick={next}>
                 Próximo <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
-              <Button disabled={submitting} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-full px-6 shadow-[3px_3px_0_0_rgba(81,35,20,0.3)]" onClick={() => void submit()}>
+              <Button disabled={submitting} className="h-11 rounded-full bg-accent px-6 font-bold text-accent-foreground shadow-sm hover:bg-accent/90" onClick={() => void submit()}>
                 {submitting ? 'Enviando…' : engine.mode === 'edit' ? 'Salvar alterações' : 'Enviar formulário'}
                 {submitting ? <Loader2 className="ml-1.5 h-4 w-4 animate-spin" /> : <Send className="ml-1.5 h-4 w-4" />}
               </Button>
             )}
-          </div>
-        )}
-        {!whiteLabel && workspaceSlug !== 'atabaque' && publishedConfig?.fields['footer.poweredBy']?.visible !== false && (
-          <div className="border-t border-foreground/10 bg-foreground/[0.04]">
-            <div className="mx-auto flex max-w-4xl items-center justify-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold text-muted-foreground">
-              {(publishedConfig?.fields['footer.poweredBy']?.label || 'Este formulário roda na plataforma Sunbeat').replace(/\s*Sunbeat\s*$/i, '')}
-              <a href="https://sunbeat.pro" target="_blank" rel="noreferrer" className="font-black text-foreground/70 hover:text-foreground underline underline-offset-2">
-                Sunbeat
-              </a>
-              · {publishedConfig?.fields['footer.poweredBy']?.hint || 'formulários inteligentes para operações criativas'}
-            </div>
           </div>
         )}
       </footer>

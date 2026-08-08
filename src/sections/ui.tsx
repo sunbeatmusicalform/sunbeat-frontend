@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { AlertCircle } from 'lucide-react'
 
 export function Field({
-  label, hint, error, required, children, className,
+  label, hint, error, required, children, className, htmlFor,
 }: {
   label: string
   hint?: string
@@ -11,13 +11,20 @@ export function Field({
   required?: boolean
   children: ReactNode
   className?: string
+  htmlFor?: string
 }) {
   return (
-    <div className={cn('space-y-1.5', className)}>
-      <label className="block text-sm font-bold">
-        {label} {required && <span className="text-accent">*</span>}
-      </label>
-      {hint && <p className="text-xs text-muted-foreground leading-relaxed">{hint}</p>}
+    <div className={cn('space-y-2', className)}>
+      {htmlFor ? (
+        <label htmlFor={htmlFor} className="block text-sm font-bold leading-snug">
+          {label} {required && <span className="text-accent">*</span>}
+        </label>
+      ) : (
+        <div className="block text-sm font-bold leading-snug">
+          {label} {required && <span className="text-accent">*</span>}
+        </div>
+      )}
+      {hint && <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">{hint}</p>}
       {children}
       {error && (
         <p className="flex items-start gap-1.5 text-xs font-semibold text-accent animate-in fade-in slide-in-from-top-1">
@@ -30,8 +37,8 @@ export function Field({
 
 export function inputCls(invalid?: boolean) {
   return cn(
-    'border-2 bg-white/70 font-medium placeholder:font-normal placeholder:text-muted-foreground/60 focus-visible:ring-accent',
-    invalid ? 'border-accent' : 'border-foreground/20'
+    'h-11 rounded-xl border bg-white/75 px-3.5 font-medium shadow-[0_1px_2px_rgba(81,35,20,0.04)] transition-[border-color,box-shadow,background-color] placeholder:font-normal placeholder:text-muted-foreground/55 hover:bg-white/90 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20',
+    invalid ? 'border-accent ring-2 ring-accent/10' : 'border-foreground/15'
   )
 }
 
