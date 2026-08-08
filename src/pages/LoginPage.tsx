@@ -37,7 +37,9 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center bg-[#000e14] px-4 py-12 text-[#f5f0e5]">
       <div className="mx-auto w-full max-w-md">
-        <Link to="/" className="block text-center text-sm font-black uppercase tracking-[0.24em]">Sunbeat<span className="text-[#ffb53e]">.</span></Link>
+        <Link to="/" className="mx-auto block w-fit" aria-label="Sunbeat home">
+          <img src="/brand/logo-horizontal.svg" alt="Sunbeat" className="h-9 w-auto" />
+        </Link>
         <section className="mt-8 rounded-[30px] border border-white/10 bg-[#071b24] p-8 shadow-[0_24px_70px_rgba(0,0,0,.35)]">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb53e]">{copy.eyebrow}</p>
           <h1 className="mt-3 text-3xl font-bold">{copy.title}</h1>
