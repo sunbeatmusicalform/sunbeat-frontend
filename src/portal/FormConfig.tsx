@@ -26,17 +26,22 @@ const EDIT_POLICIES: { value: EditPolicy; label: string; description: string }[]
 ]
 
 function EditAccessConfig({ workspace, workflowType }: { workspace: string; workflowType: string }) {
-  const [policy, setPolicy] = useState<EditPolicy | null>(null)
+  const requestKey = `${workspace}:${workflowType}`
+  const [policyState, setPolicyState] = useState<{ key: string; policy: EditPolicy | null }>({ key: requestKey, policy: null })
+  const policy = policyState.key === requestKey ? policyState.policy : null
   const [saving, setSaving] = useState(false)
   useEffect(() => {
-    setPolicy(null)
-    void api.getEditConfig(workspace).then((result) => setPolicy(result?.workflows[workflowType]?.policy ?? null))
-  }, [workspace, workflowType])
+    let cancelled = false
+    void api.getEditConfig(workspace).then((result) => {
+      if (!cancelled) setPolicyState({ key: requestKey, policy: result?.workflows[workflowType]?.policy ?? null })
+    })
+    return () => { cancelled = true }
+  }, [requestKey, workspace, workflowType])
 
   async function change(next: EditPolicy) {
     setSaving(true)
     const result = await api.patchEditConfig(workspace, workflowType, next)
-    if (result) setPolicy(result.policy)
+    if (result) setPolicyState({ key: requestKey, policy: result.policy })
     setSaving(false)
   }
 

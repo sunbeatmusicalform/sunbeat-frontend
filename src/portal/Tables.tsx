@@ -155,14 +155,22 @@ export function Tables() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [section, setSection] = useState<Section>('registros')
   const [data, setData] = useState<TablesResult | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   async function load() {
     setLoading(true)
     setData(await fetchTableRows())
     setLoading(false)
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    let cancelled = false
+    void fetchTableRows().then((result) => {
+      if (cancelled) return
+      setData(result)
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [])
 
   const rows = useMemo(() => {
     const viewFilter = TABLE_VIEWS.find((v) => v.key === view)!.filter

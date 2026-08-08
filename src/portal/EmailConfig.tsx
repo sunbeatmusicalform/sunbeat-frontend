@@ -86,11 +86,6 @@ export function EmailConfig({ workspace }: { workspace: string }) {
     return () => { cancelled = true }
   }, [workspace, workflowType])
 
-  useEffect(() => {
-    setBodyMode('visual')
-    setBodyEditorVersion((version) => version + 1)
-  }, [selected, workflowType])
-
   const selectedMeta = EVENTS.find((event) => event.key === selected) ?? EVENTS[0]
   const preview = useMemo(() => {
     if (!config) return { subject: '', body: '' }
@@ -158,6 +153,12 @@ export function EmailConfig({ workspace }: { workspace: string }) {
     setMessage({ ok: true, text: `${field === 'subject' ? 'O assunto' : 'O corpo'} padrão será usado após salvar.` })
   }
 
+  function selectEvent(eventName: EmailEventName) {
+    setSelected(eventName)
+    setBodyMode('visual')
+    setBodyEditorVersion((version) => version + 1)
+  }
+
   async function save() {
     if (!config) return
     const visualBody = bodyMode === 'visual' ? richBodyRef.current?.innerHTML : undefined
@@ -214,6 +215,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
             Formulário
             <select value={workflowType} onChange={(event) => {
               setConfig(null); setMessage(null)
+              setBodyMode('visual'); setBodyEditorVersion((version) => version + 1)
               setWorkflowType(event.target.value as typeof workflowType)
             }}
               className="mt-1 block w-full rounded-xl border border-[#512314]/20 bg-white/60 px-3 py-2 text-[12px] font-semibold normal-case text-[#512314]">
@@ -226,7 +228,7 @@ export function EmailConfig({ workspace }: { workspace: string }) {
           {EVENTS.map((event) => (
             <button
               key={event.key}
-              onClick={() => setSelected(event.key)}
+              onClick={() => selectEvent(event.key)}
               className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition ${
                 selected === event.key ? 'bg-[#512314] text-[#ebdbba]' : 'bg-[#512314]/8 text-[#512314]/70'
               }`}
