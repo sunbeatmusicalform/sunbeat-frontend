@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Check, LockKeyhole } from 'lucide-react'
 import { api } from '../lib/api'
+import { SunbeatLogo } from '../components/SunbeatLogo'
 
 function slugify(value: string) {
   return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32)
@@ -48,7 +49,9 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen bg-[#000e14] px-4 py-12 text-[#f5f0e5]">
       <div className="mx-auto max-w-md">
-        <Link to="/" className="block text-center text-sm font-black uppercase tracking-[0.24em]">Sunbeat<span className="text-[#ffb53e]">.</span></Link>
+        <Link to="/" className="mx-auto flex w-fit justify-center" aria-label="Sunbeat home">
+          <SunbeatLogo className="h-11" />
+        </Link>
         <section className="mt-8 rounded-[30px] border border-white/10 bg-[#071b24] p-7 shadow-[0_24px_70px_rgba(0,0,0,.35)] sm:p-9">
           {success ? (
             <div className="text-center">
