@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Mail } from 'lucide-react'
 import { api } from '../lib/api'
+import { SunbeatLogo } from '../components/SunbeatLogo'
 
 const COPY = {
   en: { eyebrow: 'Secure access', title: 'Sign in with a magic link.', intro: 'Enter the owner email. If it is registered, we will send a 30-minute access link.', email: 'Email', submit: 'Send magic link', sending: 'Sending…', sent: 'Check your email. If the address is registered, the access link is on its way.', signup: 'Create a new workspace', invalid: 'This link is invalid or has expired. Request a new one.', used: 'This link has already been used. Request a new one.', access: 'This link does not grant access to that workspace.', error: 'The email could not be sent. Try again.' },
@@ -38,7 +39,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center bg-[#000e14] px-4 py-12 text-[#f5f0e5]">
       <div className="mx-auto w-full max-w-md">
         <Link to="/" className="mx-auto block w-fit" aria-label="Sunbeat home">
-          <img src="/brand/logo-horizontal.svg" alt="Sunbeat" className="h-9 w-auto" />
+          <SunbeatLogo className="h-11" />
         </Link>
         <section className="mt-8 rounded-[30px] border border-white/10 bg-[#071b24] p-8 shadow-[0_24px_70px_rgba(0,0,0,.35)]">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb53e]">{copy.eyebrow}</p>
