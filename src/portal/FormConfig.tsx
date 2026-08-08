@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle2, Eye, EyeOff, FileSliders, KeyRound, Lock, RotateCcw } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ExternalLink, Eye, EyeOff, FileSliders, KeyRound, Lock, RotateCcw } from 'lucide-react'
 import { api, type EditAccessItemRemote, type EditPolicy, type FieldRequirement, type FormConfigRemote, type FormFieldConfigRemote } from '../lib/api'
 import { HelpConfig } from './HelpConfig'
 
@@ -145,7 +145,7 @@ function FieldEditor({ field, onChange }: { field: FormFieldConfigRemote; onChan
   )
 }
 
-export function FormConfig({ workspace }: { workspace: string }) {
+export function FormConfig({ workspace, selfService = false }: { workspace: string; selfService?: boolean }) {
   const [workflowType, setWorkflowType] = useState<(typeof WORKFLOWS)[number]['value']>('release_intake')
   const [config, setConfig] = useState<FormConfigRemote | null>(null)
   const [published, setPublished] = useState<FormConfigRemote | null>(null)
@@ -208,9 +208,24 @@ export function FormConfig({ workspace }: { workspace: string }) {
 
   return (
     <div className="mt-6 space-y-5">
-      <HelpConfig workspace={workspace} />
-      <EditAccessConfig workspace={workspace} workflowType={workflowType} />
-      <EditAuthorizationPanel workspace={workspace} />
+      {selfService ? (
+        <section className="sun-card flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <h2 className="text-[15px] font-bold text-[#512314]">Seu formulário de lançamento</h2>
+            <p className="mt-1 text-[12px] text-[#512314]/60">Abra a experiência real de preenchimento em uma nova aba. A configuração abaixo pertence somente a este workspace.</p>
+          </div>
+          <a href={`/intake/${encodeURIComponent(workspace)}`} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-[#512314] px-5 py-2.5 text-[12px] font-bold text-[#ebdbba]">
+            Visualizar formulário <ExternalLink size={14} />
+          </a>
+        </section>
+      ) : (
+        <>
+          <HelpConfig workspace={workspace} />
+          <EditAccessConfig workspace={workspace} workflowType={workflowType} />
+          <EditAuthorizationPanel workspace={workspace} />
+        </>
+      )}
       <section className="sun-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -220,7 +235,7 @@ export function FormConfig({ workspace }: { workspace: string }) {
               <p className="mt-0.5 max-w-2xl text-[12px] text-[#512314]/60">Escolha quando cada informação será exigida, oculte o que não faz parte da operação e ajuste os textos exibidos. Alterações só entram no ar ao publicar.</p>
             </div>
           </div>
-          <label className="min-w-56 text-[10px] font-bold uppercase tracking-wide text-[#512314]/50">
+          <label className={`min-w-56 text-[10px] font-bold uppercase tracking-wide text-[#512314]/50 ${selfService ? 'hidden' : ''}`}>
             Formulário
             <select value={workflowType} onChange={(event) => {
               setConfig(null); setPublished(null); setMessage(null)

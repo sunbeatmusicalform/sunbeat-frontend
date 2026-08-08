@@ -6,7 +6,7 @@ import { HelpChat } from '../components/HelpChat'
 import { EmailConfig } from './EmailConfig'
 import { FormConfig } from './FormConfig'
 import { VERDICT_STYLE, type LookupResult, type PersonBaseHit } from '../forms/invites'
-import { api, apiEnabled, type PortalDataRemote } from '../lib/api'
+import { api, apiEnabled, type OnboardingInitialRemote, type PortalDataRemote } from '../lib/api'
 import { useBranding, patchBranding, createPortalSession, portalToken, setPortalToken, BrandLogo, type WorkspaceBranding } from '../lib/brand'
 import { LiveAirtable, LiveDriveFolders, LiveIntegrations, LiveInvites, LiveOverview, LiveTables } from './LivePortalData'
 import { OnboardingPanel } from './OnboardingPanel'
@@ -25,6 +25,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'airtable', label: 'Airtable' },
   { key: 'marca', label: 'Minha marca' },
 ]
+const SELF_SERVICE_TABS = new Set<Tab>(['onboarding', 'formulario', 'marca'])
 
 /* ---------- Verificação de cadastro nas duas bases ---------- */
 function PeopleLookupCard() {
@@ -472,6 +473,7 @@ export default function Portal() {
   const { branding } = useBranding(workspace)
   const [portalData, setPortalData] = useState<PortalDataRemote | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [access, setAccess] = useState<OnboardingInitialRemote | null>(null)
 
   async function loadPortalData() {
     setPortalLoading(true)
@@ -492,6 +494,9 @@ export default function Portal() {
     let cancelled = false
     Promise.resolve().then(async () => {
       if (cancelled) return
+      const onboarding = await api.getOnboarding(workspace)
+      if (cancelled) return
+      setAccess(onboarding?.data ?? null)
       setPortalLoading(true)
       const data = await api.getPortalData(workspace)
       if (cancelled) return
@@ -502,12 +507,21 @@ export default function Portal() {
   }, [unlocked, workspace])
 
   const liveProps = { data: portalData, loading: portalLoading, reload: () => { void loadPortalData() } }
+  const activeTab = access?.selfService && !SELF_SERVICE_TABS.has(tab) ? 'onboarding' : tab
+  const visibleTabs = access === null
+    ? TABS.filter((item) => item.key === 'onboarding')
+    : access.selfService
+      ? TABS.filter((item) => SELF_SERVICE_TABS.has(item.key))
+      : TABS
+  const logoFallback = workspace === 'atabaque'
+    ? <AtabaqueMark size={36} />
+    : <span className="grid h-9 w-9 place-items-center rounded-full bg-[#512314] text-sm font-black text-[#ebdbba]">S</span>
   if (!unlocked) return <PortalGate workspace={workspace} displayName={branding?.workspace_name ?? displayName} onUnlock={() => setUnlocked(true)} />
   return (
     <div className="mx-auto max-w-5xl px-4 pb-16">
       <header className="flex items-center justify-between py-5">
         <div className="flex items-center gap-3">
-          <BrandLogo branding={branding} size={36} fallback={<AtabaqueMark size={36} />} />
+          <BrandLogo branding={branding} size={36} fallback={logoFallback} />
           <div>
             <p className="text-lg font-bold text-[#512314] leading-none">{branding?.workspace_name ?? displayName}</p>
             <p className="text-[11px] text-[#512314]/60">Sunbeat · área do cliente</p>
@@ -530,29 +544,29 @@ export default function Portal() {
       </p>
 
       <nav className="mt-5 flex flex-wrap gap-2 border-b border-[#512314]/15 pb-3">
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition ${
-              tab === t.key ? 'bg-[#512314] text-[#ebdbba]' : 'text-[#512314]/70 hover:bg-[#512314]/8'
+              activeTab === t.key ? 'bg-[#512314] text-[#ebdbba]' : 'text-[#512314]/70 hover:bg-[#512314]/8'
             }`}>
             {t.label}
           </button>
         ))}
       </nav>
 
-      {tab === 'geral' && <LiveOverview {...liveProps} />}
+      {activeTab === 'geral' && <LiveOverview {...liveProps} />}
 
-      {tab === 'onboarding' && <OnboardingPanel workspace={workspace} />}
+      {activeTab === 'onboarding' && <OnboardingPanel workspace={workspace} />}
 
-      {tab === 'tables' && <LiveTables {...liveProps} />}
+      {activeTab === 'tables' && <LiveTables {...liveProps} />}
 
-      {tab === 'marca' && <BrandingTab workspace={workspace} />}
+      {activeTab === 'marca' && <BrandingTab workspace={workspace} />}
 
-      {tab === 'emails' && <EmailConfig workspace={workspace} />}
+      {activeTab === 'emails' && <EmailConfig workspace={workspace} />}
 
-      {tab === 'formulario' && <FormConfig workspace={workspace} />}
+      {activeTab === 'formulario' && <FormConfig workspace={workspace} selfService={Boolean(access?.selfService)} />}
 
-      {tab === 'convites' && (
+      {activeTab === 'convites' && (
         <div className="mt-6 space-y-4">
           <PeopleLookupCard />
           <div className="sun-card p-4">
@@ -570,17 +584,17 @@ export default function Portal() {
         </div>
       )}
 
-      {tab === 'integracoes' && <LiveIntegrations {...liveProps} />}
+      {activeTab === 'integracoes' && <LiveIntegrations {...liveProps} />}
 
-      {tab === 'drive' && (
+      {activeTab === 'drive' && (
         <div className="mt-6 space-y-6">
           <DriveConfigPanel workspace={workspace} driveConfigured={Boolean(portalData?.integrations.drive?.configured)} />
           <LiveDriveFolders {...liveProps} />
         </div>
       )}
 
-      {tab === 'airtable' && <LiveAirtable {...liveProps} />}
-      {tab !== 'onboarding' ? <HelpChat clientName={branding?.workspace_name ?? displayName} workspaceSlug={workspace} /> : null}
+      {activeTab === 'airtable' && <LiveAirtable {...liveProps} />}
+      {activeTab !== 'onboarding' && workspace === 'atabaque' ? <HelpChat clientName={branding?.workspace_name ?? displayName} workspaceSlug={workspace} /> : null}
     </div>
   )
 }
