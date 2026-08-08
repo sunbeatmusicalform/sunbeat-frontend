@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { Navigate, useParams } from 'react-router'
 import { Lock, LogOut } from 'lucide-react'
 import { AtabaqueMark } from '../components/AtabaqueMark'
 import { HelpChat } from '../components/HelpChat'
@@ -516,6 +516,7 @@ export default function Portal() {
   const logoFallback = workspace === 'atabaque'
     ? <AtabaqueMark size={36} />
     : <span className="grid h-9 w-9 place-items-center rounded-full bg-[#512314] text-sm font-black text-[#ebdbba]">S</span>
+  if (!unlocked && workspace !== 'atabaque') return <Navigate to="/login" replace />
   if (!unlocked) return <PortalGate workspace={workspace} displayName={branding?.workspace_name ?? displayName} onUnlock={() => setUnlocked(true)} />
   return (
     <div className="mx-auto max-w-5xl px-4 pb-16">
