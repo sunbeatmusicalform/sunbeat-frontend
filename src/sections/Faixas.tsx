@@ -65,14 +65,14 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
           references={track.mainArtistRefs ?? []}
           error={all[p + 'mainArtists']}
           label={form.textFor('track.mainArtists', 'label', 'Artistas principais')}
-          hint={form.textFor('track.mainArtists', 'hint', 'Busque no cadastro da Atabaque. Use vírgula ou Enter para conferir um nome novo.')}
+          hint={form.textFor('track.mainArtists', 'hint', 'Busque no cadastro do workspace. Use vírgula ou Enter para conferir um nome novo.')}
           placeholder={form.textFor('track.mainArtists', 'placeholder', 'Digite o nome artístico…')}
           required={form.isRequired('track.mainArtists')}
           onChange={(mainArtists, mainArtistRefs) => form.setTrack(track.id, { mainArtists, mainArtistRefs })}
         /> : null}
 
         {(form.isVisible('track.featArtists') || form.isVisible('track.composers') || form.isVisible('track.performers')) ? (
-          <section className="rounded-2xl border border-foreground/15 bg-white/25 p-4 md:p-5">
+          <section className="rounded-2xl border border-foreground/15 bg-card/35 p-4 md:p-5">
             <div className="mb-4">
               <h4 className="text-sm font-bold">Créditos e participações</h4>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Informe um nome por linha. Assim a equipe consegue revisar todos os créditos sem nomes cortados.</p>
@@ -101,7 +101,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
             onValueChange={(v) => form.setTrack(track.id, { hasISRC: v as 'yes' | 'no' })}>
             {[['yes', 'Sim, já tem'], ['no', 'Não, gerar para mim']].map(([v, t]) => (
               <Label key={v} htmlFor={`${track.id}-isrc-${v}`}
-                className={`cursor-pointer rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all ${track.hasISRC === v ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                className={`cursor-pointer rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all ${track.hasISRC === v ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                 <RadioGroupItem value={v} id={`${track.id}-isrc-${v}`} className="sr-only" />{t}
               </Label>
             ))}
@@ -138,7 +138,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
 
         {form.isVisible('track.audio') ? <Field label={form.textFor('track.audio', 'label', 'Áudio da faixa')} required={form.isRequired('track.audio')} error={all[p + 'audio']}
           hint={form.textFor('track.audio', 'hint', 'Master em WAV ou FLAC. Analisamos o arquivo automaticamente.')}>
-          <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-4 transition-colors hover:border-accent hover:bg-accent/5">
+          <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-foreground/25 bg-card/50 p-4 transition-colors hover:border-accent hover:bg-accent/5">
             <input type="file" accept=".wav,.flac,audio/wav,audio/x-wav,audio/flac,audio/x-flac" className="sr-only" onChange={(ev) => onAudio(ev.target.files?.[0])} />
             {checking ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <FileAudio className="h-5 w-5 text-accent" />}
             <span className="text-sm font-semibold">{track.audioFileName ?? 'Clique para anexar o áudio'}</span>
@@ -154,7 +154,7 @@ function TrackCard({ form, index, showErrors, workspaceSlug }: { form: F; index:
                 {audio.notes.map((n) => <li key={n}>{n}</li>)}
               </ul>
               <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
-                {audio.standards.map((standard) => <div key={standard.label} className="rounded-lg bg-white/55 px-2.5 py-2">
+                {audio.standards.map((standard) => <div key={standard.label} className="rounded-lg bg-card/70 px-2.5 py-2">
                   <p className="font-bold">{standard.status === 'ok' ? '✓' : standard.status === 'warning' ? '◐' : '×'} {standard.label}</p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">{standard.detail}</p>
                 </div>)}

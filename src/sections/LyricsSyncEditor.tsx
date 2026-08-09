@@ -149,7 +149,7 @@ export function LyricsSyncEditor({
   const pendingReview = lines.filter((line) => line.needs_review).length
 
   return (
-    <div className="rounded-2xl border border-foreground/15 bg-white/45 p-4">
+    <div className="rounded-2xl border border-foreground/15 bg-card/45 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-accent" /> {heading}</p>
@@ -171,7 +171,7 @@ export function LyricsSyncEditor({
           <audio ref={audioRef} src={audioUrl} controls className="w-full" />
           <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
             {lines.map((line) => (
-              <div key={line.id} className={`rounded-xl border p-3 ${line.needs_review ? 'border-amber-500/45 bg-amber-50/60' : 'border-foreground/10 bg-white/60'}`}>
+              <div key={line.id} className={`rounded-xl border p-3 ${line.needs_review ? 'border-amber-500/45 bg-amber-500/10' : 'border-foreground/10 bg-card/60'}`}>
                 <button type="button" className="flex w-full items-center gap-2 text-left text-sm font-semibold" onClick={() => {
                   if (audioRef.current && line.start_ms !== null) { audioRef.current.currentTime = line.start_ms / 1000; void audioRef.current.play() }
                 }}>

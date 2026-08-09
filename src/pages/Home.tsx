@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, CloudUpload, Loader2, Lock, Mail, PencilLine, Send, Workflow, X } from 'lucide-react'
 import { useIntakeForm, STEPS, type StepId } from '@/hooks/useIntakeForm'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
-import { useBranding, BrandLogo } from '@/lib/brand'
+import { useBranding, BrandLogo, workspaceThemeStyle } from '@/lib/brand'
 import { Welcome } from '@/sections/Welcome'
 import { Identificacao } from '@/sections/Identificacao'
 import { Projeto } from '@/sections/Projeto'
@@ -210,7 +210,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground" style={workspaceThemeStyle(branding)}>
       {/* top bar */}
       <header className="sticky top-0 z-20 border-b-2 border-foreground/10 bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
@@ -288,12 +288,12 @@ export default function Home() {
       {/* body */}
       <main className="mx-auto max-w-4xl px-4 py-10 pb-40">
         {!formConfigLoaded ? (
-          <div role="status" className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-white/50 p-4 text-sm font-semibold">
+          <div role="status" className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-card/50 p-4 text-sm font-semibold">
             <Loader2 className="h-4 w-4 animate-spin" /> Preparando formulário…
           </div>
         ) : <>
         {draftLoading && (
-          <div role="status" className="mx-auto mb-6 flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-white/50 p-4 text-sm font-semibold">
+          <div role="status" className="mx-auto mb-6 flex max-w-md items-center justify-center gap-2 rounded-2xl border border-foreground/15 bg-card/50 p-4 text-sm font-semibold">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando rascunho…
           </div>
         )}

@@ -19,22 +19,22 @@ export function Welcome({
   const accentWord = form.textFor('welcome.title', 'placeholder', 'lançamento')
   const titleParts = accentWord && title.includes(accentWord) ? title.split(accentWord) : null
   const cards = [
-    { key: 'welcome.estimateCard', icon: Clock3, title: '10–15 minutos', desc: 'E salva rascunho automaticamente — volte quando quiser.' },
+    { key: 'welcome.estimateCard', icon: Clock3, title: '10–15 minutos', desc: 'O rascunho é salvo automaticamente para você voltar quando quiser.' },
     { key: 'welcome.haveReadyCard', icon: FileAudio, title: 'Tenha em mãos', desc: 'Áudios em WAV ou FLAC, capa quadrada (ideal 3000×3000) e créditos completos.' },
     { key: 'welcome.validationCard', icon: ImageIcon, title: 'Validação automática', desc: 'Analisamos áudio e capa na hora e avisamos se algo precisa de ajuste.' },
     { key: 'welcome.trackingCard', icon: Mail, title: 'Acompanhamento', desc: 'Você recebe e-mails a cada etapa: recebido, em análise, ajustes e aprovado.' },
   ]
   return (
     <div className="mx-auto max-w-2xl text-center py-10">
-      {form.isVisible('welcome.chip') && <div className="sun-chip mx-auto mb-3">{form.textFor('welcome.chip', 'label', 'Atabaque · Um Ritmo de Pensar Música')}</div>}
+      {form.isVisible('welcome.chip') && <div className="sun-chip mx-auto mb-3">{form.textFor('welcome.chip', 'label', 'Sunbeat · Operação de lançamentos')}</div>}
       {form.isVisible('welcome.restrictedNotice') && <p className="mb-6 text-xs font-semibold text-muted-foreground flex items-center justify-center gap-1.5">
-        🔒 {form.textFor('welcome.restrictedNotice', 'label', 'Formulário restrito a parceiros')} — {form.textFor('welcome.restrictedNotice', 'hint', 'se você chegou aqui por engano, fale com a equipe Atabaque.')}
+        🔒 {form.textFor('welcome.restrictedNotice', 'label', 'Formulário restrito a parceiros')} · {form.textFor('welcome.restrictedNotice', 'hint', 'Se você recebeu este link por engano, fale com a equipe responsável pelo workspace.')}
       </p>}
       {form.isVisible('welcome.title') && <h1 className="font-display text-4xl md:text-5xl font-black leading-tight">
         {titleParts ? <>{titleParts[0]}<span className="text-accent">{accentWord}</span>{titleParts.slice(1).join(accentWord)}</> : title}
       </h1>}
       {form.isVisible('welcome.subtitle') && <p className="mt-4 text-muted-foreground leading-relaxed">
-        {form.textFor('welcome.subtitle', 'hint', 'Envie os dados, créditos e arquivos do seu próximo lançamento. Nossa equipe revisa, valida os metadados e prepara a distribuição — você acompanha tudo por e-mail.')}
+        {form.textFor('welcome.subtitle', 'hint', 'Envie os dados, créditos e arquivos do seu próximo lançamento. A equipe revisa os metadados, prepara a distribuição e mantém você informado por e-mail.')}
       </p>}
 
       <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">

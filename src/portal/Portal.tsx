@@ -382,6 +382,14 @@ function BrandingTab({ workspace }: { workspace: string }) {
   }
 
   async function save() {
+    const invalidColor = (['primary_color', 'form_bg_color'] as const).find((key) => {
+      const value = form[key]?.trim()
+      return value && !/^#[0-9a-f]{6}$/i.test(value)
+    })
+    if (invalidColor) {
+      setMsg({ ok: false, text: `${invalidColor === 'primary_color' ? 'Cor primária' : 'Cor de fundo'} deve usar o formato #rrggbb.` })
+      return
+    }
     setSaving(true)
     setMsg(null)
     const { workspace_slug, ...fields } = form
@@ -450,6 +458,7 @@ function BrandingTab({ workspace }: { workspace: string }) {
                 className="h-9 w-12 cursor-pointer rounded-md border bg-transparent" />
               <Input value={form.primary_color ?? ''} onChange={(e) => set('primary_color', e.target.value)} />
             </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">Usada em botões, progresso e destaques.</p>
           </div>
           <div>
             <Label className="mb-2 text-xs text-muted-foreground">Cor de fundo do formulário</Label>
@@ -458,6 +467,7 @@ function BrandingTab({ workspace }: { workspace: string }) {
                 className="h-9 w-12 cursor-pointer rounded-md border bg-transparent" />
               <Input value={form.form_bg_color ?? ''} onChange={(e) => set('form_bg_color', e.target.value)} />
             </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">Aplicada ao fundo do formulário com contraste automático.</p>
           </div>
         </div>
 

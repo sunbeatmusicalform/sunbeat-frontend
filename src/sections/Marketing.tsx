@@ -13,7 +13,7 @@ type F = ReturnType<typeof useIntakeForm>
 
 function MarketingBlock({ title, description, icon, children }: { title: string; description: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border-2 border-foreground/12 bg-white/35 p-5 sm:p-6">
+    <section className="rounded-3xl border-2 border-foreground/12 bg-card/35 p-5 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#329fd7]/12 text-[#237eae]">{icon}</span>
         <div>
@@ -50,7 +50,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
       <div className="space-y-5">
         <MarketingBlock
           title="Contexto e objetivos"
-          description="O histórico e a intenção do projeto ajudam a Atabaque a definir os melhores argumentos e prioridades."
+          description="O histórico e a intenção do projeto ajudam a equipe a definir os melhores argumentos e prioridades."
           icon={<BarChart3 className="h-4.5 w-4.5" />}
         >
           {form.isVisible('marketingNumbers') ? <Field label={form.textFor('marketingNumbers', 'label', 'Números e resultados relevantes')} required={form.isRequired('marketingNumbers')} error={e.marketingNumbers}
@@ -71,7 +71,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
             <div className="grid gap-2 sm:grid-cols-2">
               {GOAL_OPTIONS.map((goal) => (
                 <Label key={goal} htmlFor={`goal-${goal}`}
-                  className={`flex min-h-16 cursor-pointer items-center gap-2.5 rounded-2xl border-2 p-3 text-sm font-semibold transition-all ${d.goals.includes(goal) ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                  className={`flex min-h-16 cursor-pointer items-center gap-2.5 rounded-2xl border-2 p-3 text-sm font-semibold transition-all ${d.goals.includes(goal) ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                   <Checkbox id={`goal-${goal}`} checked={d.goals.includes(goal)} onCheckedChange={() => toggleGoal(goal)} />
                   {goal}
                 </Label>
@@ -97,7 +97,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
               onValueChange={(value) => form.setData('hasMarketingBudget', value === 'yes')}>
               {[['yes', 'Sim'], ['no', 'Não']].map(([value, label]) => (
                 <Label key={value} htmlFor={`budget-${value}`}
-                  className={`cursor-pointer rounded-full border-2 px-5 py-2 text-sm font-semibold transition-all ${d.hasMarketingBudget === (value === 'yes') && d.hasMarketingBudget !== null ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                  className={`cursor-pointer rounded-full border-2 px-5 py-2 text-sm font-semibold transition-all ${d.hasMarketingBudget === (value === 'yes') && d.hasMarketingBudget !== null ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                   <RadioGroupItem value={value} id={`budget-${value}`} className="sr-only" />{label}
                 </Label>
               ))}
@@ -116,7 +116,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
               onValueChange={(value) => form.setData('dateFlexibility', value as DateFlexibility)}>
               {DATE_OPTIONS.map((option) => (
                 <Label key={option.value} htmlFor={`date-flex-${option.value}`}
-                  className={`cursor-pointer rounded-2xl border-2 p-3 transition-all ${d.dateFlexibility === option.value ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                  className={`cursor-pointer rounded-2xl border-2 p-3 transition-all ${d.dateFlexibility === option.value ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                   <RadioGroupItem value={option.value} id={`date-flex-${option.value}`} className="sr-only" />
                   <span className="flex items-center gap-1.5 text-sm font-bold"><CalendarDays className="h-3.5 w-3.5" />{option.label}</span>
                   <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">{option.description}</span>
@@ -138,7 +138,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
               onValueChange={(value) => form.setData('hasSpecialGuests', value === 'yes')}>
               {[['yes', 'Sim'], ['no', 'Não']].map(([value, label]) => (
                 <Label key={value} htmlFor={`guests-${value}`}
-                  className={`cursor-pointer rounded-full border-2 px-5 py-2 text-sm font-semibold transition-all ${d.hasSpecialGuests === (value === 'yes') && d.hasSpecialGuests !== null ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                  className={`cursor-pointer rounded-full border-2 px-5 py-2 text-sm font-semibold transition-all ${d.hasSpecialGuests === (value === 'yes') && d.hasSpecialGuests !== null ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                   <RadioGroupItem value={value} id={`guests-${value}`} className="sr-only" />{label}
                 </Label>
               ))}
@@ -158,7 +158,7 @@ export function Marketing({ form, showErrors }: { form: F; showErrors: boolean }
                   onValueChange={(value) => form.setData('guestsPromote', value as PromotionCommitment)}>
                   {[['yes', 'Sim'], ['no', 'Não'], ['maybe', 'A confirmar']].map(([value, label]) => (
                     <Label key={value} htmlFor={`promo-${value}`}
-                      className={`cursor-pointer rounded-full border-2 px-5 py-2 text-sm font-semibold transition-all ${d.guestsPromote === value ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                      className={`cursor-pointer rounded-full border-2 px-5 py-2 text-sm font-semibold transition-all ${d.guestsPromote === value ? 'border-accent bg-accent/10' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                       <RadioGroupItem value={value} id={`promo-${value}`} className="sr-only" />{label}
                     </Label>
                   ))}

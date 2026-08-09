@@ -46,7 +46,7 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
           >
             {[['single', 'Single', '1 faixa'], ['ep', 'EP', '2 a 6 faixas'], ['album', 'Álbum', '7+ faixas']].map(([v, t, d]) => (
               <Label key={v} htmlFor={`rt-${v}`}
-                className={`cursor-pointer rounded-2xl border-2 p-3 text-center transition-all ${form.data.releaseType === v ? 'border-accent bg-accent/10 shadow-[3px_3px_0_0_rgba(255,86,57,0.3)]' : 'border-foreground/15 bg-white/60 hover:border-foreground/30'}`}>
+                className={`cursor-pointer rounded-2xl border-2 p-3 text-center transition-all ${form.data.releaseType === v ? 'border-accent bg-accent/10 shadow-[3px_3px_0_0_rgba(255,86,57,0.3)]' : 'border-foreground/15 bg-card/60 hover:border-foreground/30'}`}>
                 <RadioGroupItem value={v} id={`rt-${v}`} className="sr-only" />
                 <div className="font-bold">{t}</div>
                 <div className="text-xs text-muted-foreground">{d}</div>
@@ -73,7 +73,7 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
 
         {form.isVisible('coverFileName') ? <Field label={form.textFor('coverFileName', 'label', 'Capa do lançamento')} required={form.isRequired('coverFileName')} error={e.coverFileName}
           hint={form.textFor('coverFileName', 'hint', 'Quadrada, mínimo 1500×1500 px (ideal 3000×3000). Analisamos o arquivo na hora.')}>
-          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-foreground/25 bg-white/50 p-6 text-center transition-colors hover:border-accent hover:bg-accent/5">
+          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-foreground/25 bg-card/50 p-6 text-center transition-colors hover:border-accent hover:bg-accent/5">
             <input type="file" accept=".jpg,.jpeg,.png,.tif,.tiff,image/jpeg,image/png,image/tiff" className="sr-only" onChange={(ev) => onCover(ev.target.files?.[0])} />
             {checking ? <Loader2 className="h-6 w-6 animate-spin text-accent" /> : <ImagePlus className="h-6 w-6 text-accent" />}
             <span className="text-sm font-semibold">{form.data.coverFileName ?? 'Clique para enviar a capa'}</span>
@@ -89,7 +89,7 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
                 {cover.notes.map((n) => <li key={n}>{n}</li>)}
               </ul>
               <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
-                {cover.standards.map((standard) => <div key={standard.label} className="rounded-lg bg-white/55 px-2.5 py-2">
+                {cover.standards.map((standard) => <div key={standard.label} className="rounded-lg bg-card/70 px-2.5 py-2">
                   <p className="font-bold">{standard.status === 'ok' ? '✓' : standard.status === 'warning' ? '◐' : '×'} {standard.label}</p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">{standard.detail}</p>
                 </div>)}
@@ -117,7 +117,7 @@ export function Projeto({ form, showErrors }: { form: F; showErrors: boolean }) 
         </Field> : null}
 
         {form.isVisible('project.assetGuide') && (form.isVisible('coverFileName') || form.isVisible('track.audio')) ? <AssetStandardsPanel
-          title={form.textFor('project.assetGuide', 'label', 'Guia de assets da Atabaque')}
+          title={form.textFor('project.assetGuide', 'label', 'Guia de assets do workspace')}
           description={form.textFor('project.assetGuide', 'hint', 'Consulte antes de gerar ou compartilhar os arquivos finais.')}
         /> : null}
 
