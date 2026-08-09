@@ -409,6 +409,10 @@ function BrandingTab({ workspace }: { workspace: string }) {
   const fallback = workspace === 'atabaque'
     ? <AtabaqueMark size={48} />
     : <span className="grid size-14 place-items-center rounded-xl bg-primary text-lg font-semibold text-primary-foreground">{(form.workspace_name || workspace).charAt(0).toUpperCase()}</span>
+  const defaultPrimary = '#fbbb1e'
+  const defaultBackground = '#f8fafc'
+  const previewPrimary = /^#[0-9a-f]{6}$/i.test(form.primary_color?.trim() ?? '') ? form.primary_color!.trim() : defaultPrimary
+  const previewBackground = /^#[0-9a-f]{6}$/i.test(form.form_bg_color?.trim() ?? '') ? form.form_bg_color!.trim() : defaultBackground
 
   return (
     <div className="mt-6 space-y-6">
@@ -420,6 +424,23 @@ function BrandingTab({ workspace }: { workspace: string }) {
         </CardDescription>
         </CardHeader>
         <CardContent>
+
+        <div className="grid gap-4 rounded-xl border border-border bg-background/30 p-4 sm:grid-cols-[1fr_240px] sm:items-center">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Identidade do formulário</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              O portal mantém o padrão Sunbeat. A identidade deste workspace aparece somente nos formulários públicos, evitando que a cor do cliente domine a operação.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-border shadow-sm" style={{ backgroundColor: previewBackground }}>
+            <div className="h-1.5" style={{ backgroundColor: previewPrimary }} />
+            <div className="space-y-2 p-3">
+              <div className="h-2 w-24 rounded-full bg-slate-900/75" />
+              <div className="h-1.5 w-36 rounded-full bg-slate-500/35" />
+              <div className="mt-3 h-7 w-24 rounded-md" style={{ backgroundColor: previewPrimary }} />
+            </div>
+          </div>
+        </div>
 
         <div className="mt-5 flex items-start gap-5">
           <div>
@@ -454,18 +475,18 @@ function BrandingTab({ workspace }: { workspace: string }) {
           <div>
             <Label className="mb-2 text-xs text-muted-foreground">Cor primária</Label>
             <div className="flex items-center gap-2">
-              <input type="color" value={form.primary_color ?? '#0ea5e9'} onChange={(e) => set('primary_color', e.target.value)}
+              <input type="color" aria-label="Selecionar cor primária" value={previewPrimary} onChange={(e) => set('primary_color', e.target.value)}
                 className="h-9 w-12 cursor-pointer rounded-md border bg-transparent" />
-              <Input value={form.primary_color ?? ''} onChange={(e) => set('primary_color', e.target.value)} />
+              <Input value={form.primary_color ?? ''} onChange={(e) => set('primary_color', e.target.value)} placeholder={defaultPrimary} />
             </div>
             <p className="mt-1.5 text-[11px] text-muted-foreground">Usada em botões, progresso e destaques.</p>
           </div>
           <div>
             <Label className="mb-2 text-xs text-muted-foreground">Cor de fundo do formulário</Label>
             <div className="flex items-center gap-2">
-              <input type="color" value={form.form_bg_color ?? '#f8fafc'} onChange={(e) => set('form_bg_color', e.target.value)}
+              <input type="color" aria-label="Selecionar cor de fundo do formulário" value={previewBackground} onChange={(e) => set('form_bg_color', e.target.value)}
                 className="h-9 w-12 cursor-pointer rounded-md border bg-transparent" />
-              <Input value={form.form_bg_color ?? ''} onChange={(e) => set('form_bg_color', e.target.value)} />
+              <Input value={form.form_bg_color ?? ''} onChange={(e) => set('form_bg_color', e.target.value)} placeholder={defaultBackground} />
             </div>
             <p className="mt-1.5 text-[11px] text-muted-foreground">Aplicada ao fundo do formulário com contraste automático.</p>
           </div>
