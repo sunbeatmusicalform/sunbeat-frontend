@@ -13,7 +13,7 @@ const LANDING_COPY = {
     proposition: {
       kicker: 'AI operations for music teams',
       title: 'Music operations, ready to move.',
-      body: 'Collect release data, validate audio, artwork and credits, and keep every handoff organized — connected to Airtable, Google Drive and the tools your team already uses.',
+      body: 'Collect release data, validate audio, artwork and credits, then keep every handoff organized. Sunbeat connects the work to Airtable, Google Drive and the tools your team already uses.',
       audience: 'Built for labels, managers, publishers and creative agencies.',
       primaryCta: 'Start free',
       secondaryCta: 'See the product',
@@ -40,7 +40,7 @@ const LANDING_COPY = {
     footer: 'Intelligent infrastructure for creative markets',
     academyKicker: 'Sunbeat Academy',
     academyTitle: 'Learn the systems behind reliable creative work.',
-    academyBody: 'Practical guides on music data, release operations, rights, files and intelligent intake — built from real operational problems.',
+    academyBody: 'Practical guides on music data, release operations, rights, files and intelligent intake, built from real operational problems.',
     academyCta: 'Explore the Academy',
     dialog: {
       close: 'Close form', early: 'Early access', enterprise: 'Enterprise',
@@ -54,7 +54,7 @@ const LANDING_COPY = {
       successBody: 'Thank you. Felipe will receive your details and get back to you.', done: 'Done',
     },
     plans: [
-      { name: 'Free', price: '$0', description: 'A real workflow for testing Sunbeat with no time-limited trial.', features: ['50 submissions per month', '1 live intake form', 'Audio, artwork and metadata file audit', 'Assets stored for 60 days', 'Structured database with a fair-use limit during early access', 'Drafts and submission summaries'], note: 'File auditing stays free — it is part of the Sunbeat core.', featured: true },
+      { name: 'Free', price: '$0', description: 'A real workflow for testing Sunbeat with no time-limited trial.', features: ['50 submissions per month', '1 live intake form', 'Audio, artwork and metadata file audit', 'Assets stored for 60 days', 'Structured database with a fair-use limit during early access', 'Drafts and submission summaries'], note: 'File auditing stays free because it is part of the Sunbeat core.', featured: true },
       { name: 'Starter', price: '$19/mo', description: 'For teams running a steady intake operation with connected data.', features: ['500 submissions per month', '2 live intake forms', 'Everything in Free, including file audit', 'Extended asset retention', 'Airtable two-way sync and visual field mapping', 'Larger upload limits and priority email support'], note: 'Best for small labels, managers and creative teams.', featured: false },
       { name: 'Pro', price: '$49/mo', description: 'For complete operations that need automation, AI and their own brand.', features: ['2,000 submissions per month', '5 live intake forms', 'Everything in Starter, including file audit', 'Google Drive and Google Sheets integrations', 'AI-assisted setup and operational guidance', 'Custom branding, white-label and higher upload limits'], note: 'Best for growing operations with multiple workflows.', featured: false },
     ],
@@ -65,7 +65,7 @@ const LANDING_COPY = {
     proposition: {
       kicker: 'Operações com IA para equipes de música',
       title: 'Operações musicais prontas para avançar.',
-      body: 'Colete dados de lançamentos, valide áudio, capas e créditos e organize cada passagem da operação — conectada ao Airtable, Google Drive e às ferramentas que sua equipe já utiliza.',
+      body: 'Colete dados de lançamentos, valide áudio, capas e créditos e organize cada passagem da operação. A Sunbeat conecta o trabalho ao Airtable, Google Drive e às ferramentas que sua equipe já utiliza.',
       audience: 'Feita para labels, managers, editoras e agências criativas.',
       primaryCta: 'Começar grátis',
       secondaryCta: 'Conhecer o produto',
@@ -92,7 +92,7 @@ const LANDING_COPY = {
     footer: 'Infraestrutura inteligente para mercados criativos',
     academyKicker: 'Sunbeat Academy',
     academyTitle: 'Aprenda os sistemas por trás de um trabalho criativo confiável.',
-    academyBody: 'Guias práticos sobre dados musicais, operações de lançamento, direitos, arquivos e intake inteligente — a partir de problemas reais.',
+    academyBody: 'Guias práticos sobre dados musicais, operações de lançamento, direitos, arquivos e intake inteligente, criados a partir de problemas reais.',
     academyCta: 'Conhecer a Academy',
     dialog: {
       close: 'Fechar formulário', early: 'Acesso antecipado', enterprise: 'Enterprise',
@@ -106,7 +106,7 @@ const LANDING_COPY = {
       successBody: 'Obrigado. Felipe receberá seus dados e entrará em contato.', done: 'Concluir',
     },
     plans: [
-      { name: 'Free', price: 'R$ 0', description: 'Um fluxo real para experimentar a Sunbeat, sem prazo de teste.', features: ['50 submissões por mês', '1 formulário de intake ativo', 'Auditoria de áudio, capa e metadados', 'Assets armazenados por 60 dias', 'Base estruturada com limite de uso razoável no acesso antecipado', 'Rascunhos e resumos de submissão'], note: 'A auditoria de arquivos permanece gratuita — ela faz parte do núcleo da Sunbeat.', featured: true },
+      { name: 'Free', price: 'R$ 0', description: 'Um fluxo real para experimentar a Sunbeat, sem prazo de teste.', features: ['50 submissões por mês', '1 formulário de intake ativo', 'Auditoria de áudio, capa e metadados', 'Assets armazenados por 60 dias', 'Base estruturada com limite de uso razoável no acesso antecipado', 'Rascunhos e resumos de submissão'], note: 'A auditoria de arquivos permanece gratuita porque faz parte do núcleo da Sunbeat.', featured: true },
       { name: 'Starter', price: 'R$ 97/mês', description: 'Para equipes com uma operação contínua de intake e dados conectados.', features: ['500 submissões por mês', '2 formulários de intake ativos', 'Tudo do Free, incluindo auditoria', 'Retenção estendida de assets', 'Sincronização Airtable em duas vias e mapeamento visual', 'Uploads maiores e suporte prioritário por e-mail'], note: 'Ideal para pequenas labels, managers e equipes criativas.', featured: false },
       { name: 'Pro', price: 'R$ 247/mês', description: 'Para operações completas que precisam de automação, IA e marca própria.', features: ['2.000 submissões por mês', '5 formulários de intake ativos', 'Tudo do Starter, incluindo auditoria', 'Integrações com Google Drive e Google Sheets', 'Configuração assistida por IA e orientação operacional', 'Marca personalizada, white-label e uploads maiores'], note: 'Ideal para operações em crescimento com múltiplos fluxos.', featured: false },
     ],
