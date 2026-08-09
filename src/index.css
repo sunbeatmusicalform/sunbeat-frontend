@@ -4,34 +4,34 @@
 
 @layer base {
   :root {
-    /* Atabaque brand palette */
-    --brand-cream: #ebdbba;
-    --brand-brown: #512314;
-    --brand-coral: #ff5639;
-    --brand-amber: #ffb53e;
-    --brand-blue: #329fd7;
-    --brand-pink: #f1abff;
+    /* Sunbeat product theme. Tenant branding is applied only inside its forms. */
+    --brand-cream: #f8fafc;
+    --brand-brown: #0f172a;
+    --brand-coral: #f59e0b;
+    --brand-amber: #fbbf24;
+    --brand-blue: #0ea5e9;
+    --brand-pink: #d946ef;
 
-    --background: 40 47% 83%;          /* cream */
-    --foreground: 19 61% 20%;          /* brown */
-    --card: 42 55% 90%;
-    --card-foreground: 19 61% 20%;
-    --popover: 42 55% 92%;
-    --popover-foreground: 19 61% 20%;
-    --primary: 19 61% 20%;             /* brown */
-    --primary-foreground: 40 47% 90%;
-    --secondary: 39 100% 62%;          /* amber */
-    --secondary-foreground: 19 61% 20%;
-    --muted: 40 35% 76%;
-    --muted-foreground: 20 30% 38%;
-    --accent: 8 100% 61%;              /* coral */
-    --accent-foreground: 40 47% 94%;
-    --destructive: 8 100% 61%;
-    --destructive-foreground: 40 47% 94%;
-    --border: 20 30% 65%;
-    --input: 20 30% 65%;
-    --ring: 8 100% 61%;
-    --radius: 0.875rem;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 43 96% 56%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 199 89% 48%;
+    --radius: 0.75rem;
   }
 
   * {
@@ -40,29 +40,41 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "redonda", "Avenir Next", "Trebuchet MS", ui-rounded, system-ui, sans-serif;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-weight: 400;
     background-image:
-      radial-gradient(circle at 15% 20%, rgba(255, 181, 62, 0.18), transparent 40%),
-      radial-gradient(circle at 85% 80%, rgba(255, 86, 57, 0.12), transparent 45%);
+      radial-gradient(circle at 8% 4%, rgba(14, 165, 233, 0.06), transparent 28%),
+      radial-gradient(circle at 92% 94%, rgba(251, 191, 36, 0.08), transparent 32%);
     background-attachment: fixed;
   }
 
   h1, h2, h3, .font-display {
-    font-family: "redonda", "Avenir Next", "Trebuchet MS", ui-rounded, system-ui, sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 650;
+    letter-spacing: -0.025em;
   }
 }
 
 @layer components {
   .sun-card {
-    @apply bg-card/80 backdrop-blur-sm border-2 border-foreground/10 shadow-[6px_6px_0_0_rgba(81,35,20,0.12)];
+    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm;
   }
   .sun-chip {
-    @apply inline-flex items-center gap-1 rounded-full border-2 border-foreground/15 bg-secondary/40 px-3 py-1 text-xs font-semibold;
+    @apply inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm;
   }
 }
+
+/* Temporary compatibility bridge for the mature portal modules that predate the
+   shadcn token layer. It translates their legacy literal palette to semantic
+   product tokens without leaking a tenant's identity into another workspace. */
+.portal-shell [class*="text-[#512314]"] { color: hsl(var(--foreground)); }
+.portal-shell [class*="text-[#ebdbba]"] { color: hsl(var(--primary-foreground)); }
+.portal-shell [class~="bg-[#512314]"] { background-color: hsl(var(--primary)); }
+.portal-shell [class*="bg-[#512314]/"] { background-color: hsl(var(--muted)); }
+.portal-shell [class~="bg-[#ebdbba]"] { background-color: hsl(var(--background)); }
+.portal-shell [class*="border-[#512314]"] { border-color: hsl(var(--border)); }
+.portal-shell [class*="focus:border-[#512314]"]:focus { border-color: hsl(var(--ring)); }
+.portal-shell [class*="shadow-[6px_6px"] { box-shadow: 0 1px 2px rgb(15 23 42 / 0.05); }
 
 /* ------- landing: animações da home original ------- */
 @keyframes dawn {

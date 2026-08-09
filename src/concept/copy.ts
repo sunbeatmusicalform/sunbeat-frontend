@@ -13,7 +13,7 @@ export const CONCEPT_COPY = {
         number: '01',
         kicker: 'The invisible ocean',
         title: 'Every operation has a world beneath the surface.',
-        body: 'Files, people, rights, deadlines and decisions drift in different directions — close enough to matter, too scattered to move together.',
+        body: 'Files, people, rights, deadlines and decisions drift in different directions. They are close enough to matter, yet too scattered to move together.',
       },
       {
         number: '02',
@@ -31,7 +31,7 @@ export const CONCEPT_COPY = {
         number: '04',
         kicker: 'Toward the surface',
         title: 'One flow. Every moving part in sync.',
-        body: 'Intake, files, rights, people and integrations rise together — structured by MotorSchema and always reviewable by your team.',
+        body: 'Intake, files, rights, people and integrations rise together. MotorSchema gives them structure while your team stays in control.',
       },
       {
         number: '05',
@@ -65,7 +65,7 @@ export const CONCEPT_COPY = {
         number: '01',
         kicker: 'O oceano invisível',
         title: 'Toda operação possui um mundo abaixo da superfície.',
-        body: 'Arquivos, pessoas, direitos, prazos e decisões seguem em direções diferentes — próximos o bastante para importar, dispersos demais para avançar juntos.',
+        body: 'Arquivos, pessoas, direitos, prazos e decisões seguem em direções diferentes. Estão próximos o bastante para importar, mas dispersos demais para avançar juntos.',
       },
       {
         number: '02',
@@ -83,7 +83,7 @@ export const CONCEPT_COPY = {
         number: '04',
         kicker: 'Em direção à superfície',
         title: 'Um fluxo. Todas as partes em sintonia.',
-        body: 'Intake, arquivos, direitos, pessoas e integrações sobem juntos — estruturados pelo MotorSchema e sempre revisáveis pela sua equipe.',
+        body: 'Intake, arquivos, direitos, pessoas e integrações avançam juntos. O MotorSchema organiza cada parte enquanto sua equipe mantém o controle.',
       },
       {
         number: '05',

@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import { Lock, LogOut } from 'lucide-react'
 import { AtabaqueMark } from '../components/AtabaqueMark'
+import { SunbeatLogo } from '../components/SunbeatLogo'
+import { Button } from '../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { Textarea } from '../components/ui/textarea'
 import { HelpChat } from '../components/HelpChat'
 import { EmailConfig } from './EmailConfig'
 import { FormConfig } from './FormConfig'
@@ -302,30 +309,30 @@ function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; d
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4">
-      <form onSubmit={submit} className="sun-card w-full max-w-sm rounded-3xl p-8 text-center">
-        <div className="flex justify-center"><AtabaqueMark size={44} /></div>
-        <h1 className="mt-4 text-xl font-bold text-[#512314]">Área do cliente · {displayName}</h1>
-        <p className="mt-1.5 text-sm text-[#512314]/60">
+      <form onSubmit={submit} className="sun-card w-full max-w-sm p-8 text-center">
+        <div className="flex justify-center"><span className="rounded-lg bg-primary px-4 py-2"><SunbeatLogo className="h-6" /></span></div>
+        <h1 className="mt-6 text-xl font-semibold text-foreground">Área do cliente · {displayName}</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Área restrita à equipe e parceiros da operação. Digite a senha de acesso.
         </p>
-        <input
+        <Input
           type="password"
           value={pass}
           onChange={(e) => { setPass(e.target.value); setError(false) }}
           placeholder="Senha de acesso"
           autoComplete="new-password"
           autoFocus
-          className="mt-5 w-full rounded-2xl border border-[#512314]/25 bg-transparent px-4 py-3 text-sm text-[#512314] outline-none focus:border-[#512314]/60"
+          className="mt-5 h-11"
         />
         {error && <p className="mt-2 text-xs font-semibold text-red-700">Senha incorreta ou serviço indisponível. Tente novamente.</p>}
-        <button
+        <Button
           type="submit"
           disabled={checking || !pass}
-          className="mt-4 w-full rounded-full bg-[#512314] px-6 py-3 text-sm font-bold text-[#ebdbba] transition hover:opacity-90 disabled:opacity-50"
+          className="mt-4 h-11 w-full"
         >
           {checking ? 'Verificando…' : 'Entrar'}
-        </button>
-        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-[#512314]/45">
+        </Button>
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
           <Lock size={11} /> Acesso monitorado pela Sunbeat
         </p>
       </form>
@@ -335,8 +342,8 @@ function PortalGate({ workspace, displayName, onUnlock }: { workspace: string; d
 
 /* ---------- Minha marca (branding do tenant) ---------- */
 const BRAND_FIELDS: { key: keyof WorkspaceBranding; label: string; placeholder?: string; textarea?: boolean }[] = [
-  { key: 'workspace_name', label: 'Nome do workspace', placeholder: 'Atabaque' },
-  { key: 'slogan', label: 'Slogan', placeholder: 'Um Ritmo de Pensar Música' },
+  { key: 'workspace_name', label: 'Nome do workspace', placeholder: 'Nome da sua operação' },
+  { key: 'slogan', label: 'Slogan', placeholder: 'Uma frase que represente sua marca' },
   { key: 'form_title', label: 'Título dos formulários' },
   { key: 'intro_text', label: 'Texto de introdução', textarea: true },
   { key: 'success_message', label: 'Mensagem de sucesso (pós-envio)', textarea: true },
@@ -389,76 +396,81 @@ function BrandingTab({ workspace }: { workspace: string }) {
     }
   }
 
-  if (!loaded) return <div className="mt-6 text-sm text-[#512314]/60">Carregando marca…</div>
+  if (!loaded) return <div className="mt-6 text-sm text-muted-foreground">Carregando marca…</div>
 
-  const inputCls = 'w-full rounded-2xl border border-[#512314]/25 bg-transparent px-4 py-2.5 text-sm text-[#512314] outline-none focus:border-[#512314]/60'
+  const fallback = workspace === 'atabaque'
+    ? <AtabaqueMark size={48} />
+    : <span className="grid size-14 place-items-center rounded-xl bg-primary text-lg font-semibold text-primary-foreground">{(form.workspace_name || workspace).charAt(0).toUpperCase()}</span>
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="sun-card p-5">
-        <h3 className="text-[14px] font-semibold text-[#512314]">Identidade da operação nos formulários Sunbeat</h3>
-        <p className="mt-0.5 text-[12px] text-[#512314]/60">
+      <Card>
+        <CardHeader>
+        <CardTitle className="text-base">Identidade da operação</CardTitle>
+        <CardDescription>
           Logo, nome, cores e textos exibidos nos formulários públicos (intake, clearance, people, company). As mudanças valem na hora.
-        </p>
+        </CardDescription>
+        </CardHeader>
+        <CardContent>
 
         <div className="mt-5 flex items-start gap-5">
           <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Logo atual</p>
-            <div className="flex h-20 w-40 items-center justify-center rounded-2xl border border-[#512314]/15 bg-white/40 p-2">
-              <BrandLogo branding={form as WorkspaceBranding} size={56} fallback={<AtabaqueMark size={48} />} />
+            <Label className="mb-2 text-xs text-muted-foreground">Logo atual</Label>
+            <div className="flex h-20 w-40 items-center justify-center rounded-xl border bg-muted/35 p-2">
+              <BrandLogo branding={form as WorkspaceBranding} size={56} fallback={fallback} />
             </div>
           </div>
           <div className="flex-1">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Trocar logo</p>
+            <Label className="mb-2 text-xs text-muted-foreground">Trocar logo</Label>
             <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={onLogoFile}
-              className="text-[12px] text-[#512314]/70 file:mr-3 file:rounded-full file:border-0 file:bg-[#512314] file:px-4 file:py-1.5 file:text-[12px] file:font-semibold file:text-[#ebdbba]" />
-            <p className="mt-1.5 text-[11px] text-[#512314]/45">PNG/SVG/WebP até ~300 KB — ou informe uma URL:</p>
-            <input value={form.logo_url ?? ''} onChange={(e) => set('logo_url', e.target.value)}
-              placeholder="https://… ou /atabaque-logo.png" className={`${inputCls} mt-2`} />
+              className="text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-medium file:text-primary-foreground" />
+            <p className="mt-2 text-xs text-muted-foreground">PNG/SVG/WebP até ~300 KB — ou informe uma URL:</p>
+            <Input value={form.logo_url ?? ''} onChange={(e) => set('logo_url', e.target.value)}
+              placeholder="https://sua-marca.com/logo.svg" className="mt-2" />
           </div>
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {BRAND_FIELDS.map((f) => (
             <div key={f.key} className={f.textarea ? 'sm:col-span-2' : ''}>
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">{f.label}</p>
+              <Label className="mb-2 text-xs text-muted-foreground">{f.label}</Label>
               {f.textarea ? (
-                <textarea rows={2} value={(form[f.key] as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}
-                  placeholder={f.placeholder} className={inputCls} />
+                <Textarea rows={3} value={(form[f.key] as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}
+                  placeholder={f.placeholder} />
               ) : (
-                <input value={(form[f.key] as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}
-                  placeholder={f.placeholder} className={inputCls} />
+                <Input value={(form[f.key] as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}
+                  placeholder={f.placeholder} />
               )}
             </div>
           ))}
           <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Cor primária</p>
+            <Label className="mb-2 text-xs text-muted-foreground">Cor primária</Label>
             <div className="flex items-center gap-2">
-              <input type="color" value={form.primary_color ?? '#329fd7'} onChange={(e) => set('primary_color', e.target.value)}
-                className="h-10 w-12 cursor-pointer rounded-xl border border-[#512314]/25 bg-transparent" />
-              <input value={form.primary_color ?? ''} onChange={(e) => set('primary_color', e.target.value)} className={inputCls} />
+              <input type="color" value={form.primary_color ?? '#0ea5e9'} onChange={(e) => set('primary_color', e.target.value)}
+                className="h-9 w-12 cursor-pointer rounded-md border bg-transparent" />
+              <Input value={form.primary_color ?? ''} onChange={(e) => set('primary_color', e.target.value)} />
             </div>
           </div>
           <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#512314]/50">Cor de fundo do formulário</p>
+            <Label className="mb-2 text-xs text-muted-foreground">Cor de fundo do formulário</Label>
             <div className="flex items-center gap-2">
-              <input type="color" value={form.form_bg_color ?? '#ebdbba'} onChange={(e) => set('form_bg_color', e.target.value)}
-                className="h-10 w-12 cursor-pointer rounded-xl border border-[#512314]/25 bg-transparent" />
-              <input value={form.form_bg_color ?? ''} onChange={(e) => set('form_bg_color', e.target.value)} className={inputCls} />
+              <input type="color" value={form.form_bg_color ?? '#f8fafc'} onChange={(e) => set('form_bg_color', e.target.value)}
+                className="h-9 w-12 cursor-pointer rounded-md border bg-transparent" />
+              <Input value={form.form_bg_color ?? ''} onChange={(e) => set('form_bg_color', e.target.value)} />
             </div>
           </div>
         </div>
 
         <div className="mt-5 flex items-center gap-3">
-          <button onClick={save} disabled={saving}
-            className="rounded-full bg-[#512314] px-6 py-2.5 text-sm font-bold text-[#ebdbba] transition hover:opacity-90 disabled:opacity-50">
+          <Button onClick={save} disabled={saving}>
             {saving ? 'Salvando…' : 'Salvar marca'}
-          </button>
+          </Button>
           {msg && (
             <p className={`text-[12px] font-semibold ${msg.ok ? 'text-[#166534]' : 'text-red-700'}`}>{msg.text}</p>
           )}
         </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -519,41 +531,36 @@ export default function Portal() {
   if (!unlocked && workspace !== 'atabaque') return <Navigate to="/login" replace />
   if (!unlocked) return <PortalGate workspace={workspace} displayName={branding?.workspace_name ?? displayName} onUnlock={() => setUnlocked(true)} />
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16">
+    <div className="portal-shell mx-auto max-w-6xl px-4 pb-16">
       <header className="flex items-center justify-between py-5">
         <div className="flex items-center gap-3">
           <BrandLogo branding={branding} size={36} fallback={logoFallback} />
           <div>
-            <p className="text-lg font-bold text-[#512314] leading-none">{branding?.workspace_name ?? displayName}</p>
-            <p className="text-[11px] text-[#512314]/60">Sunbeat · área do cliente</p>
+            <p className="text-base font-semibold leading-none text-foreground">{branding?.workspace_name ?? displayName}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Sunbeat · área do cliente</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="sun-chip hidden items-center gap-1.5 sm:flex"><Lock size={12} /> Restrito a parceiros</span>
-          <button type="button" onClick={() => void logout()} className="sun-chip flex items-center gap-1.5" aria-label="Encerrar sessão">
+          <Button type="button" variant="outline" size="sm" onClick={() => void logout()} aria-label="Encerrar sessão">
             <LogOut size={12} /> Sair
-          </button>
+          </Button>
         </div>
       </header>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-[#512314]">Área do cliente</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Área do cliente</h1>
         <span className="sun-chip">{branding?.workspace_name ?? displayName} · Operação</span>
       </div>
-      <p className="mt-1 text-sm text-[#512314]/65">
+      <p className="mt-1 text-sm text-muted-foreground">
         Acompanhe os formulários, as integrações e o andamento da operação em tempo real.
       </p>
 
-      <nav className="mt-5 flex flex-wrap gap-2 border-b border-[#512314]/15 pb-3">
-        {visibleTabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition ${
-              activeTab === t.key ? 'bg-[#512314] text-[#ebdbba]' : 'text-[#512314]/70 hover:bg-[#512314]/8'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs value={activeTab} onValueChange={(value) => setTab(value as Tab)} className="mt-6">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-lg bg-muted/70 p-1">
+          {visibleTabs.map((t) => <TabsTrigger key={t.key} value={t.key} className="min-h-8 flex-none px-4">{t.label}</TabsTrigger>)}
+        </TabsList>
+      </Tabs>
 
       {activeTab === 'geral' && <LiveOverview {...liveProps} />}
 
