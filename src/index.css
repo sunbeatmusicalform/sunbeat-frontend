@@ -13,21 +13,21 @@
     --brand-pink: #d946ef;
 
     --background: 196 100% 4%;
-    --foreground: 42 45% 91%;
+    --foreground: 210 40% 96%;
     --card: 197 71% 8%;
-    --card-foreground: 42 45% 94%;
+    --card-foreground: 210 40% 98%;
     --popover: 197 71% 8%;
-    --popover-foreground: 42 45% 94%;
+    --popover-foreground: 210 40% 98%;
     --primary: 43 96% 55%;
     --primary-foreground: 196 100% 4%;
     --secondary: 196 48% 13%;
-    --secondary-foreground: 42 45% 91%;
+    --secondary-foreground: 210 40% 96%;
     --muted: 196 42% 14%;
-    --muted-foreground: 202 15% 66%;
+    --muted-foreground: 211 15% 65%;
     --accent: 43 96% 55%;
     --accent-foreground: 196 100% 4%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 42 45% 94%;
+    --destructive-foreground: 210 40% 98%;
     --border: 195 30% 22%;
     --input: 195 30% 22%;
     --ring: 43 96% 55%;
@@ -68,8 +68,8 @@
    shadcn token layer. It translates their legacy literal palette to semantic
    product tokens without leaking a tenant's identity into another workspace. */
 .portal-shell [class*="text-[#512314]"] { color: hsl(var(--foreground)); }
-.portal-shell [class*="text-[#ebdbba]"] { color: hsl(var(--primary-foreground)); }
-.portal-shell [class~="bg-[#512314]"] { background-color: hsl(var(--primary)); }
+.portal-shell [class*="text-[#ebdbba]"] { color: hsl(var(--foreground)); }
+.portal-shell [class~="bg-[#512314]"] { background-color: hsl(var(--secondary)); }
 .portal-shell [class*="bg-[#512314]/"] { background-color: hsl(var(--muted)); }
 .portal-shell [class~="bg-[#ebdbba]"] { background-color: hsl(var(--background)); }
 .portal-shell [class*="border-[#512314]"] { border-color: hsl(var(--border)); }
