@@ -70,7 +70,7 @@ function ReducedMotionJourney({ locale, standalone }: { locale: ConceptLocale; s
         ))}
       </div>
       <section className="border-t border-white/10 px-6 py-20 text-center">
-        <a href="/#chat" className="inline-flex items-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#00070c]">{copy.primaryCta}<ArrowRight className="h-4 w-4" /></a>
+        <a href="/signup" className="inline-flex items-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#00070c]">{copy.primaryCta}<ArrowRight className="h-4 w-4" /></a>
       </section>
     </div>
   )
@@ -145,7 +145,7 @@ export function CinematicJourney({ standalone = false }: { standalone?: boolean 
                 <a href={localeHref('en', standalone)} aria-current={locale === 'en' ? 'page' : undefined} className={`rounded-full px-2.5 py-1.5 ${locale === 'en' ? 'bg-white text-[#00070c]' : 'text-white/50'}`}>EN</a>
                 <a href={localeHref('pt-BR', standalone)} aria-current={locale === 'pt-BR' ? 'page' : undefined} className={`rounded-full px-2.5 py-1.5 ${locale === 'pt-BR' ? 'bg-white text-[#00070c]' : 'text-white/50'}`}>PT</a>
               </div>
-              <a href={standalone ? '#concept-end' : '#forms'} className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/55 transition hover:text-[#fbbb1e]">{copy.skip}</a>
+              <a href={standalone ? '#concept-end' : '#product'} className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/55 transition hover:text-[#fbbb1e]">{copy.skip}</a>
             </div>
           </header>
 
@@ -190,8 +190,8 @@ export function CinematicJourney({ standalone = false }: { standalone?: boolean 
                 )}
                 {activeChapter === 5 && (
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                    <a href="/#chat" className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#00070c] transition hover:bg-[#ffd45e]">{copy.primaryCta}<ArrowRight className="h-4 w-4" /></a>
-                    <a href="/#forms" className="pointer-events-auto inline-flex items-center justify-center rounded-full border border-white/25 bg-black/15 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/10">{copy.secondaryCta}</a>
+                    <a href="/signup" className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#00070c] transition hover:bg-[#ffd45e]">{copy.primaryCta}<ArrowRight className="h-4 w-4" /></a>
+                    <a href={standalone ? '/#product' : '#product'} className="pointer-events-auto inline-flex items-center justify-center rounded-full border border-white/25 bg-black/15 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/10">{copy.secondaryCta}</a>
                   </motion.div>
                 )}
               </motion.div>
@@ -223,7 +223,7 @@ export function CinematicJourney({ standalone = false }: { standalone?: boolean 
         <h2 className="mx-auto mt-4 max-w-3xl font-display text-4xl leading-tight text-white md:text-6xl">{copy.endTitle}</h2>
         <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-white/55">{copy.endBody}</p>
         <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="/#chat" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#00070c]">{copy.primaryCta}<ArrowRight className="h-4 w-4" /></a>
+          <a href="/signup" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#00070c]">{copy.primaryCta}<ArrowRight className="h-4 w-4" /></a>
           <a href="/" className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white">Sunbeat home</a>
         </div>
       </section>

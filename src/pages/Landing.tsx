@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowRight, BookOpen, Check, FileCheck2, X } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, CircleCheck, FileCheck2, X } from 'lucide-react'
 import { resolveConceptLocale, type ConceptLocale } from '@/concept/copy'
 import { IntelligentForms, Showcase } from '@/sections/Info'
 
@@ -8,8 +8,23 @@ const CinematicJourney = lazy(() => import('./ConceptPage').then((module) => ({ 
 
 const LANDING_COPY = {
   en: {
-    metaTitle: 'Sunbeat | Intelligent intake for creative operations',
-    metaDescription: 'Sunbeat connects intelligent intake forms, rights clearance, operational email and integrations for creative teams.',
+    metaTitle: 'Sunbeat | AI operations for music teams',
+    metaDescription: 'Collect release data, validate audio, artwork and credits, and connect your music operation to Airtable, Google Drive and email.',
+    proposition: {
+      kicker: 'AI operations for music teams',
+      title: 'Music operations, ready to move.',
+      body: 'Collect release data, validate audio, artwork and credits, and keep every handoff organized — connected to Airtable, Google Drive and the tools your team already uses.',
+      audience: 'Built for labels, managers, publishers and creative agencies.',
+      primaryCta: 'Start free',
+      secondaryCta: 'See the product',
+      proof: ['Human approval before configuration', 'Signed previews', 'Audit-ready history'],
+      flow: [
+        { number: '01', title: 'Collect', body: 'Intelligent forms shaped around your operation.' },
+        { number: '02', title: 'Validate', body: 'Audio, artwork, metadata and credits checked early.' },
+        { number: '03', title: 'Operate', body: 'Structured data connected to the tools you already use.' },
+        { number: '04', title: 'Control', body: 'Your team reviews every configuration before it changes.' },
+      ],
+    },
     plansKicker: 'Plans',
     plansTitle: 'Start with the core. Add power as your operation grows.',
     plansBody: "Every plan includes Sunbeat's file audit for audio, artwork and metadata. Paid plans expand volume, retention, integrations and operational control.",
@@ -45,8 +60,23 @@ const LANDING_COPY = {
     ],
   },
   'pt-BR': {
-    metaTitle: 'Sunbeat | Intake inteligente para operações criativas',
-    metaDescription: 'A Sunbeat conecta formulários inteligentes, liberação de direitos, e-mails operacionais e integrações para equipes criativas.',
+    metaTitle: 'Sunbeat | Operações com IA para equipes de música',
+    metaDescription: 'Colete dados de lançamentos, valide áudio, capas e créditos e conecte sua operação musical ao Airtable, Google Drive e e-mail.',
+    proposition: {
+      kicker: 'Operações com IA para equipes de música',
+      title: 'Operações musicais prontas para avançar.',
+      body: 'Colete dados de lançamentos, valide áudio, capas e créditos e organize cada passagem da operação — conectada ao Airtable, Google Drive e às ferramentas que sua equipe já utiliza.',
+      audience: 'Feita para labels, managers, editoras e agências criativas.',
+      primaryCta: 'Começar grátis',
+      secondaryCta: 'Conhecer o produto',
+      proof: ['Aprovação humana antes da configuração', 'Prévias assinadas', 'Histórico auditável'],
+      flow: [
+        { number: '01', title: 'Coletar', body: 'Formulários inteligentes construídos ao redor da sua operação.' },
+        { number: '02', title: 'Validar', body: 'Áudio, capas, metadados e créditos conferidos cedo.' },
+        { number: '03', title: 'Operar', body: 'Dados estruturados conectados às ferramentas que você já usa.' },
+        { number: '04', title: 'Controlar', body: 'Sua equipe revisa cada configuração antes de qualquer mudança.' },
+      ],
+    },
     plansKicker: 'Planos',
     plansTitle: 'Comece com o essencial. Ganhe potência conforme sua operação cresce.',
     plansBody: 'Todos os planos incluem a auditoria Sunbeat para áudio, capas e metadados. Os planos pagos ampliam volume, retenção, integrações e controle operacional.',
@@ -225,6 +255,53 @@ export default function Landing() {
       <Suspense fallback={<div className="relative min-h-screen overflow-hidden" aria-label={locale === 'pt-BR' ? 'Carregando experiência Sunbeat' : 'Loading Sunbeat experience'}><div className="concept-static-scene" /></div>}>
         <CinematicJourney />
       </Suspense>
+
+      {/* ===== proposta — clareza comercial sem interromper a jornada ===== */}
+      <section id="product" className="relative overflow-hidden border-y border-white/10 bg-[#000e14] px-6 py-20 md:py-28">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(251,187,30,0.10),transparent_32%)]" aria-hidden="true" />
+        <div className="relative mx-auto max-w-6xl">
+          <div className="grid gap-12 lg:grid-cols-[1.12fr_0.88fr] lg:items-end">
+            <div>
+              <p className="story-kicker">{copy.proposition.kicker}</p>
+              <h2 className="mt-5 max-w-4xl font-display text-4xl leading-[1.04] tracking-[-0.035em] text-white md:text-6xl">
+                {copy.proposition.title}
+              </h2>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-white/62 md:text-lg">
+                {copy.proposition.body}
+              </p>
+              <p className="mt-5 text-sm font-semibold text-white/45">{copy.proposition.audience}</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link to="/signup" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#000e14] transition hover:bg-[#ffd45e]">
+                  {copy.proposition.primaryCta}<ArrowRight className="h-4 w-4" />
+                </Link>
+                <a href="#forms" className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/35 hover:bg-white/5">
+                  {copy.proposition.secondaryCta}
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-[#061a24]/80 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.22)] md:p-8">
+              <div className="grid gap-6 sm:grid-cols-2">
+                {copy.proposition.flow.map((item) => (
+                  <div key={item.number} className="border-t border-white/10 pt-4">
+                    <p className="text-[10px] font-bold tracking-[0.22em] text-[#fbbb1e]">{item.number}</p>
+                    <h3 className="mt-2 font-display text-xl text-white">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-white/50">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-12 grid gap-3 border-t border-white/10 pt-6 md:grid-cols-3">
+            {copy.proposition.proof.map((item) => (
+              <p key={item} className="flex items-center gap-2 text-xs font-semibold text-white/55">
+                <CircleCheck className="h-4 w-4 shrink-0 text-[#fbbb1e]" />{item}
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ===== área informativa — leitura direta ===== */}
       <div id="forms"><IntelligentForms locale={locale} /></div>
