@@ -51,7 +51,7 @@ export function AutomationDialog({
         </DialogHeader>
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           {FLOWS.map(({ icon: Icon, title, desc, color }) => (
-            <div key={title} className="flex gap-3 rounded-2xl border-2 border-foreground/10 bg-white/60 p-3.5">
+            <div key={title} className="flex gap-3 rounded-2xl border-2 border-foreground/10 bg-card/60 p-3.5">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: color + '26' }}>
                 <Icon className="h-4.5 w-4.5 h-5 w-5" style={{ color }} />
               </div>
@@ -62,7 +62,7 @@ export function AutomationDialog({
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center justify-between rounded-2xl border-2 border-foreground/10 bg-white/60 p-3.5">
+        <div className="mt-4 flex items-center justify-between rounded-2xl border-2 border-foreground/10 bg-card/60 p-3.5">
           <div>
             <Label htmlFor="wl" className="font-bold text-sm">Branding Sunbeat no rodapé</Label>
             <p className="text-xs text-muted-foreground">

@@ -37,7 +37,7 @@ export function Field({
 
 export function inputCls(invalid?: boolean) {
   return cn(
-    'h-11 rounded-xl border bg-white/75 px-3.5 font-medium shadow-[0_1px_2px_rgba(81,35,20,0.04)] transition-[border-color,box-shadow,background-color] placeholder:font-normal placeholder:text-muted-foreground/55 hover:bg-white/90 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20',
+    'h-11 rounded-xl border bg-card/75 px-3.5 font-medium shadow-[0_1px_2px_rgba(81,35,20,0.04)] transition-[border-color,box-shadow,background-color] placeholder:font-normal placeholder:text-muted-foreground/55 hover:bg-card/90 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20',
     invalid ? 'border-accent ring-2 ring-accent/10' : 'border-foreground/15'
   )
 }

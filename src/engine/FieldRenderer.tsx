@@ -48,7 +48,7 @@ function ChoiceButtons({
             className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-bold transition-[border-color,background-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30
               ${active
                 ? 'border-foreground bg-foreground text-background shadow-sm'
-                : `${invalid ? 'border-accent' : 'border-foreground/15'} bg-white/65 text-foreground/80 hover:border-foreground/35 hover:bg-white/90`}`}
+                : `${invalid ? 'border-accent' : 'border-foreground/15'} bg-card/65 text-foreground/80 hover:border-foreground/35 hover:bg-card/90`}`}
           >
             {o.label}
           </button>
@@ -146,7 +146,7 @@ export function FieldRenderer({
       return (
         <Field label={f.label} hint={f.hint} error={error} required={f.required} className={f.className} htmlFor={id}>
           <label htmlFor={id} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 py-5 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-accent/20
-            ${error ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-white/55 hover:border-foreground/40 hover:bg-white/80'}`}>
+            ${error ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-card/55 hover:border-foreground/40 hover:bg-card/80'}`}>
             <UploadCloud className="h-5 w-5 text-accent" />
             <span>{fileLabel(value) ?? (f.placeholder ?? 'Toque para anexar')}</span>
             <input id={id} type="file" accept={f.accept} className="sr-only" aria-invalid={Boolean(error)}
@@ -263,7 +263,7 @@ function RepeaterField({
       return (
         <Field {...common} htmlFor={id}>
           <label htmlFor={id} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 py-5 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-accent/20
-            ${error ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-white/55 hover:border-foreground/40 hover:bg-white/80'}`}>
+            ${error ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-card/55 hover:border-foreground/40 hover:bg-card/80'}`}>
             <UploadCloud className="h-5 w-5 text-accent" />
             <span>{fileLabel(value) ?? (sub.placeholder ?? 'Toque para anexar')}</span>
             <input id={id} type="file" accept={sub.accept} className="sr-only" aria-invalid={Boolean(error)}

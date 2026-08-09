@@ -9,7 +9,7 @@ export function Sucesso({ email, project, onRestart }: { email: string; project:
       </div>
       <h2 className="font-display text-4xl font-black">Recebido! 🎉</h2>
       <p className="mt-3 text-muted-foreground leading-relaxed">
-        <strong>{project || 'Seu lançamento'}</strong> entrou na fila de revisão da equipe Atabaque.
+        <strong>{project || 'Seu lançamento'}</strong> entrou na fila de revisão da equipe responsável.
         Enviamos o resumo para <strong>{email}</strong>.
       </p>
 

@@ -12,7 +12,7 @@ import {
   Clock3, CloudUpload, Loader2, Lock, Mail, PencilLine, Send, Sparkles, Workflow,
 } from 'lucide-react'
 import { AtabaqueMark } from '@/components/AtabaqueMark'
-import { useBranding, BrandLogo } from '@/lib/brand'
+import { useBranding, BrandLogo, workspaceThemeStyle } from '@/lib/brand'
 import { StepHeader } from '@/sections/ui'
 import { AutomationDialog } from '@/sections/AutomationDialog'
 import { HelpChat } from '@/components/HelpChat'
@@ -99,7 +99,7 @@ export function FormShell({ config: baseConfig, workspaceSlug, workflowType, pre
   const activeStep = steps[stepIndex]
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(255,181,62,0.14),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(255,86,57,0.10),transparent_40%)]">
+    <div className="min-h-screen bg-background bg-[radial-gradient(circle_at_top_left,rgba(251,187,30,0.10),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_40%)] text-foreground" style={workspaceThemeStyle(branding)}>
       {/* top bar */}
       <header className="sticky top-0 z-20 border-b border-foreground/10 bg-background/90 shadow-[0_1px_0_rgba(81,35,20,0.04)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -358,7 +358,7 @@ function RepeaterReview({ f, values }: { f: FieldDef; values: FormValues }) {
     <div className="space-y-2 py-1.5">
       <span className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">{f.label}</span>
       {items.map((item, i) => (
-        <div key={i} className="rounded-2xl bg-white/50 p-4">
+        <div key={i} className="rounded-2xl bg-card/50 p-4">
           <div className="text-sm font-bold">{f.itemLabel ?? 'Item'} {i + 1}</div>
           <div className="mt-1 text-xs text-muted-foreground leading-relaxed">
             {(f.fields ?? [])
@@ -423,12 +423,12 @@ function EngineReview({
       </div>
 
       {/* aviso de confidencialidade */}
-      <p className="mt-5 rounded-xl border-2 border-foreground/10 bg-white/40 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-5 rounded-xl border-2 border-foreground/10 bg-card/40 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
         🔒 {CONFIDENTIALITY_NOTICE}
       </p>
 
       {/* consentimento LGPD */}
-      <div className={`mt-4 rounded-2xl border-2 p-4 ${showErrors && !values.consentTruth ? 'border-accent bg-accent/5' : 'border-foreground/15 bg-white/50'}`}>
+      <div className={`mt-4 rounded-2xl border-2 p-4 ${showErrors && !values.consentTruth ? 'border-accent bg-accent/5' : 'border-foreground/15 bg-card/50'}`}>
         <Label htmlFor="consent" className="flex cursor-pointer items-start gap-3">
           <Checkbox id="consent" className="mt-0.5" checked={values.consentTruth === true}
             onCheckedChange={(v) => engine.setValue('consentTruth', v === true)} />

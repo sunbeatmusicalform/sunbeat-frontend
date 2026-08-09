@@ -21,7 +21,7 @@ function registrationUrl(workspace: string, name: string) {
   return `/people/${encodeURIComponent(workspace)}?${params}`
 }
 
-export function ArtistLinkedField({ workspaceSlug, value, references, onChange, error, label = 'Artistas vinculados', hint = 'Busque no cadastro da Atabaque. Use vírgula ou Enter para conferir um nome novo.', placeholder = 'Digite o nome artístico…', required = false }: Props) {
+export function ArtistLinkedField({ workspaceSlug, value, references, onChange, error, label = 'Artistas vinculados', hint = 'Busque no cadastro do workspace. Use vírgula ou Enter para conferir um nome novo.', placeholder = 'Digite o nome artístico…', required = false }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PeopleLookupItem[]>([])
   const [pendingMatch, setPendingMatch] = useState<PeopleLookupItem | null>(null)
@@ -96,7 +96,7 @@ export function ArtistLinkedField({ workspaceSlug, value, references, onChange, 
   }
 
   return (
-    <div className={`rounded-2xl border-2 bg-white/55 p-4 ${error ? 'border-accent' : 'border-foreground/15'}`}>
+    <div className={`rounded-2xl border-2 bg-card/55 p-4 ${error ? 'border-accent' : 'border-foreground/15'}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-1.5 text-sm font-bold"><Link2 className="h-4 w-4 text-[#329fd7]" /> {label}{required ? <span className="text-accent">*</span> : null}</p>

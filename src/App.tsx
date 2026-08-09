@@ -16,6 +16,7 @@ import LegalPage from './pages/LegalPage'
 const ConceptPage = lazy(() => import('./pages/ConceptPage'))
 const AcademyPage = lazy(() => import('./pages/AcademyPage'))
 const AcademyArticlePage = lazy(() => import('./pages/AcademyArticlePage'))
+const ProductPage = lazy(() => import('./pages/ProductPage'))
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
       <Route path="/privacy" element={<LegalPage kind="privacy" />} />
       <Route path="/privacidade" element={<LegalPage kind="privacy" />} />
       <Route path="/concept" element={<Suspense fallback={<div className="min-h-screen bg-[#00070c]" />}><ConceptPage /></Suspense>} />
+      <Route path="/product" element={<Suspense fallback={<div className="min-h-screen bg-[#000e14]" />}><ProductPage /></Suspense>} />
       <Route path="/academy" element={<Suspense fallback={<div className="min-h-screen bg-[#000e14]" />}><AcademyPage /></Suspense>} />
       <Route path="/academy/:slug" element={<Suspense fallback={<div className="min-h-screen bg-[#000e14]" />}><AcademyArticlePage /></Suspense>} />
       <Route path="*" element={<Navigate to="/" replace />} />

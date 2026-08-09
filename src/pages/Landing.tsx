@@ -274,9 +274,9 @@ export default function Landing() {
                 <Link to="/signup" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbbb1e] px-6 py-3.5 text-sm font-bold text-[#000e14] transition hover:bg-[#ffd45e]">
                   {copy.proposition.primaryCta}<ArrowRight className="h-4 w-4" />
                 </Link>
-                <a href="#forms" className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/35 hover:bg-white/5">
+                <Link to="/product" className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/35 hover:bg-white/5">
                   {copy.proposition.secondaryCta}
-                </a>
+                </Link>
               </div>
             </div>
 

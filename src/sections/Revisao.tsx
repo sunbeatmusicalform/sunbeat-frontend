@@ -66,7 +66,7 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
         <Separator className="my-4 bg-foreground/10" />
         <div className="space-y-3">
           {d.tracks.map((t, i) => (
-            <div key={t.id} className="rounded-2xl bg-white/50 p-4">
+            <div key={t.id} className="rounded-2xl bg-card/50 p-4">
               <div className="flex items-center gap-2 font-bold text-sm">
                 {i + 1}. {t.title || 'Sem título'}
                 {form.isVisible('focusTrack') && t.isFocus && <Star className="h-4 w-4 fill-secondary text-secondary" />}
@@ -81,7 +81,7 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
                 {form.isVisible('track.audio') ? ` · ${t.audioFileName ?? 'sem áudio'}` : ''}
               </div>
               {form.isVisible('track.lyrics') && t.lyrics && (
-                <details className="mt-3 rounded-xl border border-foreground/10 bg-white/45 px-3 py-2 text-xs">
+                <details className="mt-3 rounded-xl border border-foreground/10 bg-card/45 px-3 py-2 text-xs">
                   <summary className="cursor-pointer font-bold">Ver letra da música</summary>
                   <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{t.lyrics}</p>
                 </details>
@@ -102,17 +102,17 @@ export function Revisao({ form, goTo, showErrors }: { form: F; goTo: (s: StepId)
       </div>
 
       {/* aviso de confidencialidade */}
-      {form.isVisible('review.confidentiality') && <p className="mt-5 rounded-xl border-2 border-foreground/10 bg-white/40 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
+      {form.isVisible('review.confidentiality') && <p className="mt-5 rounded-xl border-2 border-foreground/10 bg-card/40 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
         🔒 {form.textFor('review.confidentiality', 'hint', 'Materiais enviados neste formulário podem conter informações confidenciais de projeto musical. Compartilhe apenas arquivos necessários ao fluxo e evite encaminhar links de rascunho, edição ou download para pessoas não envolvidas.')}
       </p>}
 
       {/* consentimento LGPD */}
-      {form.isVisible('consentTruth') && <div className={`mt-4 rounded-2xl border-2 p-4 ${reviewErrors.consentTruth ? 'border-accent bg-accent/5' : 'border-foreground/15 bg-white/50'}`}>
+      {form.isVisible('consentTruth') && <div className={`mt-4 rounded-2xl border-2 p-4 ${reviewErrors.consentTruth ? 'border-accent bg-accent/5' : 'border-foreground/15 bg-card/50'}`}>
         <Label htmlFor="consent" className="flex cursor-pointer items-start gap-3">
           <Checkbox id="consent" className="mt-0.5" checked={d.consentTruth}
             onCheckedChange={(v) => form.setData('consentTruth', v === true)} />
           <span className="text-xs leading-relaxed text-foreground/85">
-            {form.textFor('consentTruth', 'hint', 'Ao enviar este formulário, confirmo que as informações fornecidas são verdadeiras e autorizo seu uso pela Atabaque e pela Sunbeat para fins de análise, cadastro, operação de lançamento, clearance, contratos, comunicação e organização dos materiais relacionados ao projeto. Os dados serão tratados conforme a política de privacidade aplicável e compartilhados apenas com pessoas e sistemas necessários para a execução do fluxo.')}
+            {form.textFor('consentTruth', 'hint', 'Ao enviar este formulário, confirmo que as informações fornecidas são verdadeiras e autorizo seu uso pela equipe responsável e pela Sunbeat para fins de análise, cadastro, operação, comunicação e organização dos materiais relacionados ao projeto. Os dados serão tratados conforme a política de privacidade aplicável e compartilhados apenas com pessoas e sistemas necessários para a execução do fluxo.')}
           </span>
         </Label>
         {reviewErrors.consentTruth && (

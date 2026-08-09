@@ -3,7 +3,7 @@ import { ChevronDown, Film, Image, LayoutTemplate } from 'lucide-react'
 
 function Guide({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <details className="group rounded-2xl border border-foreground/12 bg-white/45 open:bg-white/65">
+    <details className="group rounded-2xl border border-foreground/12 bg-card/45 open:bg-card/65">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold">
         {icon}<span className="flex-1">{title}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
       </summary>
@@ -12,7 +12,7 @@ function Guide({ title, icon, children }: { title: string; icon: ReactNode; chil
   )
 }
 
-export function AssetStandardsPanel({ title = 'Guia de assets da Atabaque', description = 'Consulte antes de gerar ou compartilhar os arquivos finais.' }: { title?: string; description?: string }) {
+export function AssetStandardsPanel({ title = 'Guia de assets do workspace', description = 'Consulte antes de gerar ou compartilhar os arquivos finais.' }: { title?: string; description?: string }) {
   return (
     <div className="rounded-3xl border-2 border-[#329fd7]/25 bg-[#329fd7]/7 p-4">
       <p className="text-sm font-black">{title}</p>

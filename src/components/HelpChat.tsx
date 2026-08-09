@@ -143,7 +143,7 @@ export function HelpChat({ clientName, workspaceSlug }: { clientName: string; wo
           <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
             {msgs.map((m, i) => (
               <div key={i} className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
-                m.from === 'bot' ? 'bg-white/70 text-foreground' : 'ml-auto bg-foreground text-background'
+                m.from === 'bot' ? 'bg-card/70 text-foreground' : 'ml-auto bg-foreground text-background'
               }`}>
                 {m.text}
               </div>
@@ -166,7 +166,7 @@ export function HelpChat({ clientName, workspaceSlug }: { clientName: string; wo
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send(input)}
               placeholder="Escreva sua dúvida…"
-              className="h-9 flex-1 rounded-full border-2 border-foreground/15 bg-white/60 px-3.5 text-[13px] outline-none focus:border-foreground/40"
+              className="h-9 flex-1 rounded-full border-2 border-foreground/15 bg-card/60 px-3.5 text-[13px] outline-none focus:border-foreground/40"
             />
             <Button size="sm" className="h-9 w-9 rounded-full bg-accent p-0 text-accent-foreground" onClick={() => send(input)}>
               <Send className="h-4 w-4" />
