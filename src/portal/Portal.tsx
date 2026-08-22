@@ -15,15 +15,16 @@ import { FormConfig } from './FormConfig'
 import { VERDICT_STYLE, type LookupResult, type PersonBaseHit } from '../forms/invites'
 import { api, apiEnabled, type OnboardingInitialRemote, type PortalDataRemote } from '../lib/api'
 import { useBranding, patchBranding, createPortalSession, portalToken, setPortalToken, BrandLogo, type WorkspaceBranding } from '../lib/brand'
-import { LiveAirtable, LiveDriveFolders, LiveIntegrations, LiveInvites, LiveOverview, LiveTables } from './LivePortalData'
+import { LiveAirtable, LiveDriveFolders, LiveIntegrations, LiveInvites, LiveOverview } from './LivePortalData'
 import { OnboardingPanel } from './OnboardingPanel'
+import { SunbeatTables } from './SunbeatTables'
 
 /* ---------- Abas ---------- */
 type Tab = 'onboarding' | 'geral' | 'tables' | 'convites' | 'integracoes' | 'formulario' | 'emails' | 'drive' | 'airtable' | 'marca'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'onboarding', label: 'MotoSchema' },
   { key: 'geral', label: 'Visão geral' },
-  { key: 'tables', label: 'Demandas operacionais' },
+  { key: 'tables', label: 'Sunbeat Tables' },
   { key: 'convites', label: 'Convites' },
   { key: 'integracoes', label: 'Integrações' },
   { key: 'formulario', label: 'Formulário' },
@@ -597,7 +598,7 @@ export default function Portal() {
 
       {activeTab === 'onboarding' && <OnboardingPanel workspace={workspace} />}
 
-      {activeTab === 'tables' && <LiveTables {...liveProps} />}
+      {activeTab === 'tables' && <SunbeatTables {...liveProps} />}
 
       {activeTab === 'marca' && <BrandingTab workspace={workspace} />}
 
